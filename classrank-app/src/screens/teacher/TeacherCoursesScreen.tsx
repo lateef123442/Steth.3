@@ -6,6 +6,7 @@ import { Btn, Card, Chip, Empty, Field, Label, Muted, Tag, YearTag, s, ListSkele
 import { Grid, Screen, ChipRow } from "../../components/responsive";
 import { fetchStaffCourses, createCourse, StaffCourse } from "../../lib/courseApi";
 import { fetchMyTeachingDepartments } from "../../lib/supportApi";
+import CourseThumb from "../../components/CourseThumb";
 
 const ALL_YEARS = [1, 2, 3, 4, 5];
 
@@ -61,6 +62,7 @@ export default function TeacherCoursesScreen({ navigation }: any) {
       <Grid>
         {shown.map((c) => (
           <Card key={c.id} style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("TeacherCourse", { courseId: c.id })}>
+            <CourseThumb path={c.thumbnail_path} height={90} />
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm }}>
               <Text style={[s.h3, { flex: 1 }]} numberOfLines={1}>{c.code}</Text>
               <YearTag year={c.year} />
@@ -70,6 +72,7 @@ export default function TeacherCoursesScreen({ navigation }: any) {
               <Tag label={`${c.topic_count} topics`} color={colors.tealDeep} />
               <Tag label={`${c.material_count} resources`} color={colors.violet} />
               <Tag label={`${c.member_count} students`} color={colors.ember} />
+              {!!c.share_count && <Tag label={`Shared · ${c.share_count}`} color={colors.tealDeep} />}
             </View>
             <Muted style={{ marginTop: 6 }}>{c.department}{isAdmin ? ` · ${c.teacher_name}` : ""}</Muted>
           </Card>

@@ -1,5 +1,6 @@
 import * as Linking from "expo-linking";
 import { supabase } from "./supabase";
+import { savePendingReferral } from "./referralApi";
 
 /**
  * Handles the incoming deep link from a password-reset email. Supabase's
@@ -14,6 +15,11 @@ import { supabase } from "./supabase";
  */
 async function handleUrl(url: string | null) {
   if (!url) return;
+  // Invite link, e.g. classrank://invite?ref=ABC1234. Keep the code so sign-up (or Profile) can use it.
+  if (/invite/i.test(url) && /[?&]ref=/i.test(url)) {
+    try { const ref = Linking.parse(url).queryParams?.ref; if (typeof ref === "string") await savePendingReferral(ref); } catch { /* ignore */ }
+    return;
+  }
   if (!url.includes("code=")) return; // not an auth deep link — ignore
 
   try {

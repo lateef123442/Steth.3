@@ -105,7 +105,7 @@ export default function CompanionScreen({ navigation, route }: any) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={{ padding: spacing.xl, paddingBottom: 0 }}>
           <PressableScale onPress={() => navigation.goBack()}><Text style={styles.back}>← Back</Text></PressableScale>
           <Text style={styles.h1}>Study companion</Text>

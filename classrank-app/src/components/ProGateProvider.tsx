@@ -14,7 +14,7 @@ import { hasActivePro, redeemProCode, cleanCode, PRO_PRICE_NAIRA } from "../lib/
  * Teachers and admins are never gated.
  */
 export function ProGateProvider({ children }: { children: React.ReactNode }) {
-  const { profile, refreshProfileAfterPurchase } = useApp();
+  const { profile, paywallEnabled, refreshProfileAfterPurchase } = useApp();
   const [, setTick] = useState(0);
   const [open, setOpen] = useState(false);
   const [pay, setPay] = useState(false);
@@ -24,7 +24,8 @@ export function ProGateProvider({ children }: { children: React.ReactNode }) {
   // Re-check once a minute so access ends right when the paid time runs out.
   useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 60_000); return () => clearInterval(t); }, []);
 
-  const locked = profile?.role === "student" && !hasActivePro(profile);
+  // Only locked while the admin has the app set to paid. While it is free, nothing is ever locked.
+  const locked = profile?.role === "student" && paywallEnabled === true && !hasActivePro(profile);
   const prompt = useCallback(() => { setCode(""); setOpen(true); }, []);
   useEffect(() => { if (!locked) { setOpen(false); setPay(false); } }, [locked]);
   const value = useMemo(() => ({ locked: !!locked, prompt }), [locked, prompt]);

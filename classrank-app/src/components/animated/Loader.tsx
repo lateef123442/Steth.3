@@ -46,5 +46,5 @@ export function LoadingScreen({ label = "Getting your study plan ready…" }: { 
 
 const styles = StyleSheet.create({
   full: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.paper },
-  mark: { ...type.h1, color: colors.ink },
+  mark: { ...type.h1, color: colors.text },
 });

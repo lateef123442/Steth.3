@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radii, spacing, type, shadow } from "../theme/tokens";
@@ -7,6 +7,7 @@ import { isValidEmail } from "../utils/validation";
 import PressableScale from "../components/animated/PressableScale";
 import Dropdown from "../components/Dropdown";
 import { NIGERIAN_UNIVERSITIES } from "../data/nigerianUniversities";
+import { peekPendingReferral, clearPendingReferral } from "../lib/referralApi";
 
 type Mode = "signup" | "teacher" | "login";
 const UNIVERSITY_OPTIONS = NIGERIAN_UNIVERSITIES.map((u) => ({ value: u, label: u }));
@@ -23,6 +24,7 @@ export default function AuthScreen() {
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
   const [referralCode, setReferralCode] = useState("");
+  useEffect(() => { peekPendingReferral().then((c) => { if (c) setReferralCode((cur) => cur || c); }); }, []);
   const [inviteCode, setInviteCode] = useState("");
 
   const emailLooksValid = isValidEmail(email);
@@ -50,6 +52,7 @@ export default function AuthScreen() {
       await signIn(email, password);
     } else if (mode === "signup" && departmentId && year) {
       await signUp({ email, password, name, university, departmentId, year, referralCode: referralCode.trim() || undefined });
+      clearPendingReferral();
     } else if (mode === "teacher" && departmentId) {
       await signUpTeacher({ email, password, name, university, departmentId, inviteCode });
     }
@@ -173,7 +176,7 @@ export default function AuthScreen() {
               title="Year of study"
             />
 
-            <Text style={styles.label}>Referral code (optional)</Text>
+            <Text style={styles.label}>Invite code (optional)</Text>
             <TextInput
               style={styles.input}
               placeholder="Got one from a friend? Enter it here"
@@ -225,7 +228,7 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   container: { padding: spacing.xxl, paddingBottom: spacing.xxxl * 2 },
-  title: { ...type.hero, fontSize: 32, lineHeight: 36, color: colors.navy, marginTop: spacing.md },
+  title: { ...type.hero, fontSize: 32, lineHeight: 36, color: colors.text, marginTop: spacing.md },
   subtitle: { ...type.body, color: colors.tealDeep, marginTop: spacing.xs, marginBottom: spacing.xl, fontStyle: "italic" },
   modeRow: { flexDirection: "row", backgroundColor: colors.card, borderRadius: radii.md, padding: 4, marginBottom: spacing.md, ...shadow.card },
   modeButton: { flex: 1, paddingVertical: spacing.sm, borderRadius: radii.sm, alignItems: "center" },

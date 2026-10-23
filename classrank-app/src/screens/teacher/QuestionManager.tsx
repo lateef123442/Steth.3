@@ -32,6 +32,7 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
   const [busy, setBusy] = useState(false), [drafting, setDrafting] = useState(false);
   const [drafts, setDrafts] = useState<ParsedQuestion[]>([]);
   const [paste, setPaste] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const parsed = useMemo(() => (paste.trim() ? parseQuestionBlocks(paste) : null), [paste]);
 
   const list = bundle.questions.filter((q) => (q.purpose ?? "practice") === purpose && (!pinned || (q.topic_id ?? null) === (fixedTopicId ?? null)));
@@ -80,12 +81,16 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
       {!hideTitle && <><Text style={s.h2}>{copy.title}</Text><Muted style={{ marginTop: 2 }}>{copy.blurb}</Muted></>}
       <Muted style={{ marginTop: spacing.sm }}>{list.length} question{list.length === 1 ? "" : "s"}{pinned ? " in this topic" : ""}</Muted>
       {list.length === 0 && <Empty icon="📝" title="No questions yet" body="Add one below, paste many at once, or let AI draft some from your resources." />}
-      {list.map((q) => (
+      {list.map((q) => q.id === editingId ? (
+        <QuestionEditCard key={q.id} q={q} topics={topics} pinned={pinned} busy={busy} onCancel={() => setEditingId(null)}
+          onSave={(v) => run(async () => { await saveQuestion({ id: q.id, courseId, topicId: v.topicId, purpose: q.purpose ?? purpose, question: v.question, options: v.options, correctIndex: v.correctIndex, explanation: v.explanation }); setEditingId(null); }, "Couldn't save changes")} />
+      ) : (
         <Card key={q.id} style={{ flexDirection: "row", alignItems: "center", marginTop: spacing.sm }}>
           <View style={{ flex: 1 }}>
             <Text style={type.bodyMedium} numberOfLines={2}>{q.question}</Text>
             <Muted>{q.topic || "No topic"} · answer {LETTERS[q.correct_index]}</Muted>
           </View>
+          <PressableScale onPress={() => setEditingId(q.id)} disabled={busy} style={{ padding: spacing.sm }} accessibilityRole="button" accessibilityLabel="Edit question"><Text style={[s.muted, { color: colors.teal, fontWeight: "700" }]}>Edit</Text></PressableScale>
           <PressableScale onPress={() => del(q.id)} style={{ padding: spacing.sm }}><Text style={s.muted}>Delete</Text></PressableScale>
         </Card>
       ))}
@@ -143,5 +148,54 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
         </>
       )}
     </View>
+  );
+}
+
+type QuestionRow = CourseBundle["questions"][number];
+
+/** Edits one existing question in place (same fields as adding), so a teacher never has to delete and retype it. */
+function QuestionEditCard({ q, topics, pinned, busy, onSave, onCancel }: {
+  q: QuestionRow; topics: CourseTopic[]; pinned: boolean; busy: boolean;
+  onSave: (v: { question: string; options: string[]; correctIndex: number; explanation: string; topicId: string | null }) => void; onCancel: () => void;
+}) {
+  const [text, setText] = useState(q.question);
+  const [opts, setOpts] = useState<string[]>([0, 1, 2, 3].map((i) => q.options?.[i] ?? ""));
+  const [right, setRight] = useState(q.correct_index);
+  const [why, setWhy] = useState(q.explanation ?? "");
+  const [topicId, setTopicId] = useState<string | null>(q.topic_id ?? null);
+  const changed = text !== q.question || opts.some((o, i) => o !== (q.options?.[i] ?? "")) || right !== q.correct_index || why !== (q.explanation ?? "") || topicId !== (q.topic_id ?? null);
+  const save = () => {
+    if (!text.trim() || opts.some((o) => !o.trim())) return Alert.alert("Incomplete", "Enter the question and all four options.");
+    onSave({ question: text, options: opts.map((o) => o.trim()), correctIndex: right, explanation: why, topicId });
+  };
+  return (
+    <Card style={{ marginTop: spacing.sm, borderColor: colors.teal }}>
+      <Text style={s.h3}>Edit question</Text>
+      {!pinned && topics.length > 0 && (
+        <>
+          <Muted style={{ fontWeight: "600", marginTop: spacing.sm }}>Topic</Muted>
+          <ChipRow>
+            <Chip label="No topic" on={topicId === null} onPress={() => setTopicId(null)} />
+            {topics.map((t) => <Chip key={t.id} label={t.title} on={topicId === t.id} onPress={() => setTopicId(t.id)} />)}
+          </ChipRow>
+        </>
+      )}
+      <Field value={text} onChangeText={setText} placeholder="Question" multiline />
+      {opts.map((o, i) => (
+        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+          <PressableScale onPress={() => setRight(i)} style={{ marginTop: spacing.sm, width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center", backgroundColor: right === i ? colors.success : colors.border }}>
+            <Text style={[type.label, { color: right === i ? "#fff" : colors.text }]}>{LETTERS[i]}</Text>
+          </PressableScale>
+          <TextInput style={[s.input, { flex: 1 }]} value={o} onChangeText={(v) => setOpts(opts.map((x, k) => (k === i ? v : x)))} placeholder={`Option ${LETTERS[i]}`} placeholderTextColor={colors.textFaint} />
+        </View>
+      ))}
+      <Muted style={{ marginTop: 4 }}>Tap a letter to mark the correct answer (green).</Muted>
+      <Field value={why} onChangeText={setWhy} placeholder="Explanation shown after answering" />
+      <Muted>Tests and exams already scheduled keep the wording they were created with.</Muted>
+      <View style={[s.row, { marginTop: spacing.sm }]}>
+        <Chip label={busy ? "Saving…" : "Save changes"} on onPress={() => { if (busy) return; if (!changed) return onCancel(); save(); }} />
+        <Chip label="Cancel" on={false} onPress={onCancel} />
+      </View>
+    </Card>
   );
 }

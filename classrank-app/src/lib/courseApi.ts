@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import { supabase } from "./supabase";
 import { notifyAnnouncement } from "./pushNotify";
 import { CourseBundle, QuestionPurpose, reportableAnswers } from "./studyCourseSync";
@@ -6,8 +7,8 @@ import { uid } from "./studyTypes";
 import { secondsLeft } from "./examTime";
 import { mimeFor, storagePath, validateFile, MAX_FILE_BYTES } from "./fileRules";
 
-export interface MyCourse { id: string; code: string; title: string; year: number; department: string; teacher_name: string; member_count: number; next_exam: string | null; topic_count: number; topics_done: number }
-export interface StaffCourse { id: string; code: string; title: string; year: number; join_code: string; department: string; teacher_name: string; member_count: number; question_count: number; material_count: number; topic_count: number }
+export interface MyCourse { id: string; code: string; title: string; year: number; department: string; teacher_name: string; member_count: number; next_exam: string | null; topic_count: number; topics_done: number; shared_with_me?: boolean; thumbnail_path?: string | null }
+export interface StaffCourse { id: string; code: string; title: string; year: number; join_code: string; department: string; teacher_name: string; member_count: number; question_count: number; material_count: number; topic_count: number; share_count?: number; thumbnail_path?: string | null }
 export interface CourseStats {
   member_count: number; active_7d: number; answers_total: number; accuracy: number | null;
   hardest: { question_id: string; question: string; topic: string; attempts: number; pct_correct: number }[];
@@ -58,6 +59,9 @@ export const postCourseEvent = async (e: { courseId: string; kind: "announcement
   notifyAnnouncement(id); // push to enrolled students (no-op if nobody has push enabled)
   return id;
 };
+/** Renames an uploaded file resource and/or moves it to another topic (notes, links and videos are edited with saveResource). */
+export const editFileResource = (id: string, title: string, topicId: string | null) =>
+  call<void>("staff_edit_file_material", { p_id: id, p_title: title, p_topic_id: topicId });
 export const deleteCourseContent = (kind: "material" | "question" | "event", id: string) => call<void>("staff_delete_course_content", { p_kind: kind, p_id: id });
 
 // ── timed exams (supabase/021_exams_and_trusted_stats.sql) ──
@@ -164,3 +168,39 @@ export const fetchCourseRanking = (courseId: string) => call<CourseRanking>("cou
 // admin: which years a teacher covers
 export const setTeacherYears = (teacherId: string, years: number[]) => call<void>("admin_set_teacher_years", { p_teacher: teacherId, p_years: years });
 export const getTeacherYears = async (teacherId: string) => (await call<number[] | null>("admin_get_teacher_years", { p_teacher: teacherId })) ?? [];
+
+// ── sharing a course with other departments / years (supabase/034_course_sharing.sql) ──
+/** One audience a course is shared with. `year: null` means every year of that department. */
+export interface CourseShare { department_id: string; department?: string; year: number | null }
+export const fetchCourseShares = async (courseId: string) => (await call<CourseShare[]>("staff_get_course_shares", { p_course_id: courseId })) ?? [];
+export const saveCourseShares = (courseId: string, shares: { department_id: string; year: number | null }[]) =>
+  call<void>("staff_set_course_shares", { p_course_id: courseId, p_shares: shares });
+
+// ── optional course picture (supabase/035_notifications_thumbnails_invites.sql) ──
+const THUMB_EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+export const courseThumbUrl = (path?: string | null) => (path ? supabase.storage.from("course-thumbnails").getPublicUrl(path).data.publicUrl : null);
+/** The course's picture path, or null when it has none (or the database update hasn't been applied yet). */
+export const fetchCourseThumbnail = async (courseId: string): Promise<string | null> => {
+  try { return (await call<string | null>("get_course_thumbnail", { p_course_id: courseId })) ?? null; } catch { return null; }
+};
+/** Lets the teacher pick a picture, uploads it and attaches it to the course. Returns the new path, or null if cancelled. */
+export async function changeCourseThumbnail(courseId: string, oldPath?: string | null): Promise<string | null> {
+  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 0.7 });
+  if (r.canceled || !r.assets?.[0]) return null;
+  const a = r.assets[0];
+  const mime = a.mimeType && THUMB_EXT[a.mimeType] ? a.mimeType : "image/jpeg";
+  const buf = await (await fetch(a.uri)).arrayBuffer();
+  if (buf.byteLength === 0) throw new Error("That picture is empty.");
+  if (buf.byteLength > 2 * 1024 * 1024) throw new Error("That picture is too large (2 MB limit). Pick a smaller one.");
+  const path = `${courseId}/thumb-${Date.now()}.${THUMB_EXT[mime]}`;
+  const up = await supabase.storage.from("course-thumbnails").upload(path, buf, { contentType: mime, upsert: false });
+  if (up.error) throw up.error;
+  try { await call<string>("staff_set_course_thumbnail", { p_course_id: courseId, p_path: path }); }
+  catch (e) { await supabase.storage.from("course-thumbnails").remove([path]).catch(() => {}); throw e; }
+  if (oldPath) supabase.storage.from("course-thumbnails").remove([oldPath]).catch(() => {}); // best effort
+  return path;
+}
+export async function removeCourseThumbnail(courseId: string, oldPath?: string | null) {
+  await call<string | null>("staff_set_course_thumbnail", { p_course_id: courseId, p_path: null });
+  if (oldPath) supabase.storage.from("course-thumbnails").remove([oldPath]).catch(() => {});
+}

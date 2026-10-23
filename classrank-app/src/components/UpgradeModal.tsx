@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     maxHeight: "85%",
     ...shadow.floating,
   },
-  title: { ...type.hero, fontSize: 28, color: colors.navy, marginBottom: spacing.xl, textAlign: "center" },
+  title: { ...type.hero, fontSize: 28, color: colors.text, marginBottom: spacing.xl, textAlign: "center" },
   benefitRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: spacing.lg, gap: spacing.md },
   benefitEmoji: { fontSize: 26 },
   benefitTitle: { ...type.h3, color: colors.text },

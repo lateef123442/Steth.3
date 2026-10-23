@@ -84,5 +84,5 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   percentileText: { fontSize: 10, fontFamily: type.label.fontFamily, color: colors.violet },
-  points: { ...type.h3, color: colors.navy },
+  points: { ...type.h3, color: colors.text },
 });

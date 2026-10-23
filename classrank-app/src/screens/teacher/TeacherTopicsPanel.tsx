@@ -4,7 +4,7 @@ import { colors, spacing } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Btn, Card, Chip, Empty, Field, Label, Muted, Tag, s } from "../../components/study/ui";
 import { ChipRow } from "../../components/responsive";
-import { saveTopic, deleteTopic, moveTopic, saveResource, deleteCourseContent, removeMaterialFile } from "../../lib/courseApi";
+import { saveTopic, deleteTopic, moveTopic, saveResource, editFileResource, deleteCourseContent, removeMaterialFile } from "../../lib/courseApi";
 import { CourseBundle, CourseTopic } from "../../lib/studyCourseSync";
 import { fmtSize } from "../../lib/fileRules";
 import TeacherFileUpload from "./TeacherFileUpload";
@@ -61,7 +61,7 @@ export default function TeacherTopicsPanel({ courseId, bundle, onChanged }: { co
         <>
           <Label>GENERAL (NO TOPIC)</Label>
           <Muted>These resources aren't in a topic, so students don't have to finish them. Re-add them under a topic to include them in progress.</Muted>
-          {bundle.materials.filter((m) => !m.topic_id).map((m) => <ResourceRow key={m.id} m={m} busy={busy} act={act} />)}
+          {bundle.materials.filter((m) => !m.topic_id).map((m) => <ResourceRow key={m.id} m={m} courseId={courseId} topics={topics} busy={busy} act={act} />)}
         </>
       )}
 
@@ -73,11 +73,56 @@ export default function TeacherTopicsPanel({ courseId, bundle, onChanged }: { co
   );
 }
 
-function ResourceRow({ m, busy, act }: { m: CourseBundle["materials"][number]; busy: boolean; act: (fn: () => Promise<unknown>, fail: string) => Promise<void> }) {
+function ResourceRow({ m, courseId, topics, busy, act }: { m: CourseBundle["materials"][number]; courseId: string; topics: CourseTopic[]; busy: boolean; act: (fn: () => Promise<unknown>, fail: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(m.title), [body, setBody] = useState(m.body);
+  const [kind, setKind] = useState<"note" | "link" | "video">(m.kind === "file" ? "note" : m.kind);
+  const [topicId, setTopicId] = useState<string | null>(m.topic_id ?? null);
+  const startEdit = () => { setTitle(m.title); setBody(m.body); setKind(m.kind === "file" ? "note" : m.kind); setTopicId(m.topic_id ?? null); setEditing(true); };
+  const changed = title !== m.title || (m.kind !== "file" && (body !== m.body || kind !== m.kind)) || topicId !== (m.topic_id ?? null);
+  const save = () => {
+    if (!title.trim()) return Alert.alert("Give it a name", "The resource needs a name.");
+    if (m.kind !== "file" && !body.trim()) return Alert.alert("Nothing to show", m.kind === "note" ? "Add the notes students should read." : "Add the link.");
+    if (m.kind !== "file" && kind !== "note" && !/^https?:\/\//i.test(body.trim())) return Alert.alert("Check the link", "Links must start with http:// or https://");
+    act(async () => {
+      if (m.kind === "file") await editFileResource(m.id, title, topicId);
+      else await saveResource({ id: m.id, courseId, topicId, title, kind, body });
+      setEditing(false);
+    }, "Couldn't save changes");
+  };
   const del = () => Alert.alert("Delete this resource?", "Students lose access to it. This can't be undone.", [
     { text: "Cancel", style: "cancel" },
     { text: "Delete", style: "destructive", onPress: () => act(async () => { await deleteCourseContent("material", m.id); if (m.kind === "file") await removeMaterialFile(m.body); }, "Couldn't delete") },
   ]);
+  if (editing) {
+    return (
+      <View style={{ paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
+        <Text style={s.h3}>Edit {m.kind === "file" ? "file" : "resource"}</Text>
+        {m.kind !== "file" && (
+          <ChipRow>{(["note", "link", "video"] as const).map((k) => <Chip key={k} label={`${KIND_ICON[k]} ${k}`} on={kind === k} onPress={() => setKind(k)} />)}</ChipRow>
+        )}
+        <Field label="Name" value={title} onChangeText={setTitle} placeholder="Resource name" />
+        {m.kind !== "file" && (
+          <Field label={kind === "note" ? "Notes" : kind === "link" ? "Link (https://…)" : "Video link (https://…)"} value={body} onChangeText={setBody}
+            multiline={kind === "note"} autoCapitalize="none" autoCorrect={false} keyboardType={kind === "note" ? "default" : "url"} placeholder={kind === "note" ? "Notes students should read" : "https://"} />
+        )}
+        {m.kind === "file" && <Muted style={{ marginTop: 4 }}>To replace the file itself, upload the new one and delete this one.</Muted>}
+        {topics.length > 0 && (
+          <>
+            <Muted style={{ marginTop: spacing.sm, fontWeight: "600" }}>Topic</Muted>
+            <ChipRow>
+              <Chip label="No topic" on={topicId === null} onPress={() => setTopicId(null)} />
+              {topics.map((t) => <Chip key={t.id} label={t.title} on={topicId === t.id} onPress={() => setTopicId(t.id)} />)}
+            </ChipRow>
+          </>
+        )}
+        <View style={[s.row, { marginTop: spacing.sm }]}>
+          <Chip label={busy ? "Saving…" : "Save changes"} on onPress={() => { if (!busy && changed) save(); else if (!changed) setEditing(false); }} />
+          <Chip label="Cancel" on={false} onPress={() => setEditing(false)} />
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
       <Text style={{ fontSize: 18, marginRight: spacing.sm }}>{KIND_ICON[m.kind]}</Text>
@@ -85,6 +130,7 @@ function ResourceRow({ m, busy, act }: { m: CourseBundle["materials"][number]; b
         <Text style={s.h3} numberOfLines={2}>{m.title}</Text>
         <Muted numberOfLines={1}>{m.kind === "file" ? `${m.file_name ?? "file"}${m.file_size ? ` · ${fmtSize(m.file_size)}` : ""}` : m.kind === "note" ? m.body.slice(0, 70) : m.body}</Muted>
       </View>
+      <PressableScale onPress={startEdit} disabled={busy} style={{ padding: spacing.sm }} accessibilityRole="button" accessibilityLabel={`Edit ${m.title}`}><Text style={[s.muted, { color: colors.teal, fontWeight: "700" }]}>Edit</Text></PressableScale>
       <PressableScale onPress={del} disabled={busy} style={{ padding: spacing.sm }}><Text style={s.muted}>Delete</Text></PressableScale>
     </View>
   );
@@ -122,7 +168,7 @@ function TopicBody({ courseId, topic, bundle, materials, first, last, busy, act,
       {sub === "Resources" && (
         <>
           {materials.length === 0 && <Muted>No resources yet. Add notes, links, videos or files below. You can add as many as you need.</Muted>}
-          {materials.map((m) => <ResourceRow key={m.id} m={m} busy={busy} act={act} />)}
+          {materials.map((m) => <ResourceRow key={m.id} m={m} courseId={courseId} topics={bundle.topics ?? []} busy={busy} act={act} />)}
 
           <Label>ADD A RESOURCE</Label>
           <ChipRow>{(["note", "link", "video"] as const).map((k) => <Chip key={k} label={`${KIND_ICON[k]} ${k}`} on={kind === k} onPress={() => setKind(k)} />)}</ChipRow>

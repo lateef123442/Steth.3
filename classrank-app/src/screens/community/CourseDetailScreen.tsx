@@ -4,7 +4,8 @@ import { colors, spacing, type } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Back, Bar, Btn, Card, Empty, Label, Muted, Tag, YearTag, s, ListSkeleton } from "../../components/study/ui";
 import { Screen, useLayout } from "../../components/responsive";
-import { fetchCourseContent, fetchCourseExams, fetchCourseRanking, fetchDailyQuiz, ExamSummary, CourseRanking, DailyQuiz, KIND_LABEL } from "../../lib/courseApi";
+import CourseThumb from "../../components/CourseThumb";
+import { fetchCourseContent, fetchCourseThumbnail, fetchCourseExams, fetchCourseRanking, fetchDailyQuiz, ExamSummary, CourseRanking, DailyQuiz, KIND_LABEL } from "../../lib/courseApi";
 import { fmtWhen } from "../../lib/examTime";
 import { CourseBundle } from "../../lib/studyCourseSync";
 import { importCourseBundle, daysUntil } from "../../lib/studyStore";
@@ -18,6 +19,7 @@ export default function CourseDetailScreen({ navigation, route }: any) {
   const [timed, setTimed] = useState<ExamSummary[]>([]);
   const [rank, setRank] = useState<CourseRanking | null>(null);
   const [daily, setDaily] = useState<DailyQuiz | null>(null);
+  const [thumb, setThumb] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -29,6 +31,7 @@ export default function CourseDetailScreen({ navigation, route }: any) {
     fetchCourseExams(courseId).then(setTimed).catch(() => setTimed([]));
     fetchCourseRanking(courseId).then(setRank).catch(() => setRank(null));
     fetchDailyQuiz(courseId).then(setDaily).catch(() => setDaily(null));
+    fetchCourseThumbnail(courseId).then(setThumb);
   }, [courseId]);
   useEffect(() => { load(); return navigation.addListener("focus", load); }, [load, navigation]);
 
@@ -133,6 +136,7 @@ export default function CourseDetailScreen({ navigation, route }: any) {
   return (
     <Screen wide>
       <Back onPress={() => navigation.goBack()} />
+      <CourseThumb path={thumb} height={150} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, flexWrap: "wrap" }}>
         <Text style={s.h1}>{c.code}</Text>
         {c.year != null && <YearTag year={c.year} />}

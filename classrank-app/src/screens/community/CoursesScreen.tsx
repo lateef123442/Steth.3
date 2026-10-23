@@ -7,6 +7,7 @@ import { fetchMyCourses, joinCourse, MyCourse } from "../../lib/courseApi";
 import { daysUntil } from "../../lib/studyStore";
 import { useApp } from "../../context/AppContext";
 import StaggerIn from "../../components/animated/StaggerIn";
+import CourseThumb from "../../components/CourseThumb";
 
 /** Home for a student's courses: everything their department + year teaches, with progress per course. */
 export default function CoursesScreen({ navigation }: any) {
@@ -50,12 +51,14 @@ export default function CoursesScreen({ navigation }: any) {
           return (
             <StaggerIn key={c.id} index={i}>
               <Card onPress={() => navigation.navigate("Course", { courseId: c.id })} style={{ marginTop: spacing.sm }}>
+                <CourseThumb path={c.thumbnail_path} height={110} />
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm }}>
                   <Text style={[s.h3, { flex: 1 }]} numberOfLines={1}>{c.code}</Text>
                   <YearTag year={c.year} />
                 </View>
                 <Text style={{ color: colors.text, marginTop: 2 }} numberOfLines={2}>{c.title}</Text>
                 <Muted style={{ marginTop: 4 }}>{c.department} · {c.teacher_name}</Muted>
+                {c.shared_with_me && <View style={{ marginTop: 6, flexDirection: "row" }}><Tag label="Shared with you" color={colors.violet} /></View>}
                 <View style={{ marginTop: spacing.md }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
                     <Muted>{c.topic_count === 0 ? "No topics yet" : done ? "All topics finished" : `${c.topics_done} of ${c.topic_count} topics finished`}</Muted>

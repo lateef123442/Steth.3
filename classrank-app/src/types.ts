@@ -95,6 +95,8 @@ export interface ReferralStats {
   referral_code: string;
   total_referred: number;
   total_rewarded: number;
+  /** true once this account has used an invite code (each account can use one, once) */
+  has_redeemed?: boolean;
 }
 
 export interface FeedPost {
