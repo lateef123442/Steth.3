@@ -27,9 +27,13 @@ async function tokensFor(admin: any, ids: string[]): Promise<string[]> {
   return (data ?? []).map((r: any) => r.expo_push_token as string);
 }
 
+// Last problem Expo reported (e.g. missing Firebase/FCM credentials). The "test" request returns it so the app can explain what to fix.
+let lastProblem = "";
+
 async function sendExpo(admin: any, tokens: string[], msg: { title: string; body: string; data: Record<string, unknown> }): Promise<number> {
   const unique = [...new Set(tokens)].filter((t) => /^Expo(nent)?PushToken\[.+\]$/.test(t));
   let sent = 0;
+  lastProblem = "";
   for (let i = 0; i < unique.length; i += 100) {
     const batch = unique.slice(i, i + 100);
     const res = await fetch("https://exp.host/--/api/v2/push/send", {
@@ -37,10 +41,11 @@ async function sendExpo(admin: any, tokens: string[], msg: { title: string; body
       headers: { "content-type": "application/json", accept: "application/json" },
       body: JSON.stringify(batch.map((to) => ({ to, sound: "default", title: msg.title, body: msg.body, data: msg.data }))),
     });
-    if (!res.ok) continue;
+    if (!res.ok) { lastProblem = `Expo push service answered ${res.status}`; continue; }
     const tickets = (await res.json()).data ?? [];
     for (let k = 0; k < tickets.length; k++) {
       if (tickets[k].status === "ok") sent++;
+      else if (tickets[k].details?.error && tickets[k].details.error !== "DeviceNotRegistered") lastProblem = `${tickets[k].details.error}: ${tickets[k].message ?? ""}`.slice(0, 300);
       // The app was uninstalled / token expired: forget it so we stop trying.
       else if (tickets[k].details?.error === "DeviceNotRegistered") await admin.from("profiles").update({ expo_push_token: null }).eq("expo_push_token", batch[k]);
     }
@@ -68,8 +73,9 @@ Deno.serve(async (req) => {
       if (!claimed) return json({ sent: 0, already: true });
 
       const { data: course } = await admin.from("courses").select("code").eq("id", ev.course_id).single();
-      const { data: members } = await admin.from("course_members").select("profile_id").eq("course_id", ev.course_id);
-      const ids = (members ?? []).map((m: any) => m.profile_id as string).filter((id: string) => id !== user.id);
+      // Everyone who can see the course: its department + year, shared audiences and join-code members (not only join-code members).
+      const { data: roster } = await admin.rpc("course_roster", { p_course: ev.course_id });
+      const ids = (roster ?? []).map((m: any) => (typeof m === "string" ? m : (Object.values(m)[0] as string))).filter((id: string) => !!id && id !== user.id);
       const isExam = ev.kind === "exam";
       const sent = await sendExpo(admin, await tokensFor(admin, ids), {
         title: `${isExam ? "📝" : "📣"} ${course?.code ?? "Course"}: ${ev.title}`,
@@ -77,6 +83,14 @@ Deno.serve(async (req) => {
         data: { type: "announcement", courseId: ev.course_id },
       });
       return json({ sent });
+    }
+
+    // "Send me a test": pushes to the caller's own phone so they can check notifications end to end.
+    if (body.kind === "test") {
+      const mine = await tokensFor(admin, [user.id]);
+      if (!mine.length) return json({ sent: 0, hasToken: false });
+      const sent = await sendExpo(admin, mine, { title: "Steth notifications work 🎉", body: "You will get class announcements and replies like this.", data: { type: "test" } });
+      return json({ sent, hasToken: true, problem: sent ? "" : lastProblem });
     }
 
     if (body.kind === "reply") {

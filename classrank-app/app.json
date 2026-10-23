@@ -5,7 +5,7 @@
     "scheme": "classrank",
     "version": "1.0.0",
     "orientation": "default",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "description": "Every department. One leaderboard. Daily quizzes and fair, cross-department rankings for university students.",
     "primaryColor": "#14B8A6",
     "splash": {
@@ -42,13 +42,20 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "mode": "production"
+        }
+      ],
       "expo-font",
       "expo-document-picker",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Steth uses your photos so you can choose a profile picture."
+          "photosPermission": "Steth uses your photos so you can choose a profile picture.",
+          "cameraPermission": "Steth uses your camera so you can take a profile picture.",
+          "microphonePermission": false
         }
       ],
       "@sentry/react-native",

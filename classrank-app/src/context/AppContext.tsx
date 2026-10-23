@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { AppState as RNAppState } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import {
@@ -44,6 +45,9 @@ interface AppState {
   refreshDepartments: () => Promise<void>;
   years: number[];
   refreshYears: () => Promise<void>;
+  /** true = the app is paid (students need Pro), false = free for everyone, null = not known yet. The admin chooses. */
+  paywallEnabled: boolean | null;
+  refreshAppConfig: () => Promise<void>;
   initializing: boolean;
   passwordRecoveryMode: boolean;
   completePasswordRecovery: (newPassword: string) => Promise<boolean>;
@@ -123,6 +127,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshDepartments = useCallback(async () => {
     const { data, error } = await supabase.from("departments").select("*").order("name");
     if (!error && data) setDepartments(data as DepartmentRow[]);
+  }, []);
+
+  // ── Free or paid? (the admin's switch) ──
+  const [paywallEnabled, setPaywallEnabled] = useState<boolean | null>(null);
+  const refreshAppConfig = useCallback(async () => {
+    const { data, error } = await supabase.rpc("get_app_config");
+    // If the database hasn't been updated yet it still enforces Pro, so keep the old (paid) behaviour.
+    if (error || !data) { setPaywallEnabled(true); return; }
+    setPaywallEnabled(!!(data as { paywall_enabled?: boolean }).paywall_enabled);
   }, []);
 
   const refreshYears = useCallback(async () => {
@@ -651,6 +664,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
+  const signedInId = profile?.id;
+  useEffect(() => {
+    if (!signedInId) { setPaywallEnabled(null); return; }
+    refreshAppConfig();
+    // Pick up a change the admin made while the app was in the background.
+    const sub = RNAppState.addEventListener("change", (s) => { if (s === "active") refreshAppConfig(); });
+    return () => sub.remove();
+  }, [signedInId, refreshAppConfig]);
+
   const value: AppState = {
     session,
     profile,
@@ -658,6 +680,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     refreshDepartments,
     years,
     refreshYears,
+    paywallEnabled,
+    refreshAppConfig,
     initializing,
     passwordRecoveryMode,
     completePasswordRecovery,

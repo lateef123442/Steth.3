@@ -1,4 +1,5 @@
-import Notifications from "./expoNotifications";
+import Notifications, { notificationsAvailable } from "./expoNotifications";
+import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
 import { supabase } from "./supabase";
@@ -26,7 +27,27 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/**
+ * Android 13+ only shows the "Allow notifications?" pop-up once the app has created at least one notification
+ * channel, so the channel must exist BEFORE permission is requested (it used to be created afterwards, which meant
+ * the pop-up never appeared and nothing was ever delivered).
+ */
+async function ensureAndroidChannel(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  try {
+    await Notifications.setNotificationChannelAsync("default", {
+      name: "Steth",
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: "#14B8A6",
+    });
+  } catch (err) {
+    console.log("[notifications] channel setup skipped:", err);
+  }
+}
+
 export async function requestNotificationPermissions(): Promise<boolean> {
+  await ensureAndroidChannel();
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   if (existingStatus === "granted") return true;
 
@@ -93,35 +114,95 @@ export async function cancelStreakReminder(): Promise<void> {
  * development build — failures here are expected in some environments and
  * shouldn't interrupt the rest of the app.
  */
+let lastPushError: string | null = null;
+
+/** Gets this phone's push token and saves it on the account. Throws with a reason if any step fails. */
+async function registerOrThrow(userId: string): Promise<string> {
+  if (!notificationsAvailable) throw new Error("EXPO_GO");
+  if (!Device.isDevice) throw new Error("NOT_A_DEVICE"); // simulators/emulators can't get a real push token
+  const granted = await requestNotificationPermissions();
+  if (!granted) throw new Error("PERMISSION_DENIED");
+
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? (Constants as any).easConfig?.projectId;
+  const tokenResponse = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+
+  // The RPC also detaches this token from any other account that still holds it (shared phone). The direct
+  // update is only a fallback for databases where migration 019/035 hasn't been applied yet.
+  const { error } = await supabase.rpc("register_push_token", { p_token: tokenResponse.data });
+  if (error) {
+    const { error: fallback } = await supabase.from("profiles").update({ expo_push_token: tokenResponse.data }).eq("id", userId);
+    if (fallback) throw error;
+  }
+  return tokenResponse.data;
+}
+
+/**
+ * Registers this device for push notifications (class announcements, group replies) and stores the token on the
+ * account. Failures never interrupt the app; the reason is kept for "Check notifications" in Profile.
+ */
 export async function registerPushToken(userId: string): Promise<void> {
   try {
-    if (!Device.isDevice) return; // simulators/emulators can't get a real push token
-
-    const granted = await requestNotificationPermissions();
-    if (!granted) return;
-
-    const projectId = "REPLACE_WITH_YOUR_EAS_PROJECT_ID"; // see app.json extra.eas.projectId
-    const tokenResponse = await Notifications.getExpoPushTokenAsync(
-      projectId && projectId !== "REPLACE_WITH_YOUR_EAS_PROJECT_ID" ? { projectId } : undefined
-    );
-
-    if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("default", {
-        name: "default",
-        importance: Notifications.AndroidImportance.DEFAULT,
-      });
-    }
-
-    // The RPC also detaches this token from any other account that still holds it (shared phone). The direct
-    // update is only a fallback for databases where migration 019 hasn't been applied yet.
-    const { error } = await supabase.rpc("register_push_token", { p_token: tokenResponse.data });
-    if (error) await supabase.from("profiles").update({ expo_push_token: tokenResponse.data }).eq("id", userId);
-  } catch (err) {
-    // Deliberately swallowed: push registration is a nice-to-have, not
-    // something that should block sign-in or surface an error to the user.
+    await registerOrThrow(userId);
+    lastPushError = null;
+  } catch (err: any) {
+    lastPushError = String(err?.message ?? err);
     console.log("[notifications] push token registration skipped:", err);
   }
 }
+
+export interface NotificationCheck { ok: boolean; title: string; message: string }
+
+const FIREBASE_HINT = /firebase|fcm|google-services|InvalidCredentials|server key/i;
+const FIREBASE_MESSAGE =
+  "This version of Steth isn't connected to Google's notification service (Firebase) yet, so class announcements can't reach phones. " +
+  "Reminders on this phone still work. The developer needs to finish the one-time Firebase setup and publish a new build.";
+
+/** Step-by-step self test for the Profile screen: permission, a local notification, registration, then a real push from the server. */
+export async function runNotificationCheck(userId: string): Promise<NotificationCheck> {
+  if (!notificationsAvailable) return { ok: false, title: "Not available here", message: "Notifications don't work inside Expo Go. Open the installed Steth app instead." };
+  if (!Device.isDevice) return { ok: false, title: "Use a real phone", message: "Notifications can't be tested on an emulator." };
+
+  const granted = await requestNotificationPermissions();
+  if (!granted) return { ok: false, title: "Notifications are off", message: "Open your phone's Settings → Apps → Steth → Notifications, turn them on, then check again." };
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: "Steth reminder test ✅", body: "Reminders on this phone are working." },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3 },
+    });
+  } catch (err: any) {
+    return { ok: false, title: "Couldn't show a notification", message: String(err?.message ?? err) };
+  }
+
+  try {
+    await registerOrThrow(userId);
+    lastPushError = null;
+  } catch (err: any) {
+    const msg = String(err?.message ?? err);
+    lastPushError = msg;
+    if (FIREBASE_HINT.test(msg)) return { ok: false, title: "Reminders work, class alerts don't yet", message: FIREBASE_MESSAGE };
+    return { ok: false, title: "This phone couldn't register for class alerts", message: msg };
+  }
+
+  const { data, error } = await supabase.functions.invoke("notify", { body: { kind: "test" } });
+  if (error) {
+    const status = (error as any)?.context?.status;
+    return {
+      ok: false,
+      title: "Class alerts aren't set up on the server",
+      message: status === 404
+        ? "The notification service hasn't been deployed yet. The developer needs to deploy the 'notify' function in Supabase."
+        : `The notification service didn't answer (${error.message}).`,
+    };
+  }
+  const res = (data ?? {}) as { sent?: number; hasToken?: boolean; problem?: string };
+  if (!res.hasToken) return { ok: false, title: "Phone not registered yet", message: "Your phone's token wasn't saved. Make sure the database update (migration 035) has been applied, then check again." };
+  if ((res.sent ?? 0) > 0) return { ok: true, title: "Everything works 🎉", message: "You should see two notifications: a reminder in a few seconds and a class-alert test just now." };
+  if (res.problem && FIREBASE_HINT.test(res.problem)) return { ok: false, title: "Reminders work, class alerts don't yet", message: FIREBASE_MESSAGE };
+  return { ok: false, title: "Class alert didn't go through", message: res.problem || "The server accepted the request but no notification was delivered." };
+}
+
+export const getLastPushError = () => lastPushError;
 
 /** Stop sending pushes to this account (sign-out, or the student turned announcements/replies off). */
 export async function clearPushToken(userId?: string): Promise<void> {

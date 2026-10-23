@@ -13,11 +13,22 @@
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://epbloymliilnwulukyfg.supabase.co",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://8a7830ac70936b533f80c5d14b73ffff@o4512201063137280.ingest.de.sentry.io/4512233893003344",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_1SFrMZ8CjYWLSOw18fN5ig_m9O9m11k",
+        "SENTRY_ALLOW_FAILURE": "true"
+      }
     },
     "production": {
       "autoIncrement": true,
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://epbloymliilnwulukyfg.supabase.co",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://8a7830ac70936b533f80c5d14b73ffff@o4512201063137280.ingest.de.sentry.io/4512233893003344",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_1SFrMZ8CjYWLSOw18fN5ig_m9O9m11k"
+      }
     },
     "apk": {
       "distribution": "internal",
@@ -27,7 +38,7 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://epbloymliilnwulukyfg.supabase.co",
-        "EXPO_PUBLIC_SENTRY_DSN": "ttps://8a7830ac70936b533f80c5d14b73ffff@o4512201063137280.ingest.de.sentry.io/4512233893003344",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://8a7830ac70936b533f80c5d14b73ffff@o4512201063137280.ingest.de.sentry.io/4512233893003344",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_1SFrMZ8CjYWLSOw18fN5ig_m9O9m11k",
         "SENTRY_ALLOW_FAILURE": "true"
       }

@@ -84,7 +84,8 @@ export default function ChatView({ title, subtitle, avatar, meId, load, send, su
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* "padding" on Android too: with edge-to-edge the system no longer resizes the window for the keyboard, so without it the message box stays hidden behind the keyboard. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: colors.card }}>
           <PressableScale onPress={onBack} style={{ padding: spacing.xs }}><Text style={{ color: colors.tealDeep, fontSize: 22 }}>←</Text></PressableScale>
           <PressableScale onPress={onHeaderPress} disabled={!onHeaderPress} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, flex: 1 }}>

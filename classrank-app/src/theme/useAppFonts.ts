@@ -33,6 +33,13 @@ export function useAppFonts() {
     if (fontsLoaded) setReady(true);
   }, [fontsLoaded]);
 
+  // Never leave people on a blank screen: if the fonts are slow or blocked (poor connection, browser quirk),
+  // start with the system font after a few seconds instead of waiting forever.
+  useEffect(() => {
+    const t = setTimeout(() => setReady(true), 6000);
+    return () => clearTimeout(t);
+  }, []);
+
   const onLayoutRootView = useCallback(async () => {
     if (ready) {
       await SplashScreen.hideAsync();

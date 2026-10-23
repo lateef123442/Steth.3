@@ -4,15 +4,17 @@ import { colors, spacing } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Back, Btn, Card, Chip, Field, Label, Muted, Tag, YearTag, s, ListSkeleton } from "../../components/study/ui";
 import { Screen, ChipRow } from "../../components/responsive";
-import { fetchCourseContent, fetchCourseStats, CourseStats, postCourseEvent, deleteCourseContent, deleteCourse, fetchStaffCourses, removeCourseFiles } from "../../lib/courseApi";
+import { fetchCourseContent, fetchCourseStats, CourseStats, postCourseEvent, deleteCourseContent, deleteCourse, fetchStaffCourses, removeCourseFiles, fetchCourseThumbnail, changeCourseThumbnail, removeCourseThumbnail } from "../../lib/courseApi";
 import { CourseBundle } from "../../lib/studyCourseSync";
 import TeacherExamsPanel from "./TeacherExamsPanel";
 import TeacherTopicsPanel from "./TeacherTopicsPanel";
 import TeacherInsightsPanel from "./TeacherInsightsPanel";
 import QuestionManager from "./QuestionManager";
+import CourseSharingPanel from "./CourseSharingPanel";
+import CourseThumb from "../../components/CourseThumb";
 
-type Tab = "Topics" | "Daily quiz" | "Tests & exams" | "Overview" | "Updates";
-const TABS: Tab[] = ["Topics", "Daily quiz", "Tests & exams", "Overview", "Updates"];
+type Tab = "Topics" | "Daily quiz" | "Tests & exams" | "Sharing" | "Overview" | "Updates";
+const TABS: Tab[] = ["Topics", "Daily quiz", "Tests & exams", "Sharing", "Overview", "Updates"];
 const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v).getTime());
 
 /** Everything a teacher manages for ONE course (its department and year are fixed when it is created). */
@@ -24,12 +26,14 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
   const [joinCode, setJoinCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [thumb, setThumb] = useState<string | null>(null);
   const [eKind, setEKind] = useState<"announcement" | "exam">("announcement"), [eTitle, setETitle] = useState(""), [eBody, setEBody] = useState(""), [eDate, setEDate] = useState("");
 
   const load = useCallback(async () => {
     try {
       const [b, st, list] = await Promise.all([fetchCourseContent(courseId), fetchCourseStats(courseId), fetchStaffCourses()]);
       setBundle(b); setStats(st); setJoinCode(list.find((c) => c.id === courseId)?.join_code ?? ""); setError(null);
+      setThumb(list.find((c) => c.id === courseId)?.thumbnail_path ?? (await fetchCourseThumbnail(courseId)));
     } catch (e: any) { setError(e?.message ?? "Couldn't load this course."); }
   }, [courseId]);
   useEffect(() => { load(); }, [load]);
@@ -42,9 +46,19 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
     catch (e: any) { Alert.alert("Couldn't post", e?.message ?? "Try again."); } finally { setBusy(false); }
   };
   const delEvent = (id: string) => Alert.alert("Delete?", "This can't be undone.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: async () => { try { await deleteCourseContent("event", id); await load(); } catch (e: any) { Alert.alert("Couldn't delete", e?.message ?? "Try again."); } } }]);
+  const pickThumb = async () => {
+    if (busy) return;
+    setBusy(true);
+    try { const p = await changeCourseThumbnail(courseId, thumb); if (p) setThumb(p); }
+    catch (e: any) { Alert.alert("Couldn't add the picture", e?.message ?? "Try again."); } finally { setBusy(false); }
+  };
+  const dropThumb = () => Alert.alert("Remove the course picture?", "Students will see the course without a picture.", [
+    { text: "Cancel", style: "cancel" },
+    { text: "Remove", style: "destructive", onPress: async () => { try { await removeCourseThumbnail(courseId, thumb); setThumb(null); } catch (e: any) { Alert.alert("Couldn't remove it", e?.message ?? "Try again."); } } },
+  ]);
   const removeCourse = () => Alert.alert("Delete this course?", "Students lose access to its content. Everything they've already copied into their own study space stays with them.", [
     { text: "Cancel", style: "cancel" },
-    { text: "Delete course", style: "destructive", onPress: async () => { try { await removeCourseFiles(courseId); await deleteCourse(courseId); navigation.goBack(); } catch (e: any) { Alert.alert("Couldn't delete", e?.message ?? "Try again."); } } },
+    { text: "Delete course", style: "destructive", onPress: async () => { try { await removeCourseFiles(courseId); if (thumb) await removeCourseThumbnail(courseId, thumb).catch(() => {}); await deleteCourse(courseId); navigation.goBack(); } catch (e: any) { Alert.alert("Couldn't delete", e?.message ?? "Try again."); } } },
   ]);
 
   if (error && !bundle) return <Screen><Back onPress={() => navigation.goBack()} /><Text style={s.h1}>Course unavailable</Text><Muted style={{ marginTop: 8 }}>{error}</Muted><Btn label="Try again" onPress={load} /></Screen>;
@@ -61,7 +75,16 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
         {c.year != null && <YearTag year={c.year} />}
       </View>
       <Muted>{c.title}{c.department ? ` · ${c.department}` : ""}</Muted>
-      <Muted style={{ marginTop: 2 }}>Visible automatically to {c.department ?? "department"} {c.year != null ? `Year ${c.year}` : ""} students{joinCode ? ` · join code ${joinCode} (for cross-listing)` : ""}</Muted>
+      <View style={{ marginTop: spacing.sm }}>
+        <CourseThumb path={thumb} height={150} />
+        <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
+          <PressableScale onPress={pickThumb} accessibilityRole="button" accessibilityLabel={thumb ? "Change course picture" : "Add course picture"}>
+            <Text style={[s.muted, { color: colors.teal, fontWeight: "700" }]}>{thumb ? "Change picture" : "+ Add a course picture (optional)"}</Text>
+          </PressableScale>
+          {!!thumb && <PressableScale onPress={dropThumb} accessibilityRole="button" accessibilityLabel="Remove course picture"><Text style={[s.muted, { color: colors.danger, fontWeight: "700" }]}>Remove</Text></PressableScale>}
+        </View>
+      </View>
+      <Muted style={{ marginTop: 2 }}>Visible automatically to {c.department ?? "department"} {c.year != null ? `Year ${c.year}` : ""} students (use the Sharing tab to open it to other departments or years){joinCode ? ` · join code ${joinCode} (for cross-listing)` : ""}</Muted>
 
       <ChipRow>{TABS.map((t) => <Chip key={t} label={t} on={tab === t} onPress={() => setTab(t)} />)}</ChipRow>
 
@@ -79,6 +102,8 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
             <QuestionManager courseId={courseId} bundle={bundle} purpose="assessment" topics={bundle.topics ?? []} onChanged={load} />
           </>
         )}
+
+        {tab === "Sharing" && <CourseSharingPanel courseId={courseId} courseCode={c.code} homeDepartment={c.department} homeYear={c.year} />}
 
         {tab === "Overview" && <TeacherInsightsPanel courseId={courseId} stats={stats} onDelete={removeCourse} />}
 

@@ -1,3 +1,5 @@
+import { Appearance } from "react-native";
+
 /**
  * Steth design tokens.
  *
@@ -16,7 +18,7 @@
  * aren't the same thing across departments."
  */
 
-export const colors = {
+const lightColors = {
   // Arena surfaces (dark) — used for hero/scoreboard moments only.
   ink: "#10162C",
   /** Legacy alias used by older screens (see theme/colors.ts). Same value as ink. */
@@ -56,6 +58,71 @@ export const colors = {
   textOnDark: "#F7F8FC",
   textOnDarkMuted: "#9CA6C4",
 };
+
+/**
+ * Dark palette. Same keys as the light one, so every screen keeps working unchanged.
+ * `navy` doubles as a button background (white text on top) in many screens, so in dark mode it is a mid indigo
+ * that stands out on dark cards; text that used to be navy now uses `text`.
+ */
+const darkColors: typeof lightColors = {
+  ink: "#141B38",
+  navy: "#3A4A8C",
+  inkElevated: "#1F2A52",
+  inkBorder: "#303B6B",
+
+  paper: "#0B0F1F",
+  card: "#141B33",
+  border: "#262F55",
+
+  teal: "#14B8A6",
+  tealDeep: "#2DD4BF",
+  tealTint: "#0F3433",
+  violet: "#8E80FF",
+  violetTint: "#26224F",
+  ember: "#FF9A52",
+  emberTint: "#3D2616",
+
+  gold: "#F5C344",
+  silver: "#C7CEDA",
+  bronze: "#D89A6A",
+
+  success: "#34D17A",
+  successTint: "#123422",
+  danger: "#F87171",
+  dangerTint: "#3F1D22",
+
+  text: "#ECEFF8",
+  textMuted: "#A0A9C4",
+  textFaint: "#707A9B",
+  textOnDark: "#F7F8FC",
+  textOnDarkMuted: "#9CA6C4",
+};
+
+export type ThemeMode = "system" | "light" | "dark";
+export type ThemeScheme = "light" | "dark";
+
+/**
+ * The live palette. Screens import `colors` and read it while their styles are created, so the mode has to be
+ * chosen BEFORE any screen module loads (App.tsx does that, then loads the rest of the app). Changing the mode in
+ * Settings saves it and restarts the app so every screen is rebuilt with the new colours.
+ */
+export const colors: typeof lightColors = { ...lightColors };
+
+let activeScheme: ThemeScheme = "light";
+export const getActiveScheme = (): ThemeScheme => activeScheme;
+export const isDarkTheme = (): boolean => activeScheme === "dark";
+
+export function resolveScheme(mode: ThemeMode): ThemeScheme {
+  if (mode === "light" || mode === "dark") return mode;
+  return Appearance.getColorScheme() === "dark" ? "dark" : "light";
+}
+
+export function applyThemeMode(mode: ThemeMode): ThemeScheme {
+  activeScheme = resolveScheme(mode);
+  Object.assign(colors, activeScheme === "dark" ? darkColors : lightColors);
+  return activeScheme;
+}
+
 
 export const radii = {
   sm: 10,

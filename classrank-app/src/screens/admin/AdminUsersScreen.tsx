@@ -209,7 +209,7 @@ export default function AdminUsersScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 20, paddingTop: 12 },
-  title: { fontSize: 24, fontWeight: "800", color: colors.navy, marginBottom: 12 },
+  title: { fontSize: 24, fontWeight: "800", color: colors.text, marginBottom: 12 },
   searchRow: { flexDirection: "row", gap: 8 },
   searchInput: {
     flex: 1,
@@ -228,10 +228,10 @@ const styles = StyleSheet.create({
   list: { padding: 20, paddingTop: 12 },
   emptyText: { textAlign: "center", color: colors.textMuted, marginTop: 40, fontSize: 13 },
   userCard: { backgroundColor: colors.card, borderRadius: radius.md, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
-  userName: { fontSize: 15, fontWeight: "700", color: colors.navy },
+  userName: { fontSize: 15, fontWeight: "700", color: colors.text },
   userMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   roleRow: { flexDirection: "row", gap: 8, marginTop: 10 },
-  roleChip: { flex: 1, paddingVertical: 8, borderRadius: 14, alignItems: "center", backgroundColor: "#fff", borderWidth: 1, borderColor: colors.border },
+  roleChip: { flex: 1, paddingVertical: 8, borderRadius: 14, alignItems: "center", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   roleChipActive: { backgroundColor: colors.teal, borderColor: colors.teal },
   roleChipText: { fontSize: 12, fontWeight: "700", color: colors.textMuted, textTransform: "capitalize" },
   roleChipTextActive: { color: "#fff" },

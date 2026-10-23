@@ -187,7 +187,7 @@ export default function AdminDepartmentsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { padding: 20, paddingBottom: 40 },
-  title: { fontSize: 24, fontWeight: "800", color: colors.navy, marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: "800", color: colors.text, marginBottom: 16 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 12 },
   chip: {
     paddingHorizontal: 14,
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   linkButtonText: { color: colors.teal, fontWeight: "700", fontSize: 14 },
   newDeptForm: { backgroundColor: colors.card, borderRadius: radius.md, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: colors.card,
     borderRadius: radius.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   primaryButton: { backgroundColor: colors.navy, borderRadius: radius.sm, paddingVertical: 12, alignItems: "center", marginTop: 12 },
   primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   sectionHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.navy },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.text },
   smallButton: { backgroundColor: colors.teal, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 6 },
   smallButtonText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   emptyText: { textAlign: "center", color: colors.textMuted, marginTop: 16, fontSize: 13 },
@@ -229,10 +229,10 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 8,
   },
-  codeText: { fontSize: 15, fontWeight: "800", color: colors.navy, letterSpacing: 1 },
+  codeText: { fontSize: 15, fontWeight: "800", color: colors.text, letterSpacing: 1 },
   codeMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   statusPill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 },
   statusAvailable: { backgroundColor: colors.tealLight },
   statusUsed: { backgroundColor: colors.border },
-  statusPillText: { fontSize: 11, fontWeight: "700", color: colors.navy },
+  statusPillText: { fontSize: 11, fontWeight: "700", color: colors.text },
 });

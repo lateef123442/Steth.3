@@ -7,6 +7,7 @@ import { AdminStats } from "../../types";
 import StatCard from "../../components/StatCard";
 import PressableScale from "../../components/animated/PressableScale";
 import { StatCardSkeleton } from "../../components/animated/Skeleton";
+import AppAccessCard from "./AppAccessCard";
 
 export default function AdminDashboardScreen() {
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -81,6 +82,8 @@ export default function AdminDashboardScreen() {
           <StatCard label="Points Awarded" value={stats?.total_points_awarded ?? 0} accentColor={colors.success} />
         </View>
 
+        <AppAccessCard />
+
         <Text style={styles.sectionTitle}>By Department</Text>
         {(stats?.by_department ?? []).map((d) => (
           <View key={d.department} style={styles.deptRow}>
@@ -106,10 +109,10 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   container: { padding: 20, paddingBottom: 40 },
-  greeting: { fontSize: 24, fontWeight: "800", color: colors.navy, marginTop: 8 },
+  greeting: { fontSize: 24, fontWeight: "800", color: colors.text, marginTop: 8 },
   subtitle: { fontSize: 14, color: colors.textMuted, marginTop: 2, marginBottom: 20 },
   statsRow: { flexDirection: "row", marginBottom: 12 },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.navy, marginTop: 16, marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.text, marginTop: 16, marginBottom: 10 },
   deptRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -124,7 +127,7 @@ const styles = StyleSheet.create({
   deptStatValue: { fontSize: 15, fontWeight: "800", color: colors.teal },
   deptStatLabel: { fontSize: 10, color: colors.textMuted },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
-  errorTitle: { fontSize: 18, fontWeight: "800", color: colors.navy, textAlign: "center" },
+  errorTitle: { fontSize: 18, fontWeight: "800", color: colors.text, textAlign: "center" },
   errorSubtitle: { fontSize: 13, color: colors.textMuted, textAlign: "center", marginTop: 8, marginBottom: 20 },
   retryButton: { backgroundColor: colors.teal, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 24 },
   retryButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },

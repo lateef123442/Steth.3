@@ -83,7 +83,7 @@ export default function SetNewPasswordScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
   container: { flex: 1, padding: spacing.xxl, justifyContent: "center" },
-  title: { ...type.h1, color: colors.navy, textAlign: "center" },
+  title: { ...type.h1, color: colors.text, textAlign: "center" },
   subtitle: { ...type.body, color: colors.textMuted, textAlign: "center", marginTop: spacing.sm, marginBottom: spacing.xxl },
   label: { ...type.label, color: colors.textMuted, marginTop: spacing.lg, marginBottom: spacing.sm },
   input: {

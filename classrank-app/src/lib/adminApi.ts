@@ -51,3 +51,20 @@ export async function removeStudyYear(year: number): Promise<void> {
   const { error } = await supabase.rpc("admin_remove_year", { p_year: year });
   if (error) throw error;
 }
+
+// ── free / paid switch (supabase/038_free_or_paid_switch.sql) ──
+export interface PaywallInfo { paywall_enabled: boolean; students_total: number; students_without_pro: number; updated_at?: string | null }
+
+export async function fetchPaywallInfo(): Promise<PaywallInfo> {
+  const { data, error } = await supabase.rpc("admin_get_paywall");
+  if (error) throw error;
+  return data as PaywallInfo;
+}
+
+/** true = paid (students need Pro), false = free for everyone. */
+export async function setPaywallEnabled(enabled: boolean): Promise<PaywallInfo> {
+  const { data, error } = await supabase.rpc("admin_set_paywall", { p_enabled: enabled });
+  if (error) throw error;
+  return data as PaywallInfo;
+}
+

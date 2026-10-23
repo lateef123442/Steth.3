@@ -4,7 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Avatar from "../components/Avatar";
 import { changeAvatar, removeAvatar } from "../lib/socialApi";
 import { LinearGradient } from "expo-linear-gradient";
-import { colors, radii, spacing, type, shadow } from "../theme/tokens";
+import { colors, radii, spacing, type, shadow, getActiveScheme, ThemeMode } from "../theme/tokens";
+import { loadThemeMode, saveThemeMode, restartApp } from "../theme/themeMode";
 import { useApp } from "../context/AppContext";
 import PressableScale from "../components/animated/PressableScale";
 import StaggerIn from "../components/animated/StaggerIn";
@@ -13,14 +14,16 @@ import ProPaymentModal from "../components/ProPaymentModal";
 import { hasActivePro, daysLeft } from "../lib/proApi";
 import { earnedBadges } from "../data/badges";
 import { useNewBadgeCelebration } from "../hooks/useNewBadgeCelebration";
-import { fetchReferralStats } from "../lib/referralApi";
+import { fetchReferralStats, redeemReferralCode, peekPendingReferral, clearPendingReferral } from "../lib/referralApi";
+import { inviteMessage } from "../lib/appLinks";
+import { runNotificationCheck } from "../lib/notifications";
 import { ReferralStats } from "../types";
 import { track, AnalyticsEvents } from "../lib/analytics";
 import { useNavigation } from "@react-navigation/native";
 import { useStudy, achievements, xpInfo, studyStreak } from "../lib/studyStore";
 
 export default function ProfileScreen() {
-  const { profile, signOut, deleteAccount, authError, refreshProfileAfterPurchase } = useApp();
+  const { profile, signOut, deleteAccount, authError, refreshProfileAfterPurchase, paywallEnabled } = useApp();
   const [signingOut, setSigningOut] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const navigation = useNavigation<any>();
@@ -32,6 +35,58 @@ export default function ProfileScreen() {
   const [deleting, setDeleting] = useState(false);
   const { celebrating, dismiss } = useNewBadgeCelebration(profile);
   const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [themeMode, setThemeModeState] = useState<ThemeMode | null>(null);
+  const [inviteInput, setInviteInput] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+  const [checkingNotifs, setCheckingNotifs] = useState(false);
+
+  // A code that arrived through an invite link waits here until it is used.
+  useEffect(() => { peekPendingReferral().then((c) => { if (c) setInviteInput((cur) => cur || c); }); }, []);
+
+  const handleRedeem = async () => {
+    const code = inviteInput.trim();
+    if (!code || redeeming) return;
+    setRedeeming(true);
+    try {
+      const r = await redeemReferralCode(code);
+      if (!r.ok) { Alert.alert("Couldn't use that code", r.error ?? "Please try again."); return; }
+      await clearPendingReferral();
+      setInviteInput("");
+      await refreshProfileAfterPurchase();
+      fetchReferralStats().then(setReferralStats).catch(() => {});
+      Alert.alert("7 days of Pro unlocked 🎉", "Your friend got 7 days too. Each account can use an invite code once, so this one is done.");
+    } catch (e: any) {
+      Alert.alert("Couldn't use that code", e?.message ?? "Please try again.");
+    } finally { setRedeeming(false); }
+  };
+
+  const handleCheckNotifications = async () => {
+    if (!profile || checkingNotifs) return;
+    setCheckingNotifs(true);
+    try { const r = await runNotificationCheck(profile.id); Alert.alert(r.title, r.message); }
+    catch (e: any) { Alert.alert("Check failed", e?.message ?? "Please try again."); }
+    finally { setCheckingNotifs(false); }
+  };
+
+  useEffect(() => { loadThemeMode().then(setThemeModeState); }, []);
+
+  // Screens build their styles at start-up, so a new appearance is applied by restarting the app.
+  const chooseTheme = (mode: ThemeMode) => {
+    if (mode === themeMode) return;
+    const label = mode === "system" ? "match your phone" : mode;
+    Alert.alert("Change appearance?", `Steth will restart to switch to ${label} mode.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Restart now",
+        onPress: async () => {
+          try { await saveThemeMode(mode); setThemeModeState(mode); }
+          catch { Alert.alert("Couldn't save", "Please try again."); return; }
+          const ok = await restartApp();
+          if (!ok) Alert.alert("Almost done", "Your choice is saved. Close Steth completely and open it again to see it.");
+        },
+      },
+    ]);
+  };
 
   useEffect(() => {
     if (profile?.role === "student") {
@@ -58,7 +113,7 @@ export default function ProfileScreen() {
     if (!referralStats) return;
     track(AnalyticsEvents.REFERRAL_SHARED);
     Share.share({
-      message: `Join me on Steth! Use my invite code ${referralStats.referral_code} when you sign up.`,
+      message: inviteMessage(referralStats.referral_code, paywallEnabled === true),
     });
   };
 
@@ -170,7 +225,7 @@ export default function ProfileScreen() {
           </>
         )}
 
-        {profile.role === "student" &&
+        {profile.role === "student" && paywallEnabled === true &&
           (hasActivePro(profile) ? (
             <View style={styles.proStatusCard}>
               <Text style={styles.proStatusTitle}>👑 You're Pro</Text>
@@ -200,7 +255,9 @@ export default function ProfileScreen() {
           <View style={styles.inviteCard}>
             <Text style={styles.inviteTitle}>Invite Friends</Text>
             <Text style={styles.inviteSubtitle}>
-              Share your code. Once they've taken quizzes on 3 different days, you both earn a bonus.
+              {paywallEnabled === true
+                ? "When a friend uses your code, you both get 7 days of Pro free. You also earn 100 points once they've studied on 3 different days."
+                : "Share your code with friends. You earn 100 points once they've studied on 3 different days."}
             </Text>
             <View style={styles.codeRow}>
               <Text style={styles.codeText}>{referralStats.referral_code}</Text>
@@ -216,6 +273,55 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {profile.role === "student" && paywallEnabled === true && referralStats && referralStats.has_redeemed === false && (
+          <View style={styles.appearanceCard}>
+            <Text style={styles.appearanceTitle}>🎁 Got an invite code?</Text>
+            <Text style={styles.appearanceHint}>Enter a friend's code and you both get 7 days of Pro free. You can only do this once.</Text>
+            <View style={[styles.appearanceRow, { alignItems: "center" }]}>
+              <TextInput
+                style={styles.inviteInput}
+                value={inviteInput}
+                onChangeText={setInviteInput}
+                placeholder="Invite code"
+                placeholderTextColor={colors.textFaint}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                maxLength={12}
+              />
+              <PressableScale style={[styles.inviteApply, (!inviteInput.trim() || redeeming) && { opacity: 0.5 }]} onPress={handleRedeem} haptic="medium">
+                <Text style={styles.inviteApplyText}>{redeeming ? "…" : "Apply"}</Text>
+              </PressableScale>
+            </View>
+          </View>
+        )}
+
+        <View style={styles.appearanceCard}>
+          <Text style={styles.appearanceTitle}>🔔 Notifications</Text>
+          <Text style={styles.appearanceHint}>Not getting reminders or class announcements? Run a quick check.</Text>
+          <PressableScale style={[styles.inviteApply, { marginTop: spacing.md, alignSelf: "flex-start" }, checkingNotifs && { opacity: 0.5 }]} onPress={handleCheckNotifications} haptic="light">
+            <Text style={styles.inviteApplyText}>{checkingNotifs ? "Checking…" : "Check notifications"}</Text>
+          </PressableScale>
+        </View>
+
+        <View style={styles.appearanceCard}>
+          <Text style={styles.appearanceTitle}>🌗 Appearance</Text>
+          <Text style={styles.appearanceHint}>Currently {getActiveScheme()} mode. Pick how Steth looks.</Text>
+          <View style={styles.appearanceRow}>
+            {([["light", "☀️ Light"], ["dark", "🌙 Dark"], ["system", "📱 Phone"]] as [ThemeMode, string][]).map(([m, label]) => (
+              <PressableScale
+                key={m}
+                style={[styles.appearanceOption, themeMode === m && styles.appearanceOptionOn]}
+                onPress={() => chooseTheme(m)}
+                haptic="light"
+                accessibilityRole="button"
+                accessibilityLabel={`${label} mode`}
+                accessibilityState={{ selected: themeMode === m }}
+              >
+                <Text style={[styles.appearanceOptionText, themeMode === m && { color: "#fff" }]}>{label}</Text>
+              </PressableScale>
+            ))}
+          </View>
+        </View>
         <PressableScale style={{ marginBottom: spacing.md, backgroundColor: colors.emberTint, borderRadius: radii.md, padding: spacing.lg }} onPress={() => navigation.navigate("Feedback")} accessibilityRole="button" accessibilityLabel="Help and feedback">
           <Text style={{ color: colors.text, fontWeight: "700" }}>💬 Help & feedback</Text>
           <Text style={{ color: colors.textMuted, marginTop: 2 }}>Report a problem, make a complaint or suggest an idea to the admins.</Text>
@@ -349,8 +455,18 @@ const styles = StyleSheet.create({
   signOutButtonText: { color: colors.danger, ...type.body, fontFamily: type.bodyBold.fontFamily },
   deleteAccountButton: { marginTop: 4, paddingVertical: spacing.md, paddingHorizontal: spacing.xl },
   deleteAccountButtonText: { color: colors.textFaint, fontSize: 12, textDecorationLine: "underline" },
+  appearanceCard: { backgroundColor: colors.card, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, marginBottom: spacing.md },
+  appearanceTitle: { color: colors.text, fontWeight: "700" },
+  appearanceHint: { color: colors.textMuted, marginTop: 2 },
+  appearanceRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
+  appearanceOption: { flex: 1, paddingVertical: spacing.md, borderRadius: radii.md, alignItems: "center", backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border },
+  appearanceOptionOn: { backgroundColor: colors.teal, borderColor: colors.teal },
+  appearanceOptionText: { color: colors.text, fontWeight: "600", fontSize: 13 },
+  inviteInput: { flex: 1, backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.text, letterSpacing: 1 },
+  inviteApply: { backgroundColor: colors.teal, borderRadius: radii.pill, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  inviteApplyText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(16,22,44,0.6)", justifyContent: "center", padding: spacing.xxl },
-  modalCard: { backgroundColor: "#fff", borderRadius: radii.xl, padding: spacing.xxl, ...shadow.floating },
+  modalCard: { backgroundColor: colors.card, borderRadius: radii.xl, padding: spacing.xxl, ...shadow.floating },
   modalTitle: { ...type.h2, color: colors.text, marginBottom: spacing.md },
   modalBody: { ...type.body, color: colors.text, marginBottom: spacing.sm },
   modalBold: { fontFamily: type.bodyBold.fontFamily, color: colors.danger },

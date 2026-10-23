@@ -1,57 +1,34 @@
 import "react-native-gesture-handler"; // must be the first import, especially on Android
 
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
-import AppSplash from "./src/components/animated/AppSplash";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { NavigationContainer } from "@react-navigation/native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
-import { AppProvider } from "./src/context/AppContext";
-import { ProGateProvider } from "./src/components/ProGateProvider";
-import RootNavigator from "./src/navigation/RootNavigator";
-import ErrorBoundary from "./src/components/ErrorBoundary";
-import { initErrorReporting } from "./src/lib/errorReporting";
-import { configurePurchases } from "./src/lib/purchases";
-import { initDeepLinking } from "./src/lib/deepLinking";
-import { initAnalytics } from "./src/lib/analytics";
-import { useAppFonts } from "./src/theme/useAppFonts";
-import { colors } from "./src/theme/tokens";
+import * as SplashScreen from "expo-splash-screen";
+import { applyThemeMode } from "./src/theme/tokens";
+import { loadThemeMode } from "./src/theme/themeMode";
 
-initErrorReporting();
-configurePurchases();
-initAnalytics();
+// Keep the native splash up while the saved light/dark choice is read (a few milliseconds).
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/**
+ * Entry point. Every screen builds its styles from the colour palette when its file is first loaded, so the saved
+ * appearance (Light / Dark / System) must be applied BEFORE the rest of the app is loaded. That is why the real app
+ * lives in src/AppRoot.tsx and is required only after the choice is known.
+ */
+let Root: React.ComponentType | null = null;
 
 export default function App() {
-  const { fontsReady, onLayoutRootView } = useAppFonts();
-    const [showSplash, setShowSplash] = useState(true); // animated brand intro, layered over the app while it loads underneath
+  const [ready, setReady] = useState(false);
 
-      useEffect(() => {
-          const cleanup = initDeepLinking();
-              return cleanup;
-                }, []);
+  useEffect(() => {
+    let alive = true;
+    loadThemeMode().then((mode) => {
+      applyThemeMode(mode);
+      Root = require("./src/AppRoot").default;
+      if (alive) setReady(true);
+    });
+    return () => { alive = false; };
+  }, []);
 
-                  // Splash screen stays up (see useAppFonts) until this returns true, so
-                    // returning null here never causes a visible blank flash.
-                      if (!fontsReady) return null;
-
-                        return (
-                            <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
-                                  <View style={{ flex: 1, backgroundColor: colors.paper }}>
-                                          <ErrorBoundary>
-                                                    <SafeAreaProvider>
-                                                                <AppProvider>
-                                                                              <ProGateProvider>
-                                                                                              <NavigationContainer>
-                                                                                                                <StatusBar style="dark" />
-                                                                                                                                  <RootNavigator />
-                                                                                                                                                  </NavigationContainer>
-                                                                                                                                                                </ProGateProvider>
-                                                                                                                                                                            </AppProvider>
-                                                                                                                                                                                      </SafeAreaProvider>
-                                                                                                                                                                                              </ErrorBoundary>
-                                                                                                                                                                                                      {showSplash && <AppSplash onDone={() => setShowSplash(false)} />}
-                                                                                                                                                                                                            </View>
-                                                                                                                                                                                                                </GestureHandlerRootView>
-                                                                                                                                                                                                                  );
-                                                                                                                                                                                                                  }
+  if (!ready || !Root) return null;
+  const AppRoot = Root;
+  return <AppRoot />;
+}

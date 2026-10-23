@@ -1,5 +1,5 @@
 import React from "react";
-import { View, ScrollView, StyleProp, ViewStyle, useWindowDimensions, RefreshControlProps } from "react-native";
+import { View, ScrollView, StyleProp, ViewStyle, useWindowDimensions, RefreshControlProps, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../theme/tokens";
 
@@ -34,13 +34,16 @@ export function Screen({ children, refreshControl, contentStyle, wide, header }:
   const { pad, maxWidth } = useLayout();
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }} edges={["top", "left", "right"]}>
-      {header}
-      <ScrollView
-        refreshControl={refreshControl} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
-        contentContainerStyle={{ alignItems: "center", paddingBottom: spacing.xxxl * 2 }}
-      >
-        <View style={[{ width: "100%", maxWidth: wide ? 1120 : maxWidth, padding: pad }, contentStyle]}>{children}</View>
-      </ScrollView>
+      {/* Android (edge-to-edge) no longer shrinks the window when the keyboard opens; padding keeps the field being typed in visible. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "android" ? "padding" : undefined}>
+        {header}
+        <ScrollView
+          refreshControl={refreshControl} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
+          contentContainerStyle={{ alignItems: "center", paddingBottom: spacing.xxxl * 2 }}
+        >
+          <View style={[{ width: "100%", maxWidth: wide ? 1120 : maxWidth, padding: pad }, contentStyle]}>{children}</View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
