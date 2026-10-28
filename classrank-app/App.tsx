@@ -1,6 +1,7 @@
 import "react-native-gesture-handler"; // must be the first import, especially on Android
 
 import React, { useEffect, useState } from "react";
+import "./src/lib/webShims"; // browser-only fixes (Alert, Share); does nothing on phones
 import * as SplashScreen from "expo-splash-screen";
 import { applyThemeMode } from "./src/theme/tokens";
 import { loadThemeMode } from "./src/theme/themeMode";

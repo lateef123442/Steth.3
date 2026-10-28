@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DevSettings } from "react-native";
+import { DevSettings, Platform } from "react-native";
 import * as Updates from "expo-updates";
 import type { ThemeMode } from "./tokens";
 
@@ -25,6 +25,7 @@ export async function saveThemeMode(mode: ThemeMode): Promise<void> {
  */
 export async function restartApp(): Promise<boolean> {
   try {
+    if (Platform.OS === "web") { window.location.reload(); return true; }
     if (__DEV__) { DevSettings.reload(); return true; }
     await Updates.reloadAsync();
     return true;

@@ -159,6 +159,7 @@ const FIREBASE_MESSAGE =
 
 /** Step-by-step self test for the Profile screen: permission, a local notification, registration, then a real push from the server. */
 export async function runNotificationCheck(userId: string): Promise<NotificationCheck> {
+  if (Platform.OS === "web") return { ok: false, title: "Not in the web version", message: "Reminders and class alerts need the Steth app. The web version on iPhone can't send notifications." };
   if (!notificationsAvailable) return { ok: false, title: "Not available here", message: "Notifications don't work inside Expo Go. Open the installed Steth app instead." };
   if (!Device.isDevice) return { ok: false, title: "Use a real phone", message: "Notifications can't be tested on an emulator." };
 
