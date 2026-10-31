@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   rankText: { ...type.h3, fontSize: 13 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   name: { ...type.bodyMedium, color: colors.text, flexShrink: 1 },
-  crown: { fontSize: 12 },
+  crown: { fontSize: 13 },
   subtitleRow: { flexDirection: "row", alignItems: "center", marginTop: 2, flexWrap: "wrap" },
   subtitle: { ...type.caption, color: colors.textMuted, flexShrink: 1 },
   percentileChip: {
@@ -83,6 +83,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     marginLeft: spacing.sm,
   },
-  percentileText: { fontSize: 10, fontFamily: type.label.fontFamily, color: colors.violet },
+  percentileText: { fontSize: 13, fontFamily: type.label.fontFamily, color: colors.violet },
   points: { ...type.h3, color: colors.text },
 });

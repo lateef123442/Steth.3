@@ -74,6 +74,6 @@ const st = StyleSheet.create({
   option: { flex: 1, paddingVertical: spacing.md, borderRadius: radii.md, alignItems: "center", backgroundColor: colors.paper, borderWidth: 1, borderColor: colors.border },
   optionOn: { backgroundColor: colors.teal, borderColor: colors.teal },
   optionText: { color: colors.text, fontWeight: "700" },
-  small: { color: colors.textFaint, marginTop: spacing.sm, fontSize: 12 },
+  small: { color: colors.textFaint, marginTop: spacing.sm, fontSize: 13 },
   error: { color: colors.danger, marginTop: spacing.sm },
 });

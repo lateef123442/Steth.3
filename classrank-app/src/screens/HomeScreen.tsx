@@ -13,6 +13,7 @@ import PressableScale from "../components/animated/PressableScale";
 import { fetchRecentAnnouncements, Announcement } from "../lib/courseApi";
 import { useStudy, recommend, todaySessions, subjectName, focusMinutes, studyStreak, weakestTopic, fmtTime12 } from "../lib/studyStore";
 import ArenaBackground from "../components/ArenaBackground";
+import StartHereCard from "../components/StartHereCard";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 
@@ -92,6 +93,8 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           </View>
         </ArenaBackground>
+
+        <StartHereCard onGo={go} />
 
         {news.length > 0 && (
           <Reveal>

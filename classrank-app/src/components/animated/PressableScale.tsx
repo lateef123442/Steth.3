@@ -59,6 +59,7 @@ export default function PressableScale({
     <AnimatedPressable
       style={[style, animatedStyle]}
       disabled={disabled}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} // a larger touch area for small buttons; callers can override
       onPressIn={(e) => {
         if (!disabled) scale.value = withSpring(scaleTo, motion.springSnappy);
         onPressIn?.(e);
