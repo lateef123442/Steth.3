@@ -16,7 +16,7 @@ import { savePendingReferral } from "./referralApi";
 async function handleUrl(url: string | null) {
   if (!url) return;
   // Invite link, e.g. classrank://invite?ref=ABC1234. Keep the code so sign-up (or Profile) can use it.
-  if (/invite/i.test(url) && /[?&]ref=/i.test(url)) {
+  if (/[?&]ref=/i.test(url) && (/invite/i.test(url) || /^https?:/i.test(url))) {
     try { const ref = Linking.parse(url).queryParams?.ref; if (typeof ref === "string") await savePendingReferral(ref); } catch { /* ignore */ }
     return;
   }

@@ -12,6 +12,8 @@ import { Platform } from "react-native";
 type NotificationsModule = typeof import("expo-notifications");
 
 const isExpoGoAndroid = Constants.executionEnvironment === "storeClient" && Platform.OS === "android";
+// Browsers (the iPhone web version) have no app notifications either, so use the harmless stand-ins there too.
+const unavailable = isExpoGoAndroid || Platform.OS === "web";
 
 const noopSub = () => ({ remove() {} });
 
@@ -33,9 +35,9 @@ const stub = {
   AndroidImportance: { DEFAULT: 3, HIGH: 4, LOW: 2, MIN: 1, MAX: 5, NONE: 0, UNSPECIFIED: -1000 },
 } as unknown as NotificationsModule;
 
-const Notifications: NotificationsModule = isExpoGoAndroid
+const Notifications: NotificationsModule = unavailable
   ? stub
   : (require("expo-notifications") as NotificationsModule);
 
 export default Notifications;
-export const notificationsAvailable = !isExpoGoAndroid;
+export const notificationsAvailable = !unavailable;

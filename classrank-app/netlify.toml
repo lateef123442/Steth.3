@@ -1,0 +1,26 @@
+# Builds the web version of Steth (the one iPhone users open in Safari and add to their Home Screen).
+# On Netlify: Add new site -> Import from GitHub -> this repository, set "Base directory" to classrank-app.
+# Then add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY under Site configuration -> Environment variables.
+[build]
+  command = "npm ci --legacy-peer-deps && npx expo export --platform web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  CI = "1"
+  EXPO_NO_TELEMETRY = "1"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/_expo/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"

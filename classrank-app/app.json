@@ -39,7 +39,13 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.png"
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "Steth",
+      "shortName": "Steth",
+      "themeColor": "#10162C",
+      "backgroundColor": "#10162C",
+      "lang": "en"
     },
     "plugins": [
       [
