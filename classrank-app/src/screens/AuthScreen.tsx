@@ -24,6 +24,7 @@ export default function AuthScreen() {
   const [departmentId, setDepartmentId] = useState<string | null>(null);
   const [year, setYear] = useState<number | null>(null);
   const [referralCode, setReferralCode] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   useEffect(() => { peekPendingReferral().then((c) => { if (c) setReferralCode((cur) => cur || c); }); }, []);
   const [inviteCode, setInviteCode] = useState("");
 
@@ -127,19 +128,31 @@ export default function AuthScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="next"
         />
         {email.length > 0 && !emailLooksValid && <Text style={styles.hintText}>That doesn't look like a valid email.</Text>}
 
         <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder={mode === "login" ? "Your password" : "At least 8 characters, with a number"}
-          placeholderTextColor={colors.textFaint}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
+        <View style={styles.passwordRow}>
+          <TextInput
+            style={[styles.input, { flex: 1, marginTop: 0 }]}
+            placeholder={mode === "login" ? "Your password" : "At least 8 characters, with a number"}
+            placeholderTextColor={colors.textFaint}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            textContentType={mode === "login" ? "password" : "newPassword"}
+            returnKeyType="done"
+          />
+          <PressableScale onPress={() => setShowPassword((v) => !v)} style={styles.showPassword} haptic="none" accessibilityRole="button" accessibilityLabel={showPassword ? "Hide password" : "Show password"}>
+            <Text style={styles.showPasswordText}>{showPassword ? "🙈 Hide" : "👁 Show"}</Text>
+          </PressableScale>
+        </View>
 
         {mode === "login" && (
           <PressableScale onPress={handleForgotPassword} style={styles.forgotLink} haptic="none">
@@ -250,6 +263,9 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   hintText: { ...type.caption, color: colors.textMuted, marginTop: spacing.xs },
+  passwordRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  showPassword: { paddingHorizontal: spacing.md, paddingVertical: spacing.md, minHeight: 48, justifyContent: "center", borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
+  showPasswordText: { fontSize: 14, color: colors.text, fontFamily: type.bodySemibold.fontFamily },
   forgotLink: { alignSelf: "flex-end", marginTop: spacing.sm },
   forgotLinkText: { fontSize: 13, color: colors.teal, fontFamily: type.bodySemibold.fontFamily },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },

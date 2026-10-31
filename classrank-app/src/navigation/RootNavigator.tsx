@@ -131,7 +131,7 @@ function useTabChrome() {
     tabBarPosition: isWide ? ("left" as const) : ("bottom" as const),
     tabBarVariant: isWide ? ("material" as const) : ("uikit" as const),
     tabBarStyle: isWide ? undefined : { paddingBottom: 6 + insets.bottom, paddingTop: 6, height: 58 + insets.bottom },
-    tabBarLabelStyle: { fontSize: isWide ? 12 : 10 },
+    tabBarLabelStyle: { fontSize: isWide ? 13 : 12, fontWeight: "600" as const },
   };
 }
 

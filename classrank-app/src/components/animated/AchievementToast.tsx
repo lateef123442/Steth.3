@@ -17,6 +17,6 @@ export default function AchievementToast({ titles, ms = 4200 }: { titles: string
 }
 const styles = StyleSheet.create({
   toast: { position: "absolute", top: spacing.md, left: spacing.xl, right: spacing.xl, zIndex: 50, backgroundColor: colors.ink, borderRadius: radii.md, padding: spacing.lg },
-  kicker: { fontFamily: fonts.bodySemibold, fontSize: 11, letterSpacing: 0.6, color: colors.teal },
+  kicker: { fontFamily: fonts.bodySemibold, fontSize: 13, letterSpacing: 0.6, color: colors.teal },
   title: { fontFamily: fonts.display, fontSize: 16, color: "#fff", marginTop: 2 },
 });

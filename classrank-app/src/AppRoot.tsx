@@ -9,6 +9,7 @@ import { AppProvider } from "./context/AppContext";
 import { ProGateProvider } from "./components/ProGateProvider";
 import RootNavigator from "./navigation/RootNavigator";
 import ErrorBoundary from "./components/ErrorBoundary";
+import "./lib/friendlyAlerts"; // plain-language error pop-ups
 import { initErrorReporting } from "./lib/errorReporting";
 import { configurePurchases } from "./lib/purchases";
 import { initDeepLinking } from "./lib/deepLinking";

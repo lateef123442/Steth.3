@@ -113,14 +113,14 @@ export default function ChatView({ title, subtitle, avatar, meId, load, send, su
               const samePrev = older && older.sender_id === item.sender_id && !newDay;
               return (
                 <View>
-                  {newDay && <Text style={{ textAlign: "center", color: colors.textFaint, fontSize: 12, marginVertical: spacing.md }}>{day(item.created_at)}</Text>}
+                  {newDay && <Text style={{ textAlign: "center", color: colors.textFaint, fontSize: 13, marginVertical: spacing.md }}>{day(item.created_at)}</Text>}
                   <View style={{ flexDirection: mine ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, marginTop: samePrev ? 0 : spacing.sm }}>
                     {!mine && nameOf ? <View style={{ width: 28 }}>{!samePrev && who ? <Avatar name={who.name} path={who.avatar_path} size={28} /> : null}</View> : null}
                     <PressableScale haptic="medium" scaleTo={0.99} disabled={mine || !onLongPressMessage} onLongPress={() => onLongPressMessage?.(item)} style={{ maxWidth: "78%" }}>
                     <View style={{ backgroundColor: mine ? colors.teal : colors.card, borderRadius: radii.md, paddingVertical: 8, paddingHorizontal: 12, borderWidth: mine ? 0 : 1, borderColor: colors.border }}>
-                      {!mine && !!who && !samePrev && <Text style={{ color: colors.violet, fontWeight: "700", fontSize: 12, marginBottom: 2 }}>{who.name}</Text>}
+                      {!mine && !!who && !samePrev && <Text style={{ color: colors.violet, fontWeight: "700", fontSize: 13, marginBottom: 2 }}>{who.name}</Text>}
                       <Text style={[type.body, { color: mine ? "#fff" : colors.text }]} selectable>{item.body}</Text>
-                      <Text style={{ color: mine ? "#D6FFF9" : colors.textFaint, fontSize: 10, alignSelf: "flex-end", marginTop: 2 }}>{time(item.created_at)}</Text>
+                      <Text style={{ color: mine ? "#D6FFF9" : colors.textFaint, fontSize: 13, alignSelf: "flex-end", marginTop: 2 }}>{time(item.created_at)}</Text>
                     </View>
                     </PressableScale>
                   </View>

@@ -76,7 +76,7 @@ export default function TeacherFileUpload({ courseId, topicId, onAdded }: { cour
             {!busy && <PressableScale onPress={() => remove(f.key)} accessibilityLabel={`Remove ${f.name}`} style={{ padding: 6 }}><Text style={{ color: colors.danger, fontWeight: "700" }}>✕</Text></PressableScale>}
           </View>
           <TextInput style={s.input} value={f.title} onChangeText={(t) => setTitle(f.key, t)} editable={!busy} placeholder="Name students will see" placeholderTextColor={colors.textFaint} />
-          {!!f.error && <Text style={{ color: colors.danger, fontSize: 12 }}>{f.error}</Text>}
+          {!!f.error && <Text style={{ color: colors.danger, fontSize: 13 }}>{f.error}</Text>}
         </View>
       ))}
       {files.length > 0 && (

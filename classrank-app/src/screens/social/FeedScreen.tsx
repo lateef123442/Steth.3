@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   postHeader: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginBottom: spacing.xs },
   authorName: { ...type.bodyMedium, color: colors.text },
   roleBadge: { backgroundColor: colors.violetTint, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginLeft: spacing.sm },
-  roleBadgeText: { fontSize: 10, color: colors.violet, fontFamily: type.bodySemibold.fontFamily, textTransform: "capitalize" },
+  roleBadgeText: { fontSize: 13, color: colors.violet, fontFamily: type.bodySemibold.fontFamily, textTransform: "capitalize" },
   postMeta: { ...type.caption, color: colors.textFaint, marginLeft: spacing.sm },
   postContent: { ...type.body, color: colors.text, marginBottom: spacing.md, lineHeight: 21 },
   postFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },

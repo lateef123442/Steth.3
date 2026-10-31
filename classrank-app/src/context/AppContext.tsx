@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { AppState as RNAppState } from "react-native";
+import { friendlyMessage } from "../lib/friendlyError";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import {
@@ -87,11 +88,7 @@ const AppContext = createContext<AppState | undefined>(undefined);
 // doesn't have to re-derive its own user-facing error copy.
 function toUserMessage(error: unknown, fallback: string): string {
   if (error && typeof error === "object" && "message" in error) {
-    const msg = String((error as any).message);
-    if (msg.toLowerCase().includes("network") || msg.toLowerCase().includes("fetch")) {
-      return "Can't reach the server. Check your connection and try again.";
-    }
-    return msg;
+    return friendlyMessage(String((error as any).message)) ?? fallback;
   }
   return fallback;
 }
