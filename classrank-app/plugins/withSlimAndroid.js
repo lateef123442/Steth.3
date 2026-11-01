@@ -1,21 +1,20 @@
-// Makes the Android APK much smaller without removing any feature:
-//  1. Builds only for real phones (32-bit and 64-bit ARM) and skips the emulator/Intel versions (x86, x86_64).
-//     Every normal Android phone still works.
-//  2. Compresses the native libraries inside the APK. They are unpacked on the phone when it installs, so the
-//     downloaded file is far smaller (the app takes about the same room once installed).
-//  3. Compresses the JavaScript bundle inside the APK too.
+// Makes the Android APK smaller. How much is chosen by the build profile (STETH_APK_SIZE in eas.json):
+//   "off"  : nothing changes (the plain, biggest APK, around 110 MB)
+//   "abi"  : only builds for real phones (32-bit and 64-bit ARM) and skips the emulator/Intel versions
+//   "full" : "abi" plus compressed native libraries and a compressed JavaScript bundle (smallest, around 35 MB)
+// If STETH_APK_SIZE is not set, "abi" is used, because it is the gentlest saving.
 const { withGradleProperties } = require("@expo/config-plugins");
 
-const SETTINGS = {
-  reactNativeArchitectures: "armeabi-v7a,arm64-v8a",
-  "expo.useLegacyPackaging": "true",
-  "android.enableBundleCompression": "true",
-};
+const ABI = { reactNativeArchitectures: "armeabi-v7a,arm64-v8a" };
+const FULL = { ...ABI, "expo.useLegacyPackaging": "true", "android.enableBundleCompression": "true" };
 
 module.exports = function withSlimAndroid(config) {
+  const mode = (process.env.STETH_APK_SIZE || "abi").toLowerCase();
+  const settings = mode === "off" ? {} : mode === "full" ? FULL : ABI;
+  if (Object.keys(settings).length === 0) return config;
   return withGradleProperties(config, (cfg) => {
     const props = cfg.modResults;
-    for (const [key, value] of Object.entries(SETTINGS)) {
+    for (const [key, value] of Object.entries(settings)) {
       const existing = props.find((p) => p.type === "property" && p.key === key);
       if (existing) existing.value = value;
       else props.push({ type: "property", key, value });
