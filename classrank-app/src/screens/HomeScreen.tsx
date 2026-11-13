@@ -14,6 +14,7 @@ import { fetchRecentAnnouncements, Announcement } from "../lib/courseApi";
 import { useStudy, recommend, todaySessions, subjectName, focusMinutes, studyStreak, weakestTopic, fmtTime12 } from "../lib/studyStore";
 import ArenaBackground from "../components/ArenaBackground";
 import StartHereCard from "../components/StartHereCard";
+import { effectiveStreak } from "../utils/streak";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 
@@ -81,8 +82,8 @@ export default function HomeScreen({ navigation }: Props) {
 
             <View style={styles.chipRow}>
               <View style={styles.chip}>
-                <StreakFlame streak={Math.max(streak, profile.current_streak)} size={18} />
-                <AnimatedNumber value={Math.max(streak, profile.current_streak)} style={styles.chipValueText} />
+                <StreakFlame streak={Math.max(streak, effectiveStreak(profile))} size={18} />
+                <AnimatedNumber value={Math.max(streak, effectiveStreak(profile))} style={styles.chipValueText} />
                 <Text style={styles.chipLabel}>day streak</Text>
               </View>
 
