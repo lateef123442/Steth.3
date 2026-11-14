@@ -72,7 +72,7 @@ export default function LeaderboardScreen() {
         <Text style={styles.scopeLabel}>
           {tier === "Department" && `Ranked within ${profile.department}`}
           {tier === "Faculty" && `Ranked within ${profile.faculty}, normalized for fairness`}
-          {tier === "Campus" && "Ranked campus-wide, normalized for fairness"}
+          {tier === "Campus" && `Campus leaderboard for ${profile.university} · Only students from this university`}
         </Text>
       </View>
 

@@ -613,6 +613,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         supabase
           .from("leaderboard_normalized")
           .select("*")
+          .eq("university", profile.university)
           .order("department_percentile", { ascending: false })
           .order("points", { ascending: false })
           .range(0, CAMPUS_PAGE_SIZE - 1),
@@ -632,7 +633,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLeaderboardLoading(false);
     }
-  }, [profile?.id, profile?.department, profile?.faculty]);
+  }, [profile?.id, profile?.department, profile?.faculty, profile?.university]);
 
   const loadMoreCampusLeaderboard = async () => {
     if (!campusHasMore) return;
@@ -640,6 +641,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("leaderboard_normalized")
         .select("*")
+        .eq("university", profile?.university ?? "")
         .order("department_percentile", { ascending: false })
         .order("points", { ascending: false })
         .range(campusLeaderboard.length, campusLeaderboard.length + CAMPUS_PAGE_SIZE - 1);
