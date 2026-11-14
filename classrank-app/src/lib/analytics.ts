@@ -11,7 +11,7 @@ let client: PostHog | null = null;
  */
 export async function initAnalytics(): Promise<void> {
   if (!API_KEY) {
-    if (__DEV__) console.log("[analytics] No EXPO_PUBLIC_POSTHOG_API_KEY set — analytics disabled.");
+    if (__DEV__) console.log("[analytics] No EXPO_PUBLIC_POSTHOG_API_KEY set, so analytics are off.");
     return;
   }
   client = new PostHog(API_KEY, { host: HOST });

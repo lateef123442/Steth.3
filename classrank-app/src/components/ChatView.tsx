@@ -6,6 +6,7 @@ import PressableScale from "./animated/PressableScale";
 import Avatar from "./Avatar";
 import { ChatMessage } from "../lib/socialApi";
 
+import EmojiIcon from "./EmojiIcon";
 const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const day = (iso: string) => { const d = new Date(iso), t = new Date(); return d.toDateString() === t.toDateString() ? "Today" : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }); };
 
@@ -103,7 +104,7 @@ export default function ChatView({ title, subtitle, avatar, meId, load, send, su
             data={msgs} inverted keyExtractor={(m) => m.id} onEndReached={older} onEndReachedThreshold={0.3}
             contentContainerStyle={{ padding: spacing.lg, gap: 6, width: "100%", maxWidth: 820, alignSelf: "center" }}
             keyboardShouldPersistTaps="handled"
-            ListEmptyComponent={<Text style={{ transform: [{ scaleY: -1 }], textAlign: "center", color: colors.textMuted, marginTop: 40 }}>{error ?? "No messages yet. Say hi 👋"}</Text>}
+            ListEmptyComponent={<Text style={{ transform: [{ scaleY: -1 }], textAlign: "center", color: colors.textMuted, marginTop: 40 }}>{error ?? "No messages yet. Say hi"}</Text>}
             ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.teal} style={{ margin: 12 }} /> : null}
             renderItem={({ item, index }) => {
               const mine = item.sender_id === meId;
@@ -134,7 +135,7 @@ export default function ChatView({ title, subtitle, avatar, meId, load, send, su
           <TextInput value={text} onChangeText={setText} placeholder="Message" placeholderTextColor={colors.textFaint} multiline maxLength={2000}
             style={{ flex: 1, maxHeight: 120, backgroundColor: colors.paper, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, color: colors.text, ...type.body }} />
           <PressableScale onPress={submit} disabled={!text.trim() || sending} style={{ backgroundColor: colors.teal, borderRadius: 22, width: 44, height: 44, alignItems: "center", justifyContent: "center", opacity: !text.trim() || sending ? 0.4 : 1 }}>
-            <Text style={{ color: "#fff", fontSize: 18 }}>➤</Text>
+            <EmojiIcon emoji="➤" style={{ color: "#fff", fontSize: 18 }} />
           </PressableScale>
         </View>
       </KeyboardAvoidingView>

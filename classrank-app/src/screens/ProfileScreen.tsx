@@ -23,6 +23,7 @@ import { track, AnalyticsEvents } from "../lib/analytics";
 import { useNavigation } from "@react-navigation/native";
 import { useStudy, achievements, xpInfo, studyStreak } from "../lib/studyStore";
 
+import EmojiIcon from "../components/EmojiIcon";
 export default function ProfileScreen() {
   const { profile, signOut, deleteAccount, authError, refreshProfileAfterPurchase, paywallEnabled } = useApp();
   const [signingOut, setSigningOut] = useState(false);
@@ -55,7 +56,7 @@ export default function ProfileScreen() {
       setInviteInput("");
       await refreshProfileAfterPurchase();
       fetchReferralStats().then(setReferralStats).catch(() => {});
-      Alert.alert("7 days of Pro unlocked 🎉", "Your friend got 7 days too. Each account can use an invite code once, so this one is done.");
+      Alert.alert("7 days of Pro unlocked", "Your friend got 7 days too. Each account can use an invite code once, so this one is done.");
     } catch (e: any) {
       Alert.alert("Couldn't use that code", e?.message ?? "Please try again.");
     } finally { setRedeeming(false); }
@@ -159,7 +160,7 @@ export default function ProfileScreen() {
         </PressableScale>
         <View style={styles.nameRow}>
           <Text style={styles.name}>{profile.name}</Text>
-          {profile.is_pro && <Text style={styles.proCrown}>👑</Text>}
+          {profile.is_pro && <EmojiIcon emoji="👑" style={styles.proCrown} />}
         </View>
         {profile.role !== "student" && (
           <View style={styles.roleBadge}>
@@ -197,14 +198,14 @@ export default function ProfileScreen() {
               <Text style={{ ...type.body, color: colors.textMuted }}>Level {xp.level} · {xp.xp} XP · {xp.toNext} to next level · {studyStreak(study)}-day study streak</Text>
               {ach.map((a) => (
                 <Text key={a.id} style={{ ...type.body, color: a.earned ? colors.text : colors.textFaint, marginTop: 4 }}>
-                  {a.earned ? "🏅" : "▫️"} {a.title}{a.earned ? "" : ` — ${a.have}/${a.need}`}
+                  {a.title}{a.earned ? "" : ` (${a.have}/${a.need})`}
                 </Text>
               ))}
               <PressableScale style={{ marginTop: spacing.md, backgroundColor: colors.tealTint, borderRadius: radii.md, padding: spacing.lg }} onPress={() => navigation.navigate("StudySetup")}>
                 <Text style={{ ...type.h3, color: colors.tealDeep }}>Goals, study times & notifications →</Text>
               </PressableScale>
               <PressableScale style={{ marginTop: spacing.sm, backgroundColor: colors.violetTint, borderRadius: radii.md, padding: spacing.lg }} onPress={() => navigation.navigate("Community")}>
-                <Text style={{ ...type.h3, color: colors.text }}>👥 Community: courses, groups & feed →</Text>
+                <Text style={{ ...type.h3, color: colors.text }}>Community: courses, groups & feed →</Text>
               </PressableScale>
             </View>
             <Text style={styles.sectionTitle}>Badges</Text>
@@ -229,7 +230,7 @@ export default function ProfileScreen() {
         {profile.role === "student" && paywallEnabled === true &&
           (hasActivePro(profile) ? (
             <View style={styles.proStatusCard}>
-              <Text style={styles.proStatusTitle}>👑 You're Pro</Text>
+              <Text style={styles.proStatusTitle}>You're Pro</Text>
               <Text style={styles.proStatusSubtitle}>{daysLeft(profile.pro_expires_at)} day{daysLeft(profile.pro_expires_at) === 1 ? "" : "s"} left · Streak Shield is active.</Text>
               <PressableScale style={styles.manageButton} onPress={() => setShowUpgradeModal(true)} haptic="light">
                 <Text style={styles.manageButtonText}>Renew / add time</Text>
@@ -245,7 +246,7 @@ export default function ProfileScreen() {
               haptic="medium"
             >
               <View style={{ flex: 1 }}>
-                <Text style={styles.goProTitle}>Go Pro 👑</Text>
+                <Text style={styles.goProTitle}>Go Pro</Text>
                 <Text style={styles.goProSubtitle}>Get Streak Shield and a Pro badge on the leaderboard.</Text>
               </View>
               <Text style={styles.goProArrow}>→</Text>
@@ -276,7 +277,7 @@ export default function ProfileScreen() {
 
         {profile.role === "student" && paywallEnabled === true && referralStats && referralStats.has_redeemed === false && (
           <View style={styles.appearanceCard}>
-            <Text style={styles.appearanceTitle}>🎁 Got an invite code?</Text>
+            <Text style={styles.appearanceTitle}>Got an invite code?</Text>
             <Text style={styles.appearanceHint}>Enter a friend's code and you both get 7 days of Pro free. You can only do this once.</Text>
             <View style={[styles.appearanceRow, { alignItems: "center" }]}>
               <TextInput
@@ -297,7 +298,7 @@ export default function ProfileScreen() {
         )}
 
         <View style={styles.appearanceCard}>
-          <Text style={styles.appearanceTitle}>🔔 Notifications</Text>
+          <Text style={styles.appearanceTitle}>Notifications</Text>
           <Text style={styles.appearanceHint}>Not getting reminders or class announcements? Run a quick check.</Text>
           <PressableScale style={[styles.inviteApply, { marginTop: spacing.md, alignSelf: "flex-start" }, checkingNotifs && { opacity: 0.5 }]} onPress={handleCheckNotifications} haptic="light">
             <Text style={styles.inviteApplyText}>{checkingNotifs ? "Checking…" : "Check notifications"}</Text>
@@ -305,7 +306,7 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.appearanceCard}>
-          <Text style={styles.appearanceTitle}>🌗 Appearance</Text>
+          <Text style={styles.appearanceTitle}>Appearance</Text>
           <Text style={styles.appearanceHint}>Currently {getActiveScheme()} mode. Pick how Steth looks.</Text>
           <View style={styles.appearanceRow}>
             {([["light", "☀️ Light"], ["dark", "🌙 Dark"], ["system", "📱 Phone"]] as [ThemeMode, string][]).map(([m, label]) => (
@@ -324,7 +325,7 @@ export default function ProfileScreen() {
           </View>
         </View>
         <PressableScale style={{ marginBottom: spacing.md, backgroundColor: colors.emberTint, borderRadius: radii.md, padding: spacing.lg }} onPress={() => navigation.navigate("Feedback")} accessibilityRole="button" accessibilityLabel="Help and feedback">
-          <Text style={{ color: colors.text, fontWeight: "700" }}>💬 Help & feedback</Text>
+          <Text style={{ color: colors.text, fontWeight: "700" }}>Help & feedback</Text>
           <Text style={{ color: colors.textMuted, marginTop: 2 }}>Report a problem, make a complaint or suggest an idea to the admins.</Text>
         </PressableScale>
         <PressableScale

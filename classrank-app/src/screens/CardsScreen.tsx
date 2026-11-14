@@ -62,7 +62,7 @@ export default function CardsScreen({ navigation }: any) {
           <PressableScale onPress={() => setQueue(null)}><Text style={styles.back}>← End review</Text></PressableScale>
           {!card ? (
             <View style={styles.center}>
-              <Text style={styles.h1}>All caught up 🎉</Text>
+              <Text style={styles.h1}>All caught up</Text>
               <Text style={styles.muted}>Cards you rated Good or Easy will return in a few days.</Text>
             </View>
           ) : (
@@ -135,7 +135,7 @@ export default function CardsScreen({ navigation }: any) {
               </View>
             )}
             <PressableScale style={[styles.ghost, busy && { opacity: 0.5 }]} disabled={busy} onPress={generate}>
-              <Text style={styles.ghostText}>{busy ? "Generating…" : "✨ Generate 6 cards with AI"}</Text>
+              <Text style={styles.ghostText}>{busy ? "Generating…" : "Generate 6 cards with AI"}</Text>
             </PressableScale>
             {busy && <View style={{ marginTop: spacing.sm }}><Loader label="Writing your cards…" /></View>}
             <TextInput style={styles.input} placeholder="Front (question)" placeholderTextColor={colors.textFaint} value={front} onChangeText={setFront} multiline />

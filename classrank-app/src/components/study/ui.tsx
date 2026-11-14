@@ -6,6 +6,7 @@ import { useMotionOK } from "../animated/useMotionOK";
 import { colors, radii, spacing, type } from "../../theme/tokens";
 import PressableScale from "../animated/PressableScale";
 
+import EmojiIcon from "../EmojiIcon";
 export const Back = ({ onPress, label = "← Back" }: { onPress: () => void; label?: string }) => (
   <PressableScale onPress={onPress}><Text style={s.back}>{label}</Text></PressableScale>
 );
@@ -61,7 +62,7 @@ export const Field = ({ label, hint, ...rest }: { label?: string; hint?: string 
 /** Friendly empty state with an optional call to action. */
 export const Empty = ({ icon = "📚", title, body, action }: { icon?: string; title: string; body?: string; action?: { label: string; onPress: () => void } }) => (
   <View style={{ alignItems: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg }}>
-    <Text style={{ fontSize: 34 }}>{icon}</Text>
+    <EmojiIcon emoji={icon} style={{ fontSize: 34 }} />
     <Text style={[s.h3, { marginTop: spacing.sm, textAlign: "center" }]}>{title}</Text>
     {!!body && <Muted style={{ textAlign: "center", marginTop: 4 }}>{body}</Muted>}
     {action && <View style={{ alignSelf: "stretch" }}><Btn label={action.label} onPress={action.onPress} /></View>}

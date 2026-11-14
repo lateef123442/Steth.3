@@ -10,6 +10,7 @@ import { fmtSize } from "../../lib/fileRules";
 import TeacherFileUpload from "./TeacherFileUpload";
 import QuestionManager from "./QuestionManager";
 
+import EmojiIcon from "../../components/EmojiIcon";
 type Sub = "Resources" | "Practice";
 const KIND_ICON = { note: "📝", link: "🔗", video: "🎬", file: "📎" } as const;
 
@@ -99,7 +100,7 @@ function ResourceRow({ m, courseId, topics, busy, act }: { m: CourseBundle["mate
       <View style={{ paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
         <Text style={s.h3}>Edit {m.kind === "file" ? "file" : "resource"}</Text>
         {m.kind !== "file" && (
-          <ChipRow>{(["note", "link", "video"] as const).map((k) => <Chip key={k} label={`${KIND_ICON[k]} ${k}`} on={kind === k} onPress={() => setKind(k)} />)}</ChipRow>
+          <ChipRow>{(["note", "link", "video"] as const).map((k) => <Chip key={k} label={k} on={kind === k} onPress={() => setKind(k)} />)}</ChipRow>
         )}
         <Field label="Name" value={title} onChangeText={setTitle} placeholder="Resource name" />
         {m.kind !== "file" && (
@@ -125,7 +126,7 @@ function ResourceRow({ m, courseId, topics, busy, act }: { m: CourseBundle["mate
   }
   return (
     <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
-      <Text style={{ fontSize: 18, marginRight: spacing.sm }}>{KIND_ICON[m.kind]}</Text>
+      <EmojiIcon emoji={KIND_ICON[m.kind]} style={{ fontSize: 18, marginRight: spacing.sm }} />
       <View style={{ flex: 1 }}>
         <Text style={s.h3} numberOfLines={2}>{m.title}</Text>
         <Muted numberOfLines={1}>{m.kind === "file" ? `${m.file_name ?? "file"}${m.file_size ? ` · ${fmtSize(m.file_size)}` : ""}` : m.kind === "note" ? m.body.slice(0, 70) : m.body}</Muted>
@@ -171,7 +172,7 @@ function TopicBody({ courseId, topic, bundle, materials, first, last, busy, act,
           {materials.map((m) => <ResourceRow key={m.id} m={m} courseId={courseId} topics={bundle.topics ?? []} busy={busy} act={act} />)}
 
           <Label>ADD A RESOURCE</Label>
-          <ChipRow>{(["note", "link", "video"] as const).map((k) => <Chip key={k} label={`${KIND_ICON[k]} ${k}`} on={kind === k} onPress={() => setKind(k)} />)}</ChipRow>
+          <ChipRow>{(["note", "link", "video"] as const).map((k) => <Chip key={k} label={k} on={kind === k} onPress={() => setKind(k)} />)}</ChipRow>
           <Field label="Name" value={rTitle} onChangeText={setRTitle} placeholder={kind === "note" ? "e.g. Lecture 1 notes" : kind === "link" ? "e.g. Khan Academy: Forces" : "e.g. Lab demonstration"} />
           <Field label={kind === "note" ? "Notes" : kind === "link" ? "Link (https://…)" : "Video link (https://…)"} value={rBody} onChangeText={setRBody}
             placeholder={kind === "note" ? "Type or paste the notes students should read" : "https://"} multiline={kind === "note"} autoCapitalize="none" autoCorrect={false} keyboardType={kind === "note" ? "default" : "url"} />

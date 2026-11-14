@@ -7,6 +7,7 @@ import PressableScale from "../../components/animated/PressableScale";
 import { uploadMaterialFile } from "../../lib/courseApi";
 import { validateFile, fmtSize, ALLOWED_EXTENSIONS, PICKER_TYPES } from "../../lib/fileRules";
 
+import EmojiIcon from "../../components/EmojiIcon";
 type Picked = { key: string; uri: string; name: string; size: number | null; title: string; error?: string };
 
 const baseTitle = (name: string) => name.replace(/\.[^.]+$/, "").slice(0, 120);
@@ -52,7 +53,7 @@ export default function TeacherFileUpload({ courseId, topicId, onAdded }: { cour
       } catch (e: any) {
         const msg = e?.message ?? "Upload failed";
         failed.set(f.key, msg);
-        if (/already has \d+ files/i.test(msg)) { limitHit = true; todo.slice(i + 1).forEach((x) => failed.set(x.key, "Not uploaded — the course file limit was reached.")); setProgress({ done: todo.length, total: todo.length }); break; }
+        if (/already has \d+ files/i.test(msg)) { limitHit = true; todo.slice(i + 1).forEach((x) => failed.set(x.key, "Not uploaded. The course file limit was reached.")); setProgress({ done: todo.length, total: todo.length }); break; }
       }
       setProgress({ done: i + 1, total: todo.length });
     }
@@ -60,20 +61,20 @@ export default function TeacherFileUpload({ courseId, topicId, onAdded }: { cour
     setBusy(false); setProgress(null);
     try { await onAdded(); } catch { /* list refresh is best-effort */ }
     const ok = todo.length - failed.size;
-    if (failed.size) Alert.alert(`${ok} uploaded, ${failed.size} failed`, limitHit ? "This course has reached its file limit. Delete some files, then retry the rest." : "The ones that failed are still in the list with the reason — tap Upload to retry them.");
+    if (failed.size) Alert.alert(`${ok} uploaded, ${failed.size} failed`, limitHit ? "This course has reached its file limit. Delete some files, then retry the rest." : "The ones that failed are still in the list with the reason. Tap Upload to retry them.");
   };
 
   const ready = files.filter((f) => f.title.trim()).length;
 
   return (
     <View>
-      <Muted>Choose one or many files at once — PDF, images, Word, PowerPoint, Excel or text, up to 10 MB each.</Muted>
-      <Btn ghost label={files.length ? "➕ Add more files" : "📎 Choose files"} onPress={pick} disabled={busy} />
+      <Muted>Choose one or many files at once. PDF, images, Word, PowerPoint, Excel or text, up to 10 MB each.</Muted>
+      <Btn ghost label={files.length ? "Add more files" : "Choose files"} onPress={pick} disabled={busy} />
       {files.map((f) => (
         <View key={f.key} style={{ marginTop: spacing.sm }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <Muted style={{ flex: 1 }} numberOfLines={1}>{f.name}{f.size != null ? ` · ${fmtSize(f.size)}` : ""}</Muted>
-            {!busy && <PressableScale onPress={() => remove(f.key)} accessibilityLabel={`Remove ${f.name}`} style={{ padding: 6 }}><Text style={{ color: colors.danger, fontWeight: "700" }}>✕</Text></PressableScale>}
+            {!busy && <PressableScale onPress={() => remove(f.key)} accessibilityLabel={`Remove ${f.name}`} style={{ padding: 6 }}><EmojiIcon emoji="✕" style={{ color: colors.danger, fontWeight: "700" }} /></PressableScale>}
           </View>
           <TextInput style={s.input} value={f.title} onChangeText={(t) => setTitle(f.key, t)} editable={!busy} placeholder="Name students will see" placeholderTextColor={colors.textFaint} />
           {!!f.error && <Text style={{ color: colors.danger, fontSize: 13 }}>{f.error}</Text>}

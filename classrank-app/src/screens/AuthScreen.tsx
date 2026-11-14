@@ -150,7 +150,7 @@ export default function AuthScreen() {
             returnKeyType="done"
           />
           <PressableScale onPress={() => setShowPassword((v) => !v)} style={styles.showPassword} haptic="none" accessibilityRole="button" accessibilityLabel={showPassword ? "Hide password" : "Show password"}>
-            <Text style={styles.showPasswordText}>{showPassword ? "🙈 Hide" : "👁 Show"}</Text>
+            <Text style={styles.showPasswordText}>{showPassword ? "Hide" : "Show"}</Text>
           </PressableScale>
         </View>
 
@@ -173,7 +173,7 @@ export default function AuthScreen() {
               emptyText="No departments loaded yet"
             />
             {departments.length === 0 && (
-              <Text style={styles.hintText}>Loading departments — if this doesn't fill in, check your connection.</Text>
+              <Text style={styles.hintText}>Loading departments. If this doesn't fill in, check your connection.</Text>
             )}
           </>
         )}

@@ -71,8 +71,8 @@ export default function LeaderboardScreen() {
         </View>
         <Text style={styles.scopeLabel}>
           {tier === "Department" && `Ranked within ${profile.department}`}
-          {tier === "Faculty" && `Ranked within ${profile.faculty} — normalized for fairness`}
-          {tier === "Campus" && "Ranked campus-wide — normalized for fairness"}
+          {tier === "Faculty" && `Ranked within ${profile.faculty}, normalized for fairness`}
+          {tier === "Campus" && "Ranked campus-wide, normalized for fairness"}
         </Text>
       </View>
 
@@ -127,7 +127,7 @@ export default function LeaderboardScreen() {
           )}
           ListEmptyComponent={
             !leaderboardLoading && rows.length === 0 ? (
-              <Text style={styles.emptyText}>No rankings yet — be the first to take a quiz.</Text>
+              <Text style={styles.emptyText}>No rankings yet. Be the first to take a quiz.</Text>
             ) : null
           }
         />

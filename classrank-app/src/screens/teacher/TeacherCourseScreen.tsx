@@ -112,7 +112,7 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
             {bundle.events.length === 0 && <Muted>Post announcements and exam dates. Exam dates feed straight into students' planners.</Muted>}
             {bundle.events.map((e) => (
               <Card key={e.id} style={{ flexDirection: "row", alignItems: "center", marginTop: spacing.sm }}>
-                <View style={{ flex: 1 }}><Text style={s.h3}>{e.kind === "exam" ? "📝 " : "📣 "}{e.title}</Text><Muted>{e.event_date ?? ""}{e.body ? ` ${e.body}` : ""}</Muted></View>
+                <View style={{ flex: 1 }}><Text style={s.h3}>{e.title}</Text><Muted>{e.event_date ?? ""}{e.body ? ` ${e.body}` : ""}</Muted></View>
                 <PressableScale onPress={() => delEvent(e.id)} style={{ padding: spacing.sm }}><Text style={s.muted}>Delete</Text></PressableScale>
               </Card>
             ))}

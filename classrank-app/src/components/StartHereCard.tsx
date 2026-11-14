@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colors, radii, spacing, type } from "../theme/tokens";
 import PressableScale from "./animated/PressableScale";
 
+import EmojiIcon from "./EmojiIcon";
 const KEY = "steth.startHereDismissed";
 
 const STEPS: { icon: string; title: string; hint: string; target: string }[] = [
@@ -22,12 +23,12 @@ export default function StartHereCard({ onGo }: { onGo: (target: string) => void
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>👋 New here? Start here</Text>
+      <Text style={styles.title}>New here? Start here</Text>
       <Text style={styles.sub}>Tap any big button to begin.</Text>
       {STEPS.map((s, i) => (
         <PressableScale key={s.target} style={styles.row} onPress={() => onGo(s.target)} accessibilityRole="button" accessibilityLabel={`${s.title}. ${s.hint}`}>
           <View style={styles.badge}><Text style={styles.badgeText}>{i + 1}</Text></View>
-          <Text style={styles.icon}>{s.icon}</Text>
+          <EmojiIcon emoji={s.icon} style={styles.icon} />
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>{s.title}</Text>
             <Text style={styles.rowHint}>{s.hint}</Text>

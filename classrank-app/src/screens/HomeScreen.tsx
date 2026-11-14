@@ -18,6 +18,7 @@ import { effectiveStreak } from "../utils/streak";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 
+import EmojiIcon from "../components/EmojiIcon";
 type Props = BottomTabScreenProps<MainTabParamList, "Home">;
 
 const MILESTONE_STEP = 500;
@@ -68,8 +69,8 @@ export default function HomeScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.container}>
         <ArenaBackground>
           <View style={styles.heroInner}>
-            <Text style={styles.greeting}>{hello}, {profile.name.split(" ")[0]} 👋</Text>
-            <Text style={styles.heroSubtitle}>{plannedMin > 0 ? `You have ${plannedMin} minutes planned today${nextTimed ? ` · next at ${fmtTime12(nextTimed.time!)}` : ""}.` : "Nothing planned yet — let's fix that."}</Text>
+            <Text style={styles.greeting}>{hello}, {profile.name.split(" ")[0]}</Text>
+            <Text style={styles.heroSubtitle}>{plannedMin > 0 ? `You have ${plannedMin} minutes planned today${nextTimed ? ` · next at ${fmtTime12(nextTimed.time!)}` : ""}.` : "Nothing planned yet. Let's fix that."}</Text>
 
             <View style={styles.ringWrap}>
               <PulseRing size={160} strokeWidth={12} progress={plannedMin ? planProgress : ringProgress} color={colors.teal}>
@@ -78,7 +79,7 @@ export default function HomeScreen({ navigation }: Props) {
               </PulseRing>
             </View>
 
-            <Text style={styles.milestoneCaption}>{plannedMin ? (doneMin >= plannedMin ? "Today's plan is done 🎉" : `${plannedMin - doneMin} min left in today's plan`) : `${pointsToNext} pts to your next milestone`}</Text>
+            <Text style={styles.milestoneCaption}>{plannedMin ? (doneMin >= plannedMin ? "Today's plan is done" : `${plannedMin - doneMin} min left in today's plan`) : `${pointsToNext} pts to your next milestone`}</Text>
 
             <View style={styles.chipRow}>
               <View style={styles.chip}>
@@ -88,7 +89,7 @@ export default function HomeScreen({ navigation }: Props) {
               </View>
 
               <View style={[styles.chip, styles.chipViolet]}>
-                <Text style={styles.chipRank}>{departmentRank ? `#${departmentRank}` : "—"}</Text>
+                <Text style={styles.chipRank}>{departmentRank ? `#${departmentRank}` : "N/A"}</Text>
                 <Text style={styles.chipLabel}>in department</Text>
               </View>
             </View>
@@ -100,7 +101,7 @@ export default function HomeScreen({ navigation }: Props) {
         {news.length > 0 && (
           <Reveal>
           <PressableScale style={[styles.planCard, { backgroundColor: colors.emberTint }]} onPress={() => go("Course", { courseId: news[0].course_id })} accessibilityRole="button">
-            <Text style={styles.quizCardTitle}>📣 {news[0].course_code}: {news[0].title}</Text>
+            <Text style={styles.quizCardTitle}>{news[0].course_code}: {news[0].title}</Text>
             {!!news[0].body && <Text style={styles.quizCardSubtitle} numberOfLines={2}>{news[0].body}</Text>}
             {news.length > 1 && <Text style={styles.quizCardSubtitle}>+{news.length - 1} more recent announcement{news.length > 2 ? "s" : ""}</Text>}
           </PressableScale>
@@ -113,14 +114,14 @@ export default function HomeScreen({ navigation }: Props) {
           ) : (
             plan.map((s) => (
               <Text key={s.id} style={styles.quizCardSubtitle}>
-                {s.status === "done" ? "✅" : s.status === "skipped" ? "⏭" : "•"} {s.time ? `${fmtTime12(s.time)} · ` : ""}{subjectName(study, s.subjectId)} — {s.minutes} min
+                {s.status === "done" ? "Done · " : s.status === "skipped" ? "Skipped · " : ""}{s.time ? `${fmtTime12(s.time)} · ` : ""}{subjectName(study, s.subjectId)}, {s.minutes} min
               </Text>
             ))
           )}
           <Text style={[styles.quizCardSubtitle, { marginTop: spacing.sm }]}>
             ⏱ {thisWeek} min focused this week{lastWeek > 0 ? ` (${thisWeek >= lastWeek ? "+" : "-"}${Math.round((Math.abs(thisWeek - lastWeek) / lastWeek) * 100)}% vs last week)` : ""}
           </Text>
-          {weak && <Text style={[styles.quizCardSubtitle, { marginTop: 4 }]}>⚠️ Weakest topic: {weak.name} ({weak.accuracy}%)</Text>}
+          {weak && <Text style={[styles.quizCardSubtitle, { marginTop: 4 }]}>Weakest topic: {weak.name} ({weak.accuracy}%)</Text>}
           <Text style={styles.recText}>{rec.text}</Text>
           {rec.steps && <Text style={styles.quizCardSubtitle}>{rec.steps.join("  →  ")}</Text>}
           <PressableScale style={styles.recBtn} onPress={() => go(rec.target, rec.params)} haptic="medium">
@@ -131,7 +132,7 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.tiles}>
           {([["🗓", "Planner", "Planner"], ["🎯", "Practice", "Practice"], ["📈", "Progress", "Progress"], ["🤖", "AI tutor", "Companion"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
             <PressableScale key={target} style={styles.tile} onPress={() => go(target)} accessibilityRole="button">
-              <Text style={{ fontSize: 22 }}>{icon}</Text>
+              <EmojiIcon emoji={icon} style={{ fontSize: 22 }} />
               <Text style={styles.tileText}>{label}</Text>
             </PressableScale>
           ))}
@@ -146,14 +147,14 @@ export default function HomeScreen({ navigation }: Props) {
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.quizCardTitle}>
-              {hasCompletedTodaysQuiz ? "Department quiz — done ✅" : "Ranked department quiz is ready"}
+              {hasCompletedTodaysQuiz ? "Department quiz: done" : "Ranked department quiz is ready"}
             </Text>
             <Text style={styles.quizCardSubtitle}>
               {hasCompletedTodaysQuiz
                 ? "Come back tomorrow to keep your streak alive."
                 : todaysQuestions.length > 0
                 ? `${todaysQuestions.length} questions · ${profile.department}`
-                : "No quiz published yet — check back soon."}
+                : "No quiz published yet. Check back soon."}
             </Text>
           </View>
           {!hasCompletedTodaysQuiz && todaysQuestions.length > 0 && (
@@ -166,7 +167,7 @@ export default function HomeScreen({ navigation }: Props) {
         <PressableScale style={styles.studyCard} onPress={() => go("Study", plan.find((x) => x.status === "planned") ? { subject: subjectName(study, plan.find((x) => x.status === "planned")!.subjectId) } : undefined)} haptic="medium" accessibilityRole="button">
           <View style={{ flex: 1 }}>
             <Text style={styles.quizCardTitle}>⏱ Focus mode</Text>
-            <Text style={styles.quizCardSubtitle}>Continue studying — timer on, notifications muted, screen stays on.</Text>
+            <Text style={styles.quizCardSubtitle}>Continue studying. Timer on, notifications muted, screen stays on.</Text>
           </View>
         </PressableScale>
 
@@ -174,7 +175,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.infoTitle}>How ranking works</Text>
           <Text style={styles.infoText}>
             Your points are compared first within {profile.department}, so you're always ranked fairly against
-            students in your own field — then rolled up into your faculty and campus-wide leaderboards.
+            students in your own field, then rolled up into your faculty and campus-wide leaderboards.
           </Text>
         </View>
       </ScrollView>

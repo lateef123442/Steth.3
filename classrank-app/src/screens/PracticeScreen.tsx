@@ -8,8 +8,9 @@ import { useStudy, questionPool, topicStats, scoreHistory, subjectName, attempte
 import StaggerIn from "../components/animated/StaggerIn";
 import { WRAP } from "../components/responsive";
 
+import EmojiIcon from "../components/EmojiIcon";
 const MODES: { mode: QuizMode; icon: string; title: string; blurb: (n: number) => string; need: "subject" | "topic" | "any" }[] = [
-  { mode: "review", icon: "🔁", title: "Spaced Review", blurb: () => "3–5 questions from each topic that is due or that you are struggling with", need: "any" },
+  { mode: "review", icon: "🔁", title: "Spaced Review", blurb: () => "3 to 5 questions from each topic that is due or that you are struggling with", need: "any" },
   { mode: "quick", icon: "⚡", title: "Quick Quiz", blurb: () => "5 questions, leaning toward your weak spots", need: "any" },
   { mode: "topic", icon: "🎯", title: "Topic Quiz", blurb: () => "Drill one topic", need: "topic" },
   { mode: "subject", icon: "📚", title: "Subject Quiz", blurb: (n) => `Up to ${Math.min(n, QUIZ_SIZE.subject)} questions across the subject`, need: "subject" },
@@ -29,7 +30,7 @@ export default function PracticeScreen({ navigation }: any) {
 
   const count = (m: (typeof MODES)[number]) => questionPool(data, m.mode, subjectId ?? undefined, topicId ?? undefined).length;
   const start = (m: (typeof MODES)[number]) => navigation.navigate("PracticeSession", { mode: m.mode, subjectId: subjectId ?? undefined, topicId: topicId ?? undefined });
-  const blocked = (m: (typeof MODES)[number]) => (m.mode === "topic" && !topicId) ? "Pick a topic above" : ((m.mode === "subject" || m.mode === "mock") && !subjectId) ? "Pick a subject above" : count(m) === 0 ? (m.mode === "review" ? "Nothing due — you're on top of it" : "No questions yet") : null;
+  const blocked = (m: (typeof MODES)[number]) => (m.mode === "topic" && !topicId) ? "Pick a topic above" : ((m.mode === "subject" || m.mode === "mock") && !subjectId) ? "Pick a subject above" : count(m) === 0 ? (m.mode === "review" ? "Nothing due. You're on top of it" : "No questions yet") : null;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -62,9 +63,9 @@ export default function PracticeScreen({ navigation }: any) {
               return (
                 <StaggerIn key={m.mode} index={mi}><Card onPress={() => (why ? null : start(m))} style={why ? { opacity: 0.5 } : undefined}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Text style={{ fontSize: 26, marginRight: spacing.md }}>{m.icon}</Text>
+                    <EmojiIcon emoji={m.icon} style={{ fontSize: 26, marginRight: spacing.md }} />
                     <View style={{ flex: 1 }}>
-                      <Text style={s.h3}>{m.title}{done ? "  ✅" : ""}</Text>
+                      <Text style={s.h3}>{m.title}{done ? "  · Done" : ""}</Text>
                       <Muted>{why ?? m.blurb(count(m))}</Muted>
                     </View>
                   </View>
@@ -77,14 +78,14 @@ export default function PracticeScreen({ navigation }: any) {
 
         <Label>RANKED</Label>
         <Card onPress={() => navigation.navigate("Quiz")} style={hasCompletedTodaysQuiz ? { opacity: 0.6 } : undefined}>
-          <Text style={s.h3}>🏆 Department quiz {hasCompletedTodaysQuiz ? "— done ✅" : ""}</Text>
+          <Text style={s.h3}>Department quiz{hasCompletedTodaysQuiz ? ": done" : ""}</Text>
           <Muted>{hasCompletedTodaysQuiz ? "Back tomorrow." : todaysQuestions.length ? `${todaysQuestions.length} questions · counts toward your leaderboard rank` : "No quiz published yet."}</Muted>
         </Card>
 
         {recent.length > 0 && (
           <>
             <Label>RECENT RESULTS</Label>
-            {trend !== null && <Muted style={{ marginBottom: spacing.sm }}>{trend > 0 ? `📈 Your last 3 quizzes averaged ${trend} points higher than the 3 before.` : trend < 0 ? `📉 Your last 3 quizzes averaged ${-trend} points lower. Worth a review.` : "Holding steady."}</Muted>}
+            {trend !== null && <Muted style={{ marginBottom: spacing.sm }}>{trend > 0 ? `Your last 3 quizzes averaged ${trend} points higher than the 3 before.` : trend < 0 ? `Your last 3 quizzes averaged ${-trend} points lower. Worth a review.` : "Holding steady."}</Muted>}
             {[...data.attempts].slice(-5).reverse().map((a) => {
               const p = Math.round((a.correct / Math.max(a.total, 1)) * 100);
               return (

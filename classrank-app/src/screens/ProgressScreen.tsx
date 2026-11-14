@@ -21,7 +21,7 @@ export default function ProgressScreen({ navigation }: any) {
   const delta = prev > 0 ? Math.round(((week - prev) / prev) * 100) : null;
   const stats: [string, string][] = [
     ["Study streak", `${studyStreak(data)} days`], ["Best streak", `${longestStudyStreak(data)} days`], ["This week", `${week} min`],
-    ["All time", `${Math.round((totalFocusMinutes(data) / 60) * 10) / 10} h`], ["Questions", `${totalAnswers(data)}`], ["Accuracy", acc === null ? "—" : `${acc}%`],
+    ["All time", `${Math.round((totalFocusMinutes(data) / 60) * 10) / 10} h`], ["Questions", `${totalAnswers(data)}`], ["Accuracy", acc === null ? "N/A" : `${acc}%`],
     ["Cards due", `${dueCards(data).length}`], ["Level", `${xp.level}`],
   ];
   return (
@@ -29,7 +29,7 @@ export default function ProgressScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }}>
         <Back onPress={() => navigation.goBack()} />
         <Text style={s.h1}>Your progress</Text>
-        {delta !== null && <Muted style={{ marginTop: 4 }}>You studied {week} min this week — {delta >= 0 ? `${delta}% more` : `${-delta}% less`} than last week.</Muted>}
+        {delta !== null && <Muted style={{ marginTop: 4 }}>You studied {week} min this week, {delta >= 0 ? `${delta}% more` : `${-delta}% less`} than last week.</Muted>}
         <View style={[s.row, { marginTop: spacing.lg }]}>
           {stats.map(([k, v]) => <Card key={k} style={{ width: "31%", flexGrow: 1 }}><Text style={s.h2}>{v}</Text><Muted>{k}</Muted></Card>)}
         </View>
@@ -87,7 +87,7 @@ export default function ProgressScreen({ navigation }: any) {
             <Label>KNOWLEDGE GAPS</Label>
             {gaps.slice(0, 6).map((g, i) => (
               <Card key={i} onPress={() => navigation.navigate("Subject", { subjectId: g.subjectId })}>
-                <Text style={s.h3}>{{ weak: "🔴", overdue: "🟠", untested: "⚪", empty: "📭" }[g.kind]} {g.title}</Text>
+                <Text style={s.h3}>{g.title}</Text>
                 <Muted>{g.detail}</Muted>
               </Card>
             ))}
@@ -97,7 +97,7 @@ export default function ProgressScreen({ navigation }: any) {
         <Label>ACHIEVEMENTS</Label>
         {achievements(data).map((a) => (
           <Card key={a.id} style={{ opacity: a.earned ? 1 : 0.7 }}>
-            <Text style={s.h3}>{a.earned ? "🏅 " : ""}{a.title}</Text>
+            <Text style={s.h3}>{a.title}</Text>
             <Muted>{a.desc}</Muted>
             {!a.earned && <View style={{ marginTop: 6 }}><Bar value={a.have / a.need} color={colors.violet} /></View>}
           </Card>

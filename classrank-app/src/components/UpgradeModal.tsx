@@ -7,13 +7,14 @@ import { getProOffering, purchasePackage, restorePurchases } from "../lib/purcha
 import { useApp } from "../context/AppContext";
 import { track, AnalyticsEvents } from "../lib/analytics";
 
+import EmojiIcon from "./EmojiIcon";
 interface Props {
   visible: boolean;
   onClose: () => void;
 }
 
 const BENEFITS = [
-  { emoji: "🛡️", title: "Streak Shield", body: "Miss one day without losing your streak — free accounts reset immediately." },
+  { emoji: "🛡️", title: "Streak Shield", body: "Miss one day without losing your streak. Free accounts reset immediately." },
   { emoji: "👑", title: "Pro Badge", body: "A gold crown next to your name on every leaderboard." },
   { emoji: "💜", title: "Support the app", body: "Keeps quizzes free for the whole department." },
 ];
@@ -35,7 +36,7 @@ export default function UpgradeModal({ visible, onClose }: Props) {
     getProOffering()
       .then((o) => {
         setOffering(o);
-        if (!o) setError("Subscriptions aren't configured yet — check EXPO_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY.");
+        if (!o) setError("Subscriptions aren't configured yet. Check EXPO_PUBLIC_REVENUECAT_IOS_KEY / _ANDROID_KEY.");
       })
       .finally(() => setLoadingOffering(false));
   }, [visible]);
@@ -59,7 +60,7 @@ export default function UpgradeModal({ visible, onClose }: Props) {
       // Purchase genuinely succeeded (Apple/Google already charged) — this
       // just means our DB mirror hasn't caught up yet. Say so plainly
       // rather than implying something went wrong.
-      setError("Purchase complete — your Pro status will appear within a minute.");
+      setError("Purchase complete. Your Pro status will appear within a minute.");
     }
   };
 
@@ -89,7 +90,7 @@ export default function UpgradeModal({ visible, onClose }: Props) {
 
             {BENEFITS.map((b) => (
               <View key={b.title} style={styles.benefitRow}>
-                <Text style={styles.benefitEmoji}>{b.emoji}</Text>
+                <EmojiIcon emoji={b.emoji} style={styles.benefitEmoji} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.benefitTitle}>{b.title}</Text>
                   <Text style={styles.benefitBody}>{b.body}</Text>
@@ -99,7 +100,7 @@ export default function UpgradeModal({ visible, onClose }: Props) {
 
             {success ? (
               <View style={styles.successBox}>
-                <Text style={styles.successText}>🎉 You're Pro! Welcome to the club.</Text>
+                <Text style={styles.successText}>You're Pro! Welcome to the club.</Text>
               </View>
             ) : loadingOffering ? (
               <ActivityIndicator color={colors.teal} style={{ marginVertical: spacing.xl }} />

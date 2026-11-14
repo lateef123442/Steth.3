@@ -10,7 +10,8 @@ import {
   PRO_BANK, PRO_PRICE_NAIRA, uploadReceipt, openWhatsApp, redeemProCode, cleanCode, fetchMyPaymentRequests, MyPaymentRequest,
 } from "../lib/proApi";
 
-const STATUS = { pending: "Waiting for the admin", approved: "Approved — check WhatsApp for your code", rejected: "Not approved" } as const;
+import EmojiIcon from "./EmojiIcon";
+const STATUS = { pending: "Waiting for the admin", approved: "Approved. Check WhatsApp for your code", rejected: "Not approved" } as const;
 
 /**
  * How a student gets Pro: pay by bank transfer → upload the receipt → message the admin on WhatsApp → type the one-time
@@ -31,7 +32,7 @@ export default function ProPaymentModal({ visible, onClose }: { visible: boolean
     if (!profile) return;
     setUploading(true);
     try {
-      if (await uploadReceipt(profile.id)) { loadReqs(); Alert.alert("Receipt uploaded ✅", "Now tap “Send on WhatsApp” so the admin can send your code."); }
+      if (await uploadReceipt(profile.id)) { loadReqs(); Alert.alert("Receipt uploaded", "Now tap “Send on WhatsApp” so the admin can send your code."); }
     } catch (e: any) { Alert.alert("Couldn't upload receipt", e?.message ?? "Check your connection and try again."); }
     finally { setUploading(false); }
   };
@@ -60,13 +61,13 @@ export default function ProPaymentModal({ visible, onClose }: { visible: boolean
       <ProGateExempt>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.paper }}>
         <View style={st.top}>
-          <Text style={[type.h2, { color: colors.text }]}>👑 Steth Pro</Text>
-          <PressableScale onPress={onClose} style={{ padding: spacing.sm }} accessibilityLabel="Close"><Text style={{ fontSize: 22, color: colors.textMuted }}>✕</Text></PressableScale>
+          <Text style={[type.h2, { color: colors.text }]}>Steth Pro</Text>
+          <PressableScale onPress={onClose} style={{ padding: spacing.sm }} accessibilityLabel="Close"><EmojiIcon emoji="✕" style={{ fontSize: 22, color: colors.textMuted }} /></PressableScale>
         </View>
         <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, width: "100%", maxWidth: 560, alignSelf: "center" }} keyboardShouldPersistTaps="handled">
           {done ? (
             <View style={[st.card, { alignItems: "center", gap: spacing.sm }]}>
-              <Text style={{ fontSize: 44 }}>🎉</Text>
+              <EmojiIcon emoji="🎉" style={{ fontSize: 44 }} />
               <Text style={[type.h2, { color: colors.text }]}>You're Pro!</Text>
               <Text style={[type.body, { color: colors.textMuted, textAlign: "center" }]}>{done} of access added to your account.</Text>
               <PressableScale style={st.primary} onPress={onClose}><Text style={st.primaryText}>Start learning</Text></PressableScale>
@@ -87,7 +88,7 @@ export default function ProPaymentModal({ visible, onClose }: { visible: boolean
               <View style={st.card}>
                 <Text style={st.step}>2 · Upload your payment receipt</Text>
                 <PressableScale style={[st.primary, uploading && { opacity: 0.6 }]} onPress={sendReceipt} disabled={uploading}>
-                  {uploading ? <ActivityIndicator color="#fff" /> : <Text style={st.primaryText}>📤 Upload receipt</Text>}
+                  {uploading ? <ActivityIndicator color="#fff" /> : <Text style={st.primaryText}>Upload receipt</Text>}
                 </PressableScale>
                 {reqs.slice(0, 3).map((r) => (
                   <Text key={r.id} style={{ color: r.status === "rejected" ? colors.danger : colors.textMuted, fontSize: 13 }}>
@@ -98,7 +99,7 @@ export default function ProPaymentModal({ visible, onClose }: { visible: boolean
 
               <View style={st.card}>
                 <Text style={st.step}>3 · Tell the admin on WhatsApp</Text>
-                <PressableScale style={[st.primary, { backgroundColor: "#25D366" }]} onPress={whatsapp}><Text style={st.primaryText}>💬 Send on WhatsApp (09049348938)</Text></PressableScale>
+                <PressableScale style={[st.primary, { backgroundColor: "#25D366" }]} onPress={whatsapp}><Text style={st.primaryText}>Send on WhatsApp (09049348938)</Text></PressableScale>
                 <Text style={{ color: colors.textMuted, fontSize: 13 }}>The admin checks your payment and sends you a 13-character code. It works once.</Text>
               </View>
 

@@ -120,7 +120,7 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
 
       <Label>DRAFT WITH AI</Label>
       <Muted>Drafts 5 questions from {effTopic ? `“${topicName(effTopic)}”` : "this course's resources"}. Check each one: AI can be wrong. Nothing reaches students until you publish it.</Muted>
-      <Btn ghost label={drafting ? "Drafting…" : "✨ Draft 5 questions"} onPress={draftWithAi} disabled={drafting || !hasSource} />
+      <Btn ghost label={drafting ? "Drafting…" : "Draft 5 questions"} onPress={draftWithAi} disabled={drafting || !hasSource} />
       {!hasSource && <Muted>Add a resource first so the questions are based on your content.</Muted>}
       {drafts.map((d, i) => (
         <Card key={i} style={{ marginTop: spacing.sm }}>

@@ -4,6 +4,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withDelay, withTiming, Easi
 import { colors, radii, spacing, type } from "../theme/tokens";
 import { LeaderboardEntry } from "../types";
 
+import EmojiIcon from "./EmojiIcon";
 interface Props {
   top3: LeaderboardEntry[];
   currentUserId?: string;
@@ -42,7 +43,7 @@ function PodiumColumn({ entry, place, height, color, delay, isCurrentUser }: {
         <Text style={styles.avatarText}>{initials}</Text>
       </View>
       <Text style={styles.podiumName} numberOfLines={1}>
-        {entry.is_pro ? "👑 " : ""}
+        {entry.is_pro ? <EmojiIcon emoji="👑" size={14} /> : null}{entry.is_pro ? " " : ""}
         {entry.name}
       </Text>
       <Text style={styles.podiumPoints}>{entry.points.toLocaleString()}</Text>

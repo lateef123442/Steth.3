@@ -14,7 +14,7 @@ import { useStudy, getStudyData, focusMinutesSince, dateStr } from "../../lib/st
 import { WRAP } from "../../components/responsive";
 
 type Kind = GroupPost["kind"];
-const KINDS: { k: Kind; label: string }[] = [{ k: "discussion", label: "💬 Discussion" }, { k: "question", label: "❓ Question" }, { k: "resource", label: "📎 Resource" }];
+const KINDS: { k: Kind; label: string }[] = [{ k: "discussion", label: "Discussion" }, { k: "question", label: "Question" }, { k: "resource", label: "Resource" }];
 const ago = (iso: string) => { const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
 
 export default function GroupDetailScreen({ navigation, route }: any) {
@@ -96,8 +96,8 @@ export default function GroupDetailScreen({ navigation, route }: any) {
         <Text style={s.h1}>{group?.name ?? "Group"}</Text>
         {group?.official && <Muted>Class group{group.year ? ` · Year ${group.year}` : ""}. Everyone in your department and year is in here.</Muted>}
         <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm }}>
-          <View style={{ flex: 1 }}><Btn label="💬 Group chat" onPress={() => navigation.navigate("GroupChat", { groupId, name: group?.name ?? "Group" })} /></View>
-          <View style={{ flex: 1 }}><Btn ghost label="👥 Members" onPress={() => navigation.navigate("GroupMembers", { groupId, name: group?.name ?? "Group" })} /></View>
+          <View style={{ flex: 1 }}><Btn label="Group chat" onPress={() => navigation.navigate("GroupChat", { groupId, name: group?.name ?? "Group" })} /></View>
+          <View style={{ flex: 1 }}><Btn ghost label="Members" onPress={() => navigation.navigate("GroupMembers", { groupId, name: group?.name ?? "Group" })} /></View>
         </View>
         <Muted>{group?.member_count ?? 0} members{group?.description ? ` · ${group.description}` : ""}</Muted>
         {isOwner && group?.join_code && <Card style={{ marginTop: spacing.md, backgroundColor: colors.violetTint, borderWidth: 0 }}><Muted>Invite code</Muted><Text style={s.h2}>{group.join_code}</Text></Card>}
@@ -105,11 +105,11 @@ export default function GroupDetailScreen({ navigation, route }: any) {
         <Label>CHALLENGE</Label>
         {live ? (
           <Card>
-            <Text style={s.h3}>🏁 {challenge!.title}</Text>
+            <Text style={s.h3}>{challenge!.title}</Text>
             <Muted>{challenge!.target_minutes} focus minutes each · ends {challenge!.ends_on}</Muted>
             <View style={{ marginVertical: spacing.sm }}><Bar value={mine / challenge!.target_minutes} color={colors.violet} /></View>
             <Text style={type.bodyMedium}>You: {mine} / {challenge!.target_minutes} min</Text>
-            {standings.slice(0, 5).map((x, i) => <Muted key={x.profile_id} style={{ marginTop: 2 }}>{i + 1}. {x.name}{x.profile_id === profile?.id ? " (you)" : ""} — {x.minutes} min</Muted>)}
+            {standings.slice(0, 5).map((x, i) => <Muted key={x.profile_id} style={{ marginTop: 2 }}>{i + 1}. {x.name}{x.profile_id === profile?.id ? " (you)" : ""}, {x.minutes} min</Muted>)}
             <Muted style={{ marginTop: 6 }}>Minutes come from your own Focus sessions and update when you open this screen.</Muted>
           </Card>
         ) : isOwner ? (
@@ -130,7 +130,7 @@ export default function GroupDetailScreen({ navigation, route }: any) {
             {quizzes.length === 0 && <Muted>No quizzes yet. Share one made from your own practice questions.</Muted>}
             {quizzes.map((qz) => (
               <Card key={qz.id} style={{ marginTop: spacing.sm }}>
-                <Text style={s.h3}>🧠 {qz.title}</Text>
+                <Text style={s.h3}>{qz.title}</Text>
                 <Muted>{qz.question_count} questions · by {qz.author_name} · {qz.participants} taken</Muted>
                 <View style={[s.row, { marginTop: spacing.sm }]}>
                   <Chip label={qz.my_result ? `Your score: ${qz.my_result.correct}/${qz.my_result.total} · results` : "Take quiz"} on={!qz.my_result} onPress={() => navigation.navigate("GroupQuiz", { quizId: qz.id })} />

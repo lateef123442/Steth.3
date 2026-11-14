@@ -64,7 +64,7 @@ export default function CourseDailyScreen({ navigation, route }: any) {
         ) : null}
         <Empty icon={finished ? "🎉" : "📘"} title={finished ? "Nice work" : "No questions right now"} body={why} />
         <Btn label="Back to the course" onPress={() => navigation.goBack()} />
-        {score.total > 0 && score.right < score.total && <Btn ghost label="🤖 Ask the AI guide about what I missed" onPress={() => navigation.navigate("Companion", { prompt: `I just did the ${code ?? "course"} daily quiz and got ${score.total - score.right} wrong. Help me revise the topics I'm weakest in.` })} />}
+        {score.total > 0 && score.right < score.total && <Btn ghost label="Ask the AI guide about what I missed" onPress={() => navigation.navigate("Companion", { prompt: `I just did the ${code ?? "course"} daily quiz and got ${score.total - score.right} wrong. Help me revise the topics I'm weakest in.` })} />}
       </Screen>
     );
   }
@@ -100,7 +100,7 @@ export default function CourseDailyScreen({ navigation, route }: any) {
           <Text style={[s.h3, { color: res.is_correct ? colors.success : colors.danger }]}>{res.already_answered ? "You already answered this one" : res.is_correct ? `Correct! +${res.points_earned} pts` : "Not quite"}</Text>
           {!!res.explanation && <Text style={[type.body, { color: colors.text, marginTop: 4 }]}>{res.explanation}</Text>}
           {!res.is_correct && !res.explanation && <Muted>The right answer was {LETTERS[res.correct_index]}.</Muted>}
-          <Btn ghost label={res.is_correct ? "🤖 Go deeper with the AI guide" : "🤖 Explain this with the AI guide"} onPress={askAi} />
+          <Btn ghost label={res.is_correct ? "Go deeper with the AI guide" : "Explain this with the AI guide"} onPress={askAi} />
         </Card>
       )}
       {res && <Btn label={i === qs.length - 1 ? "Finish" : "Next question"} onPress={next} />}

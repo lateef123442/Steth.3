@@ -7,6 +7,7 @@ import PressableScale from "./animated/PressableScale";
 import ConfettiBurst from "./animated/ConfettiBurst";
 import { BadgeDef } from "../data/badges";
 
+import EmojiIcon from "./EmojiIcon";
 interface Props {
   badge: BadgeDef | null;
   onDismiss: () => void;
@@ -34,7 +35,7 @@ export default function BadgeCelebrationModal({ badge, onDismiss }: Props) {
         <View style={styles.card}>
           <Text style={styles.eyebrow}>New Badge Unlocked</Text>
           <Animated.View style={[styles.badgeCircle, badgeStyle]}>
-            <Text style={styles.badgeEmoji}>{badge?.emoji}</Text>
+            <EmojiIcon emoji={badge?.emoji ?? ""} style={styles.badgeEmoji} />
           </Animated.View>
           <Text style={styles.badgeLabel}>{badge?.label}</Text>
           <PressableScale style={styles.button} onPress={onDismiss} haptic="medium">

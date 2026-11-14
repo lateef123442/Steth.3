@@ -8,6 +8,7 @@ import { ProGateContext } from "./proGateCore";
 import { useApp } from "../context/AppContext";
 import { hasActivePro, redeemProCode, cleanCode, PRO_PRICE_NAIRA } from "../lib/proApi";
 
+import EmojiIcon from "./EmojiIcon";
 /**
  * Students without active Pro can look around the whole app, but the moment they try to USE something (tap a button,
  * open a quiz, start a chat…) they get this prompt: subscribe to Pro, or type a subscription code to continue.
@@ -38,7 +39,7 @@ export function ProGateProvider({ children }: { children: React.ReactNode }) {
       if (!r.ok) { Alert.alert("Code not accepted", r.error); return; }
       await refreshProfileAfterPurchase();
       setOpen(false);
-      Alert.alert("You're Pro! 🎉", `${r.duration_days === 30 ? "1 month" : `${r.duration_days} days`} of access added. Enjoy!`);
+      Alert.alert("You're Pro!", `${r.duration_days === 30 ? "1 month" : `${r.duration_days} days`} of access added. Enjoy!`);
     } catch (e: any) { Alert.alert("Couldn't check code", e?.message ?? "Check your connection and try again."); }
     finally { setBusy(false); }
   };
@@ -51,9 +52,9 @@ export function ProGateProvider({ children }: { children: React.ReactNode }) {
       <Modal visible={open && !pay} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <KeyboardAvoidingView style={st.overlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <View style={st.card}>
-            <Text style={{ fontSize: 40, textAlign: "center" }}>👑</Text>
+            <EmojiIcon emoji="👑" style={{ fontSize: 40, textAlign: "center" }} />
             <Text style={st.title}>Subscribe to Pro to continue</Text>
-            <Text style={st.body}>You can look around freely, but using this feature needs Steth Pro — from ₦{PRO_PRICE_NAIRA.toLocaleString()} per month.</Text>
+            <Text style={st.body}>You can look around freely, but using this feature needs Steth Pro, from ₦{PRO_PRICE_NAIRA.toLocaleString()} per month.</Text>
 
             <PressableScale style={st.primary} onPress={() => setPay(true)} haptic="medium"><Text style={st.primaryText}>Subscribe to Pro</Text></PressableScale>
 

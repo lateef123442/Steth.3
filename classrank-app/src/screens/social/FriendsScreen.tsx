@@ -12,6 +12,7 @@ import {
   Friends, Conversation, Person, PersonResult,
 } from "../../lib/socialApi";
 
+import EmojiIcon from "../../components/EmojiIcon";
 type Tab = "Chats" | "Friends" | "Requests" | "Find people" | "Blocked";
 const sub = (p: { department: string | null; year: number | null }) => [p.department, p.year ? `Year ${p.year}` : null].filter(Boolean).join(" · ");
 const ago = (iso: string) => { const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
@@ -95,7 +96,7 @@ export default function FriendsScreen({ navigation }: any) {
             {friends?.friends.map((p) => personRow(p, (
               <View style={{ flexDirection: "row", gap: spacing.sm }}>
                 <Chip label="Message" on onPress={() => open(p)} />
-                <PressableScale onPress={() => Alert.alert(`Remove ${p.name}?`, "You won't be able to message each other until you add each other again.", [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => act(() => removeFriend(p.id), "Couldn't remove") }])} style={{ padding: spacing.sm }}><Text style={s.muted}>✕</Text></PressableScale>
+                <PressableScale onPress={() => Alert.alert(`Remove ${p.name}?`, "You won't be able to message each other until you add each other again.", [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => act(() => removeFriend(p.id), "Couldn't remove") }])} style={{ padding: spacing.sm }}><EmojiIcon emoji="✕" style={s.muted} /></PressableScale>
               </View>
             ), () => open(p)))}
           </Grid>

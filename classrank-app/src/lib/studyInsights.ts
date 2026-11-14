@@ -171,8 +171,8 @@ export function analyzeAttempt(d: StudyData, a: QuizAttempt) {
   });
   const list = [...groups.values()];
   const score = pct(a.correct, a.total);
-  const wentWell = list.filter((g) => pct(g.c, g.t) >= 80).map((g) => `${g.name} — ${g.c}/${g.t} correct`);
-  const struggled = list.filter((g) => pct(g.c, g.t) < 60).map((g) => `${g.name} — ${g.c}/${g.t} correct`);
+  const wentWell = list.filter((g) => pct(g.c, g.t) >= 80).map((g) => `${g.name}: ${g.c}/${g.t} correct`);
+  const struggled = list.filter((g) => pct(g.c, g.t) < 60).map((g) => `${g.name}: ${g.c}/${g.t} correct`);
   const revise = list.filter((g) => pct(g.c, g.t) < 70).map((g) => ({ topicId: g.topicId, subjectId: g.subjectId, name: g.name }));
   const skipped = a.answers.filter((x) => x.picked === null).length;
   let next: { text: string; cta: string; target: "Subject" | "PracticeSession" | "Practice"; params?: any };
@@ -225,7 +225,7 @@ export function recommend(d: StudyData): Recommendation {
 
   if (d.questions.length >= 3 && !attemptedToday(d)) return { text: "Your daily challenge is waiting. Five questions, a few minutes.", cta: "Start daily challenge", target: "PracticeSession", params: { mode: "daily" } };
   if (d.questions.length === 0) return { text: "Add practice questions to a subject (or generate them) so I can find your weak spots.", cta: "Open a subject", target: "Subject", params: { subjectId: d.subjects[0].id } };
-  return { text: todaySessions(d).length ? "Today's plan is done. Nice work — take a break." : "Nothing planned today. Add a short session?", cta: "Open planner", target: "Planner" };
+  return { text: todaySessions(d).length ? "Today's plan is done. Nice work. Take a break." : "Nothing planned today. Add a short session?", cta: "Open planner", target: "Planner" };
 }
 
 // ── schedule suggester ──
@@ -333,7 +333,7 @@ export function knowledgeGaps(d: StudyData): Gap[] {
   topicStats(d).filter((t) => t.answered === 0)
     .forEach((t) => gaps.push({ kind: "untested", title: t.name, detail: `Never practised in ${subjectName(d, t.subjectId)}`, subjectId: t.subjectId, topicId: t.id }));
   d.subjects.filter((s) => !d.topics.some((t) => t.subjectId === s.id) || !d.questions.some((q) => q.subjectId === s.id))
-    .forEach((s) => gaps.push({ kind: "empty", title: s.name, detail: !d.topics.some((t) => t.subjectId === s.id) ? "No topics yet — I can't tell what you're weak at" : "No practice questions yet", subjectId: s.id }));
+    .forEach((s) => gaps.push({ kind: "empty", title: s.name, detail: !d.topics.some((t) => t.subjectId === s.id) ? "No topics yet. I can't tell what you're weak at" : "No practice questions yet", subjectId: s.id }));
   return gaps;
 }
 
