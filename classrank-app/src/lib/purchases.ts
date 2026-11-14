@@ -17,7 +17,7 @@ export function configurePurchases() {
   if (Platform.OS === "web") return; // in-app purchases only exist in the phone apps
   const apiKey = Platform.OS === "ios" ? IOS_KEY : ANDROID_KEY;
   if (!apiKey) {
-    console.log("[purchases] No RevenueCat API key set — Go Pro paywall will show an error state.");
+    console.log("[purchases] No RevenueCat API key set, so the Go Pro paywall will show an error state.");
     return;
   }
   Purchases.configure({ apiKey });

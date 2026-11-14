@@ -479,7 +479,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAuthError(toUserMessage(error, "Couldn't send reset email."));
       return false;
     }
-    setAuthError("Password reset email sent — check your inbox.");
+    setAuthError("Password reset email sent. Check your inbox.");
     return true;
   };
 

@@ -13,7 +13,7 @@ let enabled = false;
 export function initErrorReporting() {
   if (!dsn) {
     if (__DEV__) {
-      console.log("[errorReporting] No EXPO_PUBLIC_SENTRY_DSN set — crash reporting disabled.");
+      console.log("[errorReporting] No EXPO_PUBLIC_SENTRY_DSN set, so crash reporting is off.");
     }
     return;
   }

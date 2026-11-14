@@ -35,7 +35,7 @@ export default function PlannerScreen({ navigation }: any) {
   const suggest = () => {
     const plan = generateSchedule(data, 7);
     if (!plan.length) return Alert.alert("Nothing to suggest", data.subjects.length ? "Your next 7 days are already full for your daily study time." : "Add a subject first.");
-    const preview = plan.slice(0, 6).map((p) => `${dayLabel(p.date)} ${fmtTime12(p.time)} — ${subjectName(data, p.subjectId)}${p.topicId ? ` (${topicName(data, p.topicId)})` : ""}, ${p.minutes} min`).join("\n");
+    const preview = plan.slice(0, 6).map((p) => `${dayLabel(p.date)} ${fmtTime12(p.time)} · ${subjectName(data, p.subjectId)}${p.topicId ? ` (${topicName(data, p.topicId)})` : ""}, ${p.minutes} min`).join("\n");
     Alert.alert(`Suggested week · ${plan.length} sessions`, `${preview}${plan.length > 6 ? `\n…and ${plan.length - 6} more` : ""}\n\nBased on your exams, weak areas, missed sessions and ${data.prefs.dailyMinutes} min/day.`, [
       { text: "Not now", style: "cancel" }, { text: "Add to planner", onPress: () => applySchedule(plan) },
     ]);
@@ -52,7 +52,7 @@ export default function PlannerScreen({ navigation }: any) {
     <Card style={{ flexDirection: "row", alignItems: "center" }}>
       <View style={{ flex: 1 }}>
         <Text style={[s.h3, x.status !== "planned" && { opacity: 0.5 }]}>{subjectName(data, x.subjectId)} · {x.minutes} min</Text>
-        <Muted>{x.time ? `${fmtTime12(x.time)} · ` : ""}{x.topicId ? `${topicName(data, x.topicId)} · ` : ""}{x.status === "planned" ? "Planned" : x.status === "done" ? "Completed ✅" : "Skipped"}</Muted>
+        <Muted>{x.time ? `${fmtTime12(x.time)} · ` : ""}{x.topicId ? `${topicName(data, x.topicId)} · ` : ""}{x.status === "planned" ? "Planned" : x.status === "done" ? "Completed" : "Skipped"}</Muted>
       </View>
       {x.status === "planned" ? (
         <View style={{ gap: 6 }}>
@@ -62,7 +62,7 @@ export default function PlannerScreen({ navigation }: any) {
           </View>
           <View style={s.row}>
             <Chip label="Skip" on={false} onPress={() => setSessionStatus(x.id, "skipped")} />
-            <Chip label="✕" on={false} onPress={() => removeSession(x.id)} />
+            <Chip label="Remove" on={false} onPress={() => removeSession(x.id)} />
           </View>
         </View>
       ) : (
@@ -76,7 +76,7 @@ export default function PlannerScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }} keyboardShouldPersistTaps="handled">
         <Back onPress={() => navigation.goBack()} />
         <Text style={s.h1}>Study planner</Text>
-        <Btn ghost label="✨ Suggest my week" onPress={suggest} disabled={!data.subjects.length} />
+        <Btn ghost label="Suggest my week" onPress={suggest} disabled={!data.subjects.length} />
 
         {missed.length > 0 && (
           <>

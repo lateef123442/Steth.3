@@ -85,8 +85,8 @@ export async function scheduleStreakReminder(departmentName: string): Promise<vo
   await Notifications.scheduleNotificationAsync({
     identifier: STREAK_REMINDER_ID,
     content: {
-      title: "Protect your streak 🔥",
-      body: `You haven't taken today's ${departmentName} quiz yet — a couple of minutes keeps it alive.`,
+      title: "Protect your streak",
+      body: `You haven't taken today's ${departmentName} quiz yet. A couple of minutes keeps it alive.`,
     },
     trigger: target,
   });
@@ -168,7 +168,7 @@ export async function runNotificationCheck(userId: string): Promise<Notification
 
   try {
     await Notifications.scheduleNotificationAsync({
-      content: { title: "Steth reminder test ✅", body: "Reminders on this phone are working." },
+      content: { title: "Steth reminder test", body: "Reminders on this phone are working." },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3 },
     });
   } catch (err: any) {
@@ -198,7 +198,7 @@ export async function runNotificationCheck(userId: string): Promise<Notification
   }
   const res = (data ?? {}) as { sent?: number; hasToken?: boolean; problem?: string };
   if (!res.hasToken) return { ok: false, title: "Phone not registered yet", message: "Your phone's token wasn't saved. Make sure the database update (migration 035) has been applied, then check again." };
-  if ((res.sent ?? 0) > 0) return { ok: true, title: "Everything works 🎉", message: "You should see two notifications: a reminder in a few seconds and a class-alert test just now." };
+  if ((res.sent ?? 0) > 0) return { ok: true, title: "Everything works", message: "You should see two notifications: a reminder in a few seconds and a class-alert test just now." };
   if (res.problem && FIREBASE_HINT.test(res.problem)) return { ok: false, title: "Reminders work, class alerts don't yet", message: FIREBASE_MESSAGE };
   return { ok: false, title: "Class alert didn't go through", message: res.problem || "The server accepted the request but no notification was delivered." };
 }

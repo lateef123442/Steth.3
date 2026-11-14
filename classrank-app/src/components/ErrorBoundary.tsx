@@ -36,7 +36,7 @@ export default class ErrorBoundary extends React.Component<Props, State> {
         <View style={styles.container}>
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.subtitle}>
-            The app hit an unexpected error. Try again — if it keeps happening, please report it.
+            The app hit an unexpected error. Try again. If it keeps happening, please report it.
           </Text>
           <TouchableOpacity style={styles.button} onPress={this.handleReset}>
             <Text style={styles.buttonText}>Try Again</Text>

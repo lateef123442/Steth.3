@@ -118,7 +118,7 @@ export default function TeacherExamsPanel({ courseId, questions, onChanged }: { 
           {questions.map((q) => (
             <PressableScale key={q.id} onPress={() => toggle(q.id)}>
               <Card style={{ borderColor: picked.has(q.id) ? colors.teal : colors.border, backgroundColor: picked.has(q.id) ? colors.tealTint : colors.card }}>
-                <Text style={s.muted} numberOfLines={2}>{picked.has(q.id) ? "☑ " : "☐ "}{q.question}</Text>
+                <Text style={s.muted} numberOfLines={2}>{picked.has(q.id) ? "✓ " : ""}{q.question}</Text>
                 {!!q.topic && <Muted>{q.topic}</Muted>}
               </Card>
             </PressableScale>

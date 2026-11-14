@@ -65,7 +65,7 @@ export default function CompanionScreen({ navigation, route }: any) {
     const plan = generateSchedule(data, 7);
     if (!plan.length) return reply(data.subjects.length ? `Your next 7 days are already full for ${data.prefs.dailyMinutes} min/day.` : "Add a subject first and I'll build a plan around it.");
     const day = (d: string) => (d === dateStr() ? "Today" : d === addDaysStr(1) ? "Tomorrow" : new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "long" }));
-    const lines = plan.map((p) => `${day(p.date)} ${fmtTime12(p.time)} — ${subjectName(data, p.subjectId)}${p.topicId ? ` (${topicName(data, p.topicId)})` : ""}, ${p.minutes} min`);
+    const lines = plan.map((p) => `${day(p.date)} ${fmtTime12(p.time)} · ${subjectName(data, p.subjectId)}${p.topicId ? ` (${topicName(data, p.topicId)})` : ""}, ${p.minutes} min`);
     reply(`Here's a week that fits ${data.prefs.dailyMinutes} min/day, weighted toward your exams and weak spots:\n\n${lines.join("\n")}`, { label: "Add to planner", run: () => { applySchedule(plan); reply("Added. You'll get reminders before each session."); } });
   };
 
@@ -73,9 +73,9 @@ export default function CompanionScreen({ navigation, route }: any) {
     setMsgs((m) => [...m, { role: "user", content: "What are my knowledge gaps?" }]);
     const gaps = knowledgeGaps(data);
     if (!gaps.length) return reply("Nothing stands out right now. Keep practising and I'll flag anything that slips.");
-    const icon = { weak: "🔴", overdue: "🟠", untested: "⚪", empty: "📭" } as const;
+    const icon = { weak: "weak", overdue: "due", untested: "new", empty: "empty" } as const;
     const first = gaps.find((g) => g.kind === "weak");
-    reply(gaps.slice(0, 8).map((g) => `${icon[g.kind]} ${g.title} — ${g.detail}`).join("\n"),
+    reply(gaps.slice(0, 8).map((g) => `${g.title} (${icon[g.kind]}): ${g.detail}`).join("\n"),
       first ? { label: `Practise ${first.title}`, run: () => navigation.navigate("PracticeSession", { mode: "topic", subjectId: first.subjectId, topicId: first.topicId }) } : undefined);
   };
 

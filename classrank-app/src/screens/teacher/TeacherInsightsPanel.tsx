@@ -15,7 +15,7 @@ export default function TeacherInsightsPanel({ courseId, stats, onDelete }: { co
   return (
     <>
       <Grid max={4} gap={spacing.sm}>
-        {[[`${stats.member_count}`, "students in this class"], [`${stats.active_7d}`, "active this week"], [`${stats.answers_total}`, "practice answers"], [stats.accuracy == null ? "—" : `${stats.accuracy}%`, "class accuracy"]].map(([v, k]) => (
+        {[[`${stats.member_count}`, "students in this class"], [`${stats.active_7d}`, "active this week"], [`${stats.answers_total}`, "practice answers"], [stats.accuracy == null ? "N/A" : `${stats.accuracy}%`, "class accuracy"]].map(([v, k]) => (
           <Card key={k}><Text style={s.h2}>{v}</Text><Muted>{k}</Muted></Card>
         ))}
       </Grid>

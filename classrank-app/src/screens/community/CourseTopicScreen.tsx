@@ -9,6 +9,7 @@ import { fmtSize } from "../../lib/fileRules";
 import { CourseBundle } from "../../lib/studyCourseSync";
 import { importCourseBundle, useStudy } from "../../lib/studyStore";
 
+import EmojiIcon from "../../components/EmojiIcon";
 const ICON = { note: "📝", link: "🔗", video: "🎬", file: "📎" } as const;
 
 /**
@@ -66,7 +67,7 @@ export default function CourseTopicScreen({ navigation, route }: any) {
     try {
       const r = await completeTopic(topic.id);
       await load();
-      Alert.alert(r.course_complete ? "Course finished 🎉" : "Topic finished ✅", r.course_complete ? "Your tests and exams are now unlocked, and every topic's practice is open." : "Practice questions for this topic are unlocked.");
+      Alert.alert(r.course_complete ? "Course finished" : "Topic finished", r.course_complete ? "Your tests and exams are now unlocked, and every topic's practice is open." : "Practice questions for this topic are unlocked.");
     } catch (e: any) { Alert.alert("Not yet", e?.message ?? "Try again."); } finally { setBusy(false); }
   };
   const askAi = (extra?: string) => navigation.navigate("Companion", { prompt: `I'm studying "${topic.title}" in ${bundle.course.code} ${bundle.course.title}. ${extra ?? "Explain the key ideas simply, then ask me a question to check I understand."}` });
@@ -80,7 +81,7 @@ export default function CourseTopicScreen({ navigation, route }: any) {
 
       <Card style={{ marginTop: spacing.lg }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={s.h3}>{finished ? "Topic finished ✅" : mats.length === 0 ? "No resources in this topic yet" : `${opened} of ${mats.length} resources opened`}</Text>
+          <Text style={s.h3}>{finished ? "Topic finished" : mats.length === 0 ? "No resources in this topic yet" : `${opened} of ${mats.length} resources opened`}</Text>
           {finished && <Tag label="Done" color={colors.success} />}
         </View>
         {mats.length > 0 && <View style={{ marginTop: spacing.sm }}><Bar value={opened / mats.length} color={finished ? colors.success : colors.teal} /></View>}
@@ -93,7 +94,7 @@ export default function CourseTopicScreen({ navigation, route }: any) {
         return (
           <Card key={m.id} onPress={() => openResource(m)}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-              <Text style={{ fontSize: 22 }}>{ICON[m.kind]}</Text>
+              <EmojiIcon emoji={ICON[m.kind]} style={{ fontSize: 22 }} />
               <View style={{ flex: 1 }}>
                 <Text style={s.h3} numberOfLines={2}>{m.title}</Text>
                 <Muted>{m.kind === "file" ? `${m.file_name ?? "file"}${m.file_size ? ` · ${fmtSize(m.file_size)}` : ""} · tap to open` : m.kind === "note" ? (isOpen ? "tap to collapse" : "tap to read") : "tap to open"}</Muted>
@@ -115,13 +116,13 @@ export default function CourseTopicScreen({ navigation, route }: any) {
       <Label>AI GUIDE</Label>
       <Card>
         <Muted>Stuck on something in this topic? Your study companion can explain it, give hints, or quiz you.</Muted>
-        <Btn ghost label="🤖 Explain this topic to me" onPress={() => askAi()} />
-        <Btn ghost label="🤖 Quiz me on what I've read" onPress={() => askAi("Ask me 3 short questions one at a time, and give hints rather than answers if I'm wrong.")} />
+        <Btn ghost label="Explain this topic to me" onPress={() => askAi()} />
+        <Btn ghost label="Quiz me on what I've read" onPress={() => askAi("Ask me 3 short questions one at a time, and give hints rather than answers if I'm wrong.")} />
       </Card>
 
       <Label>PRACTICE</Label>
       {!finished ? (
-        <Card><Text style={s.h3}>🔒 Locked</Text><Muted>Finish this topic to unlock its practice questions. You can retake them as often as you like.</Muted></Card>
+        <Card><Text style={s.h3}>Locked</Text><Muted>Finish this topic to unlock its practice questions. You can retake them as often as you like.</Muted></Card>
       ) : practiceQs.length === 0 ? (
         <Card><Muted>Your teacher hasn't added practice questions for this topic yet.</Muted></Card>
       ) : (

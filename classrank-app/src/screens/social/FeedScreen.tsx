@@ -10,6 +10,7 @@ import StaggerIn from "../../components/animated/StaggerIn";
 import AnimatedNumber from "../../components/animated/AnimatedNumber";
 import { track, AnalyticsEvents } from "../../lib/analytics";
 
+import EmojiIcon from "../../components/EmojiIcon";
 function timeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);
@@ -182,7 +183,7 @@ export default function FeedScreen() {
                 </PressableScale>
               </View>
             ) : (
-              <Text style={styles.emptyText}>No posts yet — be the first to share something.</Text>
+              <Text style={styles.emptyText}>No posts yet. Be the first to share something.</Text>
             )
           ) : null
         }
@@ -207,7 +208,7 @@ export default function FeedScreen() {
                 <Text style={styles.postContent}>{item.content}</Text>
                 <View style={styles.postFooter}>
                   <PressableScale style={styles.likeButton} onPress={() => handleLike(item)} haptic="light">
-                    <Text style={[styles.likeIcon, isLiked && styles.likeIconActive]}>{isLiked ? "♥" : "♡"}</Text>
+                    <EmojiIcon emoji={isLiked ? "♥" : "♡"} style={[styles.likeIcon, isLiked && styles.likeIconActive]} />
                     <AnimatedNumber value={item.like_count} style={styles.likeCount} duration={250} />
                   </PressableScale>
                   {(isMine || profile.role === "admin") && (

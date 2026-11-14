@@ -142,7 +142,7 @@ export default function AdminDepartmentsScreen() {
             <View style={[styles.chipWrap, { marginTop: 8 }]}>
               {years.map((y) => (
                 <PressableScale key={y} style={[styles.chip, styles.chipSelected]} onPress={() => handleRemoveYear(y)}>
-                  <Text style={[styles.chipText, styles.chipTextSelected]}>Year {y}  ✕</Text>
+                  <Text style={[styles.chipText, styles.chipTextSelected]}>Year {y} </Text>
                 </PressableScale>
               ))}
               {[1, 2, 3, 4, 5, 6, 7].filter((y) => !years.includes(y)).map((y) => (

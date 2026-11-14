@@ -12,6 +12,7 @@ import { track, AnalyticsEvents } from "../lib/analytics";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 
+import EmojiIcon from "../components/EmojiIcon";
 type Props = BottomTabScreenProps<MainTabParamList, "Quiz">;
 
 function ProgressBar({ progress }: { progress: number }) {
@@ -99,7 +100,7 @@ export default function QuizScreen({ navigation }: Props) {
         <View style={styles.centered}>
           <Text style={styles.doneTitle}>No quiz available yet</Text>
           <Text style={styles.doneSubtitle}>
-            Nothing has been published for {profile.department} today — check back soon.
+            Nothing has been published for {profile.department} today. Check back soon.
           </Text>
         </View>
       </SafeAreaView>
@@ -110,7 +111,7 @@ export default function QuizScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
-          <Text style={styles.doneEmoji}>✅</Text>
+          <EmojiIcon emoji="✅" style={styles.doneEmoji} />
           <Text style={styles.doneTitle}>Today's quiz is done</Text>
           <Text style={styles.doneSubtitle}>Come back tomorrow to keep your streak alive.</Text>
           <PressableScale style={styles.homeButton} onPress={() => navigation.navigate("Home")}>
@@ -166,7 +167,7 @@ export default function QuizScreen({ navigation }: Props) {
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
           <ConfettiBurst active={showConfetti} />
-          <Text style={styles.resultEmoji}>{perfect ? "🏆" : "📚"}</Text>
+          <EmojiIcon emoji={perfect ? "🏆" : "📚"} style={styles.resultEmoji} />
           <Text style={styles.doneTitle}>
             {correctCount}/{pendingQuestions.length} correct
           </Text>
@@ -223,8 +224,8 @@ export default function QuizScreen({ navigation }: Props) {
               >
                 {opt}
               </Text>
-              {showState && isCorrectOption && <Text style={styles.optionIcon}>✓</Text>}
-              {showState && isSelected && !isCorrectOption && <Text style={styles.optionIcon}>✕</Text>}
+              {showState && isCorrectOption && <EmojiIcon emoji="✓" style={styles.optionIcon} />}
+              {showState && isSelected && !isCorrectOption && <EmojiIcon emoji="✕" style={styles.optionIcon} />}
             </PressableScale>
           );
         })}

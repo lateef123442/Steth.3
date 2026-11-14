@@ -89,7 +89,7 @@ export default function StudyScreen({ navigation, route }: Props) {
       setRemaining(left);
       if (left === 0) {
         stop(true);
-        Alert.alert("Session complete 🎉", `${minutes} minutes of ${subject}. Nice focus! Take a ${breakMins}-minute break?`, [
+        Alert.alert("Session complete", `${minutes} minutes of ${subject}. Nice focus! Take a ${breakMins}-minute break?`, [
           { text: "Skip break", style: "cancel" },
           { text: "Start break", onPress: () => { breakEnd.current = Date.now() + breakMins * 60000; setBreakLeft(breakMins * 60); } },
         ]);
@@ -117,7 +117,7 @@ export default function StudyScreen({ navigation, route }: Props) {
   if (breakLeft > 0) {
     return (
       <SafeAreaView style={[styles.safe, { alignItems: "center", justifyContent: "center", padding: spacing.xl }]}>
-        <Reveal><Text style={styles.h1}>Break ☕</Text></Reveal>
+        <Reveal><Text style={styles.h1}>Break</Text></Reveal>
         <Breathing amount={0.06}><Text style={[type.hero, { color: colors.tealDeep, marginVertical: spacing.lg }]}>{fmt(breakLeft)}</Text></Breathing>
         <Text style={styles.sub}>Stretch, drink water, look away from the screen.</Text>
         <PressableScale style={[styles.start, { alignSelf: "stretch" }]} onPress={() => setBreakLeft(0)}><Text style={styles.startText}>Skip break</Text></PressableScale>
@@ -141,7 +141,7 @@ export default function StudyScreen({ navigation, route }: Props) {
         </View>
         <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl }}>
           <Text style={[styles.reading, { color: theme.text }]}>
-            {notes.trim() || "No notes added. Use this time to read from your textbook — the timer and Do-Not-Disturb are running."}
+            {notes.trim() || "No notes added. Use this time to read from your textbook. The timer and Do-Not-Disturb are running."}
           </Text>
         </ScrollView>
       </SafeAreaView>

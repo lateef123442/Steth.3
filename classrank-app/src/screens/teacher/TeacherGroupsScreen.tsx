@@ -53,7 +53,7 @@ export default function TeacherGroupsScreen({ navigation }: any) {
               {g.year ? <YearTag year={g.year} /> : null}
             </View>
             <Muted>{g.member_count} member{g.member_count === 1 ? "" : "s"}{g.official ? "" : " · personal group"}</Muted>
-            <View style={[s.row, { marginTop: spacing.sm }]}><Tag label="💬 Chat" color={colors.tealDeep} /><Tag label="👥 Members" color={colors.violet} /></View>
+            <View style={[s.row, { marginTop: spacing.sm }]}><Tag label="Chat" color={colors.tealDeep} /><Tag label="Members" color={colors.violet} /></View>
           </Card>
         ))}
       </Grid>

@@ -25,7 +25,7 @@ export default function SetNewPasswordScreen() {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>{done ? "Password updated ✅" : "Set a new password"}</Text>
+        <Text style={styles.title}>{done ? "Password updated" : "Set a new password"}</Text>
         <Text style={styles.subtitle}>
           {done ? "You can now log in with your new password." : "Choose a new password for your account."}
         </Text>

@@ -43,8 +43,8 @@ export default function GroupsScreen({ navigation }: any) {
         {groups?.length === 0 && !error && <Muted style={{ marginTop: spacing.sm }}>No groups yet. Start one or join with a friend's code.</Muted>}
         {groups?.map((g, i) => (
           <StaggerIn key={g.id} index={i}><Card style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("Group", { groupId: g.id })}>
-            <Text style={s.h3}>{g.official ? "🎓 " : ""}{g.name}</Text>
-            <Muted>{g.official ? `Class group${g.year ? ` · Year ${g.year}` : ""}${g.owner_name ? ` · ${g.owner_name}` : ""} · ` : ""}{g.member_count} member{g.member_count === 1 ? "" : "s"}{g.active_challenge ? ` · 🏁 ${g.active_challenge}` : ""}</Muted>
+            <Text style={s.h3}>{g.official ? "Official · " : ""}{g.name}</Text>
+            <Muted>{g.official ? `Class group${g.year ? ` · Year ${g.year}` : ""}${g.owner_name ? ` · ${g.owner_name}` : ""} · ` : ""}{g.member_count} member{g.member_count === 1 ? "" : "s"}{g.active_challenge ? ` · ${g.active_challenge}` : ""}</Muted>
           </Card></StaggerIn>
         ))}
 

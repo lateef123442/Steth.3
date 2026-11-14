@@ -98,7 +98,7 @@ export default function TeacherDashboardScreen() {
           <Text style={styles.infoText}>
             {stats && stats.today_question_count === 0
               ? "Head to the Questions tab to publish today's quiz for your department."
-              : "Questions with student answers are locked from editing to keep grading fair — see the Questions tab."}
+              : "Questions with student answers are locked from editing to keep grading fair. See the Questions tab."}
           </Text>
         </View>
       </ScrollView>

@@ -3,6 +3,7 @@ import { Text, StyleSheet } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, Easing } from "react-native-reanimated";
 import { colors } from "../../theme/tokens";
 
+import EmojiIcon from "../EmojiIcon";
 interface Props {
   streak: number;
   size?: number;
@@ -39,7 +40,7 @@ export default function StreakFlame({ streak, size = 28 }: Props) {
 
   return (
     <Animated.View style={animatedStyle}>
-      <Text style={[styles.flame, { fontSize: size }]}>🔥</Text>
+      <EmojiIcon emoji="🔥" style={[styles.flame, { fontSize: size }]} />
     </Animated.View>
   );
 }

@@ -81,12 +81,12 @@ export default function SubjectRoomScreen({ navigation, route }: any) {
               ))}
             </View>
             <Label>LEARN → PRACTICE</Label>
-            <Btn label="⚡ Quick quiz" onPress={() => practice("quick")} disabled={!questions.length} />
-            <Btn ghost label="📚 Subject quiz" onPress={() => practice("subject")} disabled={!questions.length} />
+            <Btn label="Quick quiz" onPress={() => practice("quick")} disabled={!questions.length} />
+            <Btn ghost label="Subject quiz" onPress={() => practice("subject")} disabled={!questions.length} />
             <Btn ghost label="⏱ Mock exam" onPress={() => practice("mock")} disabled={!questions.length} />
             <Btn ghost label="⏱ Start a focus session" onPress={() => navigation.navigate("Main", { screen: "Study", params: { subject: sub.name } })} />
             <Btn ghost label="🃏 Flashcards" onPress={() => navigation.navigate("Cards")} />
-            <Btn ghost label="🤖 Ask the tutor about this subject" onPress={() => navigation.navigate("Companion", { prompt: `Help me study ${sub.name}. Ask me what I already know first.` })} />
+            <Btn ghost label="Ask the tutor about this subject" onPress={() => navigation.navigate("Companion", { prompt: `Help me study ${sub.name}. Ask me what I already know first.` })} />
             {!questions.length && <Muted style={{ marginTop: spacing.sm }}>Add questions in the Questions tab to unlock quizzes.</Muted>}
             <Label>EXAM DATE</Label>
             <TextInput style={s.input} value={exam} onChangeText={setExam} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textFaint} keyboardType="numbers-and-punctuation" />
@@ -150,7 +150,7 @@ export default function SubjectRoomScreen({ navigation, route }: any) {
               </>
             )}
             <Label>GENERATE WITH AI</Label>
-            <Btn ghost label={busy ? "Generating…" : "✨ Generate 5 questions"} onPress={generate} disabled={busy} />
+            <Btn ghost label={busy ? "Generating…" : "Generate 5 questions"} onPress={generate} disabled={busy} />
             {busy && <View style={{ marginTop: spacing.sm }}><Loader label="Writing your questions…" /></View>}
 
             <Label>ADD YOUR OWN</Label>

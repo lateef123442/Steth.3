@@ -10,6 +10,7 @@ import {
   subscribePaymentRequests, ProCode, PaymentRequest, ProDuration, DURATION_LABEL,
 } from "../../lib/proApi";
 
+import EmojiIcon from "../../components/EmojiIcon";
 type Tab = "Requests" | "Codes";
 const shareCode = (code: string, days: ProDuration) =>
   Share.share({ message: `Your Steth Pro code (${DURATION_LABEL[days]}): ${code}\nOpen the app → Pro → enter this code. It works once.` }).catch(() => {});
@@ -140,7 +141,7 @@ export default function AdminProScreen() {
 
       <Modal visible={!!viewing} animationType="fade" transparent onRequestClose={() => setViewing(null)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.92)" }}>
-          <PressableScale onPress={() => setViewing(null)} style={{ alignSelf: "flex-end", padding: spacing.lg }}><Text style={{ color: "#fff", fontSize: 22 }}>✕</Text></PressableScale>
+          <PressableScale onPress={() => setViewing(null)} style={{ alignSelf: "flex-end", padding: spacing.lg }}><EmojiIcon emoji="✕" style={{ color: "#fff", fontSize: 22 }} /></PressableScale>
           <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.md }}>
             {viewing?.url ? <Image source={{ uri: viewing.url }} resizeMode="contain" style={{ width: "100%", height: "100%" }} /> : <ActivityIndicator color="#fff" />}
           </View>

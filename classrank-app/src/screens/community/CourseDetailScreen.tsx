@@ -111,7 +111,7 @@ export default function CourseDetailScreen({ navigation, route }: any) {
             <Muted>{x.question_count} questions · {x.duration_minutes} min · one attempt</Muted>
             <Muted>Opens {fmtWhen(x.starts_at)} · closes {fmtWhen(x.ends_at)}</Muted>
             {done && a?.total ? <Muted>Your score: {a.correct}/{a.total}</Muted> : null}
-            {x.locked && !done && <Muted style={{ color: colors.danger }}>🔒 Finish every topic to unlock this.</Muted>}
+            {x.locked && !done && <Muted style={{ color: colors.danger }}>Finish every topic to unlock this.</Muted>}
             {x.status === "open" && !done && !x.locked && <Btn label={a ? "Resume" : "Start"} onPress={() => startAssessment(x)} />}
             {(done || x.status === "closed") && <Btn ghost label="Review answers" onPress={() => navigation.navigate("Exam", { examId: x.id, mode: "review" })} />}
           </Card>
@@ -144,12 +144,12 @@ export default function CourseDetailScreen({ navigation, route }: any) {
       <Muted>{c.title}{c.department ? ` · ${c.department}` : ""}</Muted>
 
       <Card style={{ marginTop: spacing.lg, backgroundColor: complete ? colors.successTint : colors.tealTint, borderWidth: 0 }}>
-        <Text style={s.h3}>{topics.length === 0 ? "Getting started" : complete ? "Course finished 🎉" : `${doneCount} of ${topics.length} topics finished`}</Text>
+        <Text style={s.h3}>{topics.length === 0 ? "Getting started" : complete ? "Course finished" : `${doneCount} of ${topics.length} topics finished`}</Text>
         {topics.length > 0 && <View style={{ marginVertical: spacing.sm }}><Bar value={doneCount / topics.length} color={complete ? colors.success : colors.teal} /></View>}
         <Muted>{complete ? "Your tests and exams are unlocked. Revise any topic whenever you like." : next ? `Next up: ${next.title}` : "Your teacher is still setting this course up."}</Muted>
         <View style={{ flexDirection: "row", gap: spacing.sm, flexWrap: "wrap" }}>
           {next && <View style={{ flexGrow: 1, minWidth: 150 }}><Btn label={doneCount === 0 ? "Start learning" : "Continue"} onPress={() => open(next)} /></View>}
-          <View style={{ flexGrow: 1, minWidth: 150 }}><Btn ghost label="🤖 Ask the AI guide" onPress={() => navigation.navigate("Companion", { prompt: `I'm studying ${c.code} ${c.title}${next ? `, currently on "${next.title}"` : ""}. Guide me: what should I focus on, and quiz me when I'm ready.` })} /></View>
+          <View style={{ flexGrow: 1, minWidth: 150 }}><Btn ghost label="Ask the AI guide" onPress={() => navigation.navigate("Companion", { prompt: `I'm studying ${c.code} ${c.title}${next ? `, currently on "${next.title}"` : ""}. Guide me: what should I focus on, and quiz me when I'm ready.` })} /></View>
         </View>
       </Card>
 

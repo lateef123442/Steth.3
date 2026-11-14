@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors, radii, spacing, type, shadow } from "../theme/tokens";
 
+import EmojiIcon from "./EmojiIcon";
 interface Props {
   rank: number;
   name: string;
@@ -29,7 +30,7 @@ export default function LeaderboardRow({ rank, name, subtitle, points, isCurrent
           <Text style={styles.name} numberOfLines={1}>
             {name}
           </Text>
-          {isPro && <Text style={styles.crown}>👑</Text>}
+          {isPro && <EmojiIcon emoji="👑" style={styles.crown} />}
         </View>
         <View style={styles.subtitleRow}>
           <Text style={styles.subtitle} numberOfLines={1}>

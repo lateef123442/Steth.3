@@ -66,7 +66,7 @@ export default function CoursesScreen({ navigation }: any) {
                   </View>
                   <Bar value={c.topic_count ? c.topics_done / c.topic_count : 0} color={done ? colors.success : colors.teal} />
                 </View>
-                {c.next_exam ? <Muted style={{ marginTop: 6 }}>📝 Next exam in {Math.max(0, daysUntil(c.next_exam))} days</Muted> : null}
+                {c.next_exam ? <Muted style={{ marginTop: 6 }}>Next exam in {Math.max(0, daysUntil(c.next_exam))} days</Muted> : null}
               </Card>
             </StaggerIn>
           );

@@ -101,7 +101,7 @@ export default function ExamScreen({ navigation, route }: any) {
               })}
               {r.picked == null && <Muted style={{ marginTop: 6 }}>You skipped this one.</Muted>}
               {!!r.explanation && <Muted style={{ marginTop: 6 }}>{r.explanation}</Muted>}
-              {r.picked !== r.correct && <Btn ghost label="🤖 Explain this to me" onPress={() => navigation.navigate("Companion", { prompt: `Explain this question to me step by step without just giving the answer first: "${r.q}" Options: ${r.options.map((o, k) => `${LETTERS[k]}) ${o}`).join("; ")}. ${r.picked != null ? `I chose ${LETTERS[r.picked]}.` : "I skipped it."}` })} />}
+              {r.picked !== r.correct && <Btn ghost label="Explain this to me" onPress={() => navigation.navigate("Companion", { prompt: `Explain this question to me step by step without just giving the answer first: "${r.q}" Options: ${r.options.map((o, k) => `${LETTERS[k]}) ${o}`).join("; ")}. ${r.picked != null ? `I chose ${LETTERS[r.picked]}.` : "I skipped it."}` })} />}
             </Card>
           ))}
         </ScrollView>
@@ -117,7 +117,7 @@ export default function ExamScreen({ navigation, route }: any) {
     return (
       <SafeAreaView style={s.safe}>
         <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl }}>
-          <Text style={s.h1}>Submitted ✅</Text>
+          <Text style={s.h1}>Submitted</Text>
           <Card style={{ marginTop: spacing.lg }}>
             <Text style={[s.h1, { color: pct >= 50 ? colors.success : colors.danger }]}>{result.correct} / {result.total}</Text>
             <Muted>{pct}% · your teacher can see this result. This first score is the one that counts.</Muted>

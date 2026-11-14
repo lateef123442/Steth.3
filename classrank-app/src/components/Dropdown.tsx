@@ -3,6 +3,7 @@ import { View, Text, Modal, Pressable, FlatList, TextInput, StyleSheet, Keyboard
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radii, spacing, type } from "../theme/tokens";
 
+import EmojiIcon from "./EmojiIcon";
 export interface DropdownOption { value: string; label: string }
 
 interface Props {
@@ -65,7 +66,7 @@ export default function Dropdown({ value, options, onSelect, placeholder = "Sele
                 return (
                   <Pressable style={[styles.row, active && styles.rowActive]} onPress={() => { onSelect(item.value); close(); }}>
                     <Text style={[styles.rowText, active && styles.rowTextActive]}>{item.label}</Text>
-                    {active && <Text style={styles.rowTextActive}>✓</Text>}
+                    {active && <EmojiIcon emoji="✓" style={styles.rowTextActive} />}
                   </Pressable>
                 );
               }}

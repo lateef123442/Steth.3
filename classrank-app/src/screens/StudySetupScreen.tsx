@@ -72,7 +72,7 @@ export default function StudySetupScreen({ navigation }: any) {
         <Label>CLOUD BACKUP</Label>
         <Card>
           <Text style={s.h3}>
-            {sync.state === "syncing" ? "Backing up…" : sync.state === "synced" ? "Backed up ✅" : sync.state === "offline" ? "Waiting for a connection" : sync.state === "unavailable" ? "Not available yet" : sync.state === "error" ? "Couldn't back up" : "Ready"}
+            {sync.state === "syncing" ? "Backing up…" : sync.state === "synced" ? "Backed up" : sync.state === "offline" ? "Waiting for a connection" : sync.state === "unavailable" ? "Not available yet" : sync.state === "error" ? "Couldn't back up" : "Ready"}
           </Text>
           <Muted style={{ marginTop: 2 }}>
             {sync.state === "unavailable" ? "Cloud backup isn't set up on this server yet, so your study data is only on this phone."

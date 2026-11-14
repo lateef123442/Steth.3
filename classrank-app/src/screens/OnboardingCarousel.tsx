@@ -6,6 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colors, radii, spacing, type } from "../theme/tokens";
 import PressableScale from "../components/animated/PressableScale";
 
+import EmojiIcon from "../components/EmojiIcon";
 export const ONBOARDING_SEEN_KEY = "classrank:hasSeenOnboarding";
 
 interface Slide {
@@ -18,7 +19,7 @@ const SLIDES: Slide[] = [
   {
     emoji: "🎯",
     title: "Every department. One leaderboard.",
-    body: "Take daily quizzes in your own field, ranked fairly against students in your own department — not compared against subjects that aren't yours.",
+    body: "Take daily quizzes in your own field, ranked fairly against students in your own department, not compared against subjects that aren't yours.",
   },
   {
     emoji: "🔥",
@@ -75,7 +76,7 @@ export default function OnboardingCarousel({ onDone }: Props) {
         >
           {SLIDES.map((slide, i) => (
             <View key={i} style={[styles.slide, { width: SCREEN_WIDTH }]}>
-              <Text style={styles.emoji}>{slide.emoji}</Text>
+              <EmojiIcon emoji={slide.emoji} style={styles.emoji} />
               <Text style={styles.title}>{slide.title}</Text>
               <Text style={styles.body}>{slide.body}</Text>
             </View>

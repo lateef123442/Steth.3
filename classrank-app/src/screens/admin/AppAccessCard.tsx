@@ -53,10 +53,10 @@ export default function AppAccessCard() {
           <Text style={st.hint}>{paid ? "Steth is PAID: students need Pro." : "Steth is FREE: everyone can use everything."}</Text>
           <View style={st.row}>
             <PressableScale style={[st.option, !paid && st.optionOn]} onPress={() => choose(false)} haptic="light" accessibilityRole="button" accessibilityState={{ selected: !paid }}>
-              <Text style={[st.optionText, !paid && { color: "#fff" }]}>🎁 Free</Text>
+              <Text style={[st.optionText, !paid && { color: "#fff" }]}>Free</Text>
             </PressableScale>
             <PressableScale style={[st.option, paid && st.optionOn]} onPress={() => choose(true)} haptic="light" accessibilityRole="button" accessibilityState={{ selected: paid }}>
-              <Text style={[st.optionText, paid && { color: "#fff" }]}>👑 Paid</Text>
+              <Text style={[st.optionText, paid && { color: "#fff" }]}>Paid</Text>
             </PressableScale>
           </View>
           <Text style={st.small}>{info.students_without_pro} of {info.students_total} students have no active Pro right now.</Text>

@@ -10,7 +10,7 @@ export default function AchievementToast({ titles, ms = 4200 }: { titles: string
   if (!show || !titles.length) return null;
   return (
     <Animated.View entering={SlideInUp.springify().damping(14)} exiting={FadeOutUp.duration(250)} style={styles.toast} pointerEvents="none">
-      <Text style={styles.kicker}>🏅 ACHIEVEMENT UNLOCKED</Text>
+      <Text style={styles.kicker}>ACHIEVEMENT UNLOCKED</Text>
       <Text style={styles.title}>{titles.join(" · ")}</Text>
     </Animated.View>
   );

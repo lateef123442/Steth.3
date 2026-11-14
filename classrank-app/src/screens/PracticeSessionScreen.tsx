@@ -16,6 +16,7 @@ import { Back, Bar, Btn, Card, Label, Muted, s } from "../components/study/ui";
 import { useStudy, getStudyData, achievements, buildQuiz, recordAttempt, addCards, analyzeAttempt, topicName, dateStr, QuizMode, QuizAttempt, Question, AnswerRecord } from "../lib/studyStore";
 import { WRAP } from "../components/responsive";
 
+import EmojiIcon from "../components/EmojiIcon";
 const TITLES: Record<QuizMode, string> = { quick: "Quick Quiz", topic: "Topic Quiz", subject: "Subject Quiz", mock: "Mock Exam", daily: "Daily Challenge", review: "Spaced Review" };
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 const LETTERS = ["A", "B", "C", "D"];
@@ -114,7 +115,7 @@ export default function PracticeSessionScreen({ navigation, route }: any) {
             <PressableScale onPress={() => pick(i)} style={[st.opt, tone]}>
               <Text style={[st.letter, tone && { color: colors.text }]}>{LETTERS[i]}</Text>
               <Text style={[type.body, { color: colors.text, flex: 1 }]}>{o}</Text>
-              {revealed && isRight && <Text>✅</Text>}{revealed && isPick && !isRight && <Text>❌</Text>}
+              {revealed && isRight && <EmojiIcon emoji="✅" />}{revealed && isPick && !isRight && <EmojiIcon emoji="❌" />}
             </PressableScale>
             </AnswerFeedback>
           );
@@ -158,7 +159,7 @@ function Results({ result, qs, picks, navigation, unlocked }: { result: QuizAtte
   };
   const [saved, setSaved] = useState(false);
   const saveCards = () => {
-    const n = addCards(wrong.map(({ q }) => ({ subjectId: q.subjectId, topicId: q.topicId, front: q.q, back: `${q.options[q.correct]}${q.explanation ? ` — ${q.explanation}` : ""}` })));
+    const n = addCards(wrong.map(({ q }) => ({ subjectId: q.subjectId, topicId: q.topicId, front: q.q, back: `${q.options[q.correct]}${q.explanation ? `: ${q.explanation}` : ""}` })));
     setSaved(true);
     Alert.alert(n ? "Saved to flashcards" : "Already saved", n ? `${n} card${n > 1 ? "s" : ""} added. They're due now, and will space out as you rate them.` : "Those are already in your flashcards.");
   };
@@ -170,7 +171,7 @@ function Results({ result, qs, picks, navigation, unlocked }: { result: QuizAtte
     const t2 = setTimeout(() => setFire(a.score >= 80), 700);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
-  const ask = (q: Question) => navigation.navigate("Companion", { prompt: `I got this wrong: "${q.q}" (options: ${q.options.join(" / ")}). I don't want the answer yet — give me a hint and ask me a guiding question.` });
+  const ask = (q: Question) => navigation.navigate("Companion", { prompt: `I got this wrong: "${q.q}" (options: ${q.options.join(" / ")}). I don't want the answer yet. Give me a hint and ask me a guiding question.` });
 
   return (
     <SafeAreaView style={s.safe}>
@@ -185,9 +186,9 @@ function Results({ result, qs, picks, navigation, unlocked }: { result: QuizAtte
           <Muted>+{result.correct * 10 + 20} XP{a.skipped ? ` · ${a.skipped} unanswered` : ""}</Muted>
         </View>
 
-        {a.wentWell.length > 0 && <StaggerIn index={2}><Insight title="👍 What went well" lines={a.wentWell} /></StaggerIn>}
-        {a.struggled.length > 0 && <StaggerIn index={3}><Insight title="⚠️ Where you struggled" lines={a.struggled} /></StaggerIn>}
-        {a.revise.length > 0 && <StaggerIn index={4}><Insight title="🔁 Revise next" lines={a.revise.map((r) => r.name)} note="These will come back for review soon." /></StaggerIn>}
+        {a.wentWell.length > 0 && <StaggerIn index={2}><Insight title="What went well" lines={a.wentWell} /></StaggerIn>}
+        {a.struggled.length > 0 && <StaggerIn index={3}><Insight title="Where you struggled" lines={a.struggled} /></StaggerIn>}
+        {a.revise.length > 0 && <StaggerIn index={4}><Insight title="Revise next" lines={a.revise.map((r) => r.name)} note="These will come back for review soon." /></StaggerIn>}
 
         <StaggerIn index={5}>
           <Card style={{ backgroundColor: colors.tealTint, borderWidth: 0 }}>
