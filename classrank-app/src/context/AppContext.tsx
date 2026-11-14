@@ -213,6 +213,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       faculty: dept?.faculty ?? null,
       year: data.year,
       role: data.role,
+      avatar_path: data.avatar_path ?? null,
       total_points: data.total_points,
       current_streak: data.current_streak,
       last_quiz_date: data.last_quiz_date,
