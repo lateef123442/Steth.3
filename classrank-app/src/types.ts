@@ -102,6 +102,7 @@ export interface ReferralStats {
 export interface FeedPost {
   id: string;
   content: string;
+  image_path?: string | null;
   is_public: boolean;
   like_count: number;
   created_at: string;

@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import { supabase } from "./supabase";
 import { FeedPost } from "../types";
 
@@ -22,9 +23,33 @@ export async function fetchFeed(scope: FeedScope, departmentId: string, limit = 
   return (data as FeedPost[]) ?? [];
 }
 
-export async function createPost(content: string, isPublic: boolean): Promise<string> {
-  const { data, error } = await supabase.rpc("create_post", { p_content: content, p_is_public: isPublic });
-  if (error) throw error;
+export async function pickFeedImage(): Promise<string | null> {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) throw new Error("Allow Steth access to your photos to attach an image.");
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, quality: 0.82 });
+  return result.canceled || !result.assets?.[0] ? null : result.assets[0].uri;
+}
+
+export function feedImageUrl(path?: string | null): string | null {
+  return path ? supabase.storage.from("post-images").getPublicUrl(path).data.publicUrl : null;
+}
+
+export async function createPost(content: string, isPublic: boolean, imageUri?: string | null): Promise<string> {
+  let imagePath: string | null = null;
+  if (imageUri) {
+    const asset = await (await fetch(imageUri)).arrayBuffer();
+    if (!asset.byteLength) throw new Error("The selected image is empty. Please choose another image.");
+    if (asset.byteLength > 5 * 1024 * 1024) throw new Error("Please choose an image smaller than 5 MB.");
+    const path = `${(await supabase.auth.getUser()).data.user?.id}/${Date.now()}.jpg`;
+    const upload = await supabase.storage.from("post-images").upload(path, asset, { contentType: "image/jpeg", upsert: false });
+    if (upload.error) throw upload.error;
+    imagePath = path;
+  }
+  const { data, error } = await supabase.rpc("create_post", { p_content: content.trim(), p_is_public: isPublic, p_image_path: imagePath });
+  if (error) {
+    if (imagePath) await supabase.storage.from("post-images").remove([imagePath]);
+    throw error;
+  }
   return data as string;
 }
 

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, FlatList, TextInput, RefreshControl, Switch, ActivityIndicator, Alert } from "react-native";
+import { View, Text, StyleSheet, FlatList, TextInput, RefreshControl, Switch, ActivityIndicator, Alert, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radii, spacing, type, shadow } from "../../theme/tokens";
 import { useApp } from "../../context/AppContext";
-import { fetchFeed, createPost, toggleLike, deletePost, fetchMyLikedPostIds, FeedScope } from "../../lib/feedApi";
+import { fetchFeed, createPost, toggleLike, deletePost, fetchMyLikedPostIds, pickFeedImage, feedImageUrl, FeedScope } from "../../lib/feedApi";
 import { FeedPost } from "../../types";
 import PressableScale from "../../components/animated/PressableScale";
 import StaggerIn from "../../components/animated/StaggerIn";
@@ -31,6 +31,8 @@ export default function FeedScreen() {
 
   const [composerText, setComposerText] = useState("");
   const [composerPublic, setComposerPublic] = useState(false);
+  const [composerImage, setComposerImage] = useState<string | null>(null);
+  const [pickingImage, setPickingImage] = useState(false);
   const [posting, setPosting] = useState(false);
 
   const load = useCallback(async () => {
@@ -56,12 +58,13 @@ export default function FeedScreen() {
   if (!profile) return null;
 
   const handlePost = async () => {
-    if (composerText.trim().length === 0) return;
+    if (composerText.trim().length === 0 && !composerImage) return;
     setPosting(true);
     try {
-      await createPost(composerText.trim(), composerPublic);
+      await createPost(composerText.trim(), composerPublic, composerImage);
       track(AnalyticsEvents.POST_CREATED, { is_public: composerPublic });
       setComposerText("");
+      setComposerImage(null);
       setComposerPublic(false);
       load();
     } catch (err: any) {
@@ -153,6 +156,30 @@ export default function FeedScreen() {
               multiline
               maxLength={1000}
             />
+            {composerImage ? (
+              <View style={styles.imagePreviewWrap}>
+                <Image source={{ uri: composerImage }} style={styles.imagePreview} />
+                <PressableScale style={styles.removeImageButton} onPress={() => setComposerImage(null)} haptic="light">
+                  <Text style={styles.removeImageText}>Remove photo ×</Text>
+                </PressableScale>
+              </View>
+            ) : null}
+            <View style={styles.composerActions}>
+              <PressableScale
+                style={styles.addImageButton}
+                disabled={pickingImage || posting}
+                onPress={async () => {
+                  setPickingImage(true);
+                  try { const uri = await pickFeedImage(); if (uri) setComposerImage(uri); }
+                  catch (err: any) { Alert.alert("Couldn't add photo", err?.message ?? "Please try again."); }
+                  finally { setPickingImage(false); }
+                }}
+                haptic="light"
+              >
+                {pickingImage ? <ActivityIndicator size="small" color={colors.teal} /> : <Text style={styles.addImageText}>＋ Add photo</Text>}
+              </PressableScale>
+              <Text style={styles.photoHint}>Optional · up to 5 MB</Text>
+            </View>
             <View style={styles.composerFooter}>
               <View style={styles.publicToggleRow}>
                 <Switch
@@ -163,9 +190,9 @@ export default function FeedScreen() {
                 <Text style={styles.publicToggleLabel}>Post campus-wide</Text>
               </View>
               <PressableScale
-                style={[styles.postButton, composerText.trim().length === 0 && styles.postButtonDisabled]}
+                style={[styles.postButton, composerText.trim().length === 0 && !composerImage && styles.postButtonDisabled]}
                 onPress={handlePost}
-                disabled={composerText.trim().length === 0 || posting}
+                disabled={(composerText.trim().length === 0 && !composerImage) || posting || pickingImage}
                 haptic="medium"
               >
                 {posting ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.postButtonText}>Post</Text>}
@@ -205,7 +232,8 @@ export default function FeedScreen() {
                     {timeAgo(item.created_at)}
                   </Text>
                 </View>
-                <Text style={styles.postContent}>{item.content}</Text>
+                {!!item.content?.trim() && <Text style={styles.postContent}>{item.content}</Text>}
+                {!!feedImageUrl(item.image_path) && <Image source={{ uri: feedImageUrl(item.image_path)! }} style={styles.postImage} resizeMode="cover" />}
                 <View style={styles.postFooter}>
                   <PressableScale style={styles.likeButton} onPress={() => handleLike(item)} haptic="light">
                     <EmojiIcon emoji={isLiked ? "♥" : "♡"} style={[styles.likeIcon, isLiked && styles.likeIconActive]} />
@@ -238,6 +266,14 @@ const styles = StyleSheet.create({
   list: { padding: spacing.xl, paddingTop: spacing.md },
   composer: { backgroundColor: colors.card, borderRadius: radii.lg, padding: spacing.lg, marginBottom: spacing.lg, ...shadow.card },
   composerInput: { ...type.body, color: colors.text, minHeight: 60, textAlignVertical: "top" },
+  composerActions: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.md },
+  addImageButton: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  addImageText: { ...type.caption, color: colors.teal, fontFamily: type.bodySemibold.fontFamily },
+  photoHint: { ...type.caption, color: colors.textFaint },
+  imagePreviewWrap: { marginTop: spacing.md, position: "relative" },
+  imagePreview: { width: "100%", height: 190, borderRadius: radii.md, backgroundColor: colors.border },
+  removeImageButton: { alignSelf: "flex-start", marginTop: spacing.xs, paddingVertical: 4, paddingHorizontal: spacing.sm },
+  removeImageText: { ...type.caption, color: colors.danger },
   composerFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.sm },
   publicToggleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, flex: 1 },
   publicToggleLabel: { ...type.caption, color: colors.textMuted },
@@ -251,6 +287,7 @@ const styles = StyleSheet.create({
   roleBadgeText: { fontSize: 13, color: colors.violet, fontFamily: type.bodySemibold.fontFamily, textTransform: "capitalize" },
   postMeta: { ...type.caption, color: colors.textFaint, marginLeft: spacing.sm },
   postContent: { ...type.body, color: colors.text, marginBottom: spacing.md, lineHeight: 21 },
+  postImage: { width: "100%", height: 240, borderRadius: radii.md, marginBottom: spacing.md, backgroundColor: colors.border },
   postFooter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   likeButton: { flexDirection: "row", alignItems: "center", gap: 4 },
   likeIcon: { fontSize: 18, color: colors.textFaint },
