@@ -13,7 +13,6 @@ with (security_invoker = true) as
 select
   p.id,
   p.content,
-  p.image_path,
   p.is_public,
   p.like_count,
   p.created_at,
@@ -21,7 +20,8 @@ select
   d.name as department,
   p.author_id,
   pr.name as author_name,
-  pr.role as author_role
+  pr.role as author_role,
+  p.image_path
 from public.posts p
 join public.profiles pr on pr.id = p.author_id
 join public.departments d on d.id = p.department_id;
