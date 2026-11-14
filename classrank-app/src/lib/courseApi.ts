@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "./supabase";
+import { markProfileStale } from "./profileSync";
 import { notifyAnnouncement } from "./pushNotify";
 import { CourseBundle, QuestionPurpose, reportableAnswers } from "./studyCourseSync";
 import { getStudyData, QuizAttempt } from "./studyStore";
@@ -82,7 +83,11 @@ export interface ExamResults {
 }
 export const fetchCourseExams = async (courseId: string) => (await call<ExamSummary[]>("list_course_exams", { p_course_id: courseId })) ?? [];
 export const startExam = (examId: string) => call<ExamSession>("start_course_exam", { p_exam_id: examId });
-export const submitExam = (examId: string, answers: (number | null)[]) => call<{ correct: number; total: number; points_earned?: number }>("submit_course_exam", { p_exam_id: examId, p_answers: answers });
+export const submitExam = async (examId: string, answers: (number | null)[]) => {
+  const r = await call<{ correct: number; total: number; points_earned?: number }>("submit_course_exam", { p_exam_id: examId, p_answers: answers });
+  markProfileStale(); // points and streak changed
+  return r;
+};
 export const reviewExam = async (examId: string) => (await call<ExamReviewItem[]>("review_course_exam", { p_exam_id: examId })) ?? [];
 export const examSecondsLeft = (s: ExamSession, receivedAtMs: number) => secondsLeft(s.deadline, s.server_now, receivedAtMs);
 
@@ -153,14 +158,26 @@ export const saveQuestion = (q: { id?: string | null; courseId: string; topicId:
   call<string>("staff_save_question", { p_id: q.id ?? null, p_course_id: q.courseId, p_topic_id: q.topicId, p_purpose: q.purpose, p_question: q.question, p_options: q.options, p_correct_index: q.correctIndex, p_explanation: q.explanation });
 export const fetchTopicProgress = (courseId: string) => call<{ topic_count: number; students: { name: string; done: number }[] }>("staff_topic_progress", { p_course_id: courseId });
 
-export const markMaterialRead = (materialId: string) => call<void>("mark_material_read", { p_material_id: materialId });
-export const completeTopic = (topicId: string) => call<{ course_complete: boolean }>("complete_topic", { p_topic_id: topicId });
+export const markMaterialRead = async (materialId: string) => {
+  const r = await call<void>("mark_material_read", { p_material_id: materialId });
+  markProfileStale(); // opening a resource counts as a study day
+  return r;
+};
+export const completeTopic = async (topicId: string) => {
+  const r = await call<{ course_complete: boolean }>("complete_topic", { p_topic_id: topicId });
+  markProfileStale(); // +10 points and a study day
+  return r;
+};
 
 export interface DailyQuestion { id: string; topic: string; question: string; options: string[] }
 export interface DailyQuiz { answered_today: number; daily_limit: number; pending_total: number; questions: DailyQuestion[] }
 export interface DailyAnswerResult { already_answered: boolean; is_correct: boolean; correct_index: number; explanation: string; points_earned: number; total_points?: number }
 export const fetchDailyQuiz = (courseId: string) => call<DailyQuiz>("course_daily_quiz", { p_course_id: courseId });
-export const answerDaily = (questionId: string, picked: number) => call<DailyAnswerResult>("submit_course_daily_answer", { p_question_id: questionId, p_picked: picked });
+export const answerDaily = async (questionId: string, picked: number) => {
+  const r = await call<DailyAnswerResult>("submit_course_daily_answer", { p_question_id: questionId, p_picked: picked });
+  markProfileStale(); // points and streak changed
+  return r;
+};
 
 export interface CourseRanking { top: { id: string; name: string; points: number; rank: number }[]; me: { rank: number; points: number } | null; size: number }
 export const fetchCourseRanking = (courseId: string) => call<CourseRanking>("course_leaderboard", { p_course_id: courseId });

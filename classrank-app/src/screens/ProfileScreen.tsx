@@ -6,6 +6,7 @@ import { changeAvatar, removeAvatar } from "../lib/socialApi";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors, radii, spacing, type, shadow, getActiveScheme, ThemeMode } from "../theme/tokens";
 import { loadThemeMode, saveThemeMode, restartApp } from "../theme/themeMode";
+import { effectiveStreak } from "../utils/streak";
 import { useApp } from "../context/AppContext";
 import PressableScale from "../components/animated/PressableScale";
 import StaggerIn from "../components/animated/StaggerIn";
@@ -183,7 +184,7 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBlock}>
-              <Text style={[styles.statValue, { color: colors.ember }]}>{profile.current_streak}</Text>
+              <Text style={[styles.statValue, { color: colors.ember }]}>{effectiveStreak(profile)}</Text>
               <Text style={styles.statLabel}>Day Streak</Text>
             </View>
           </View>

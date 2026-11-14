@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { AppState as RNAppState } from "react-native";
 import { friendlyMessage } from "../lib/friendlyError";
+import { onProfileStale } from "../lib/profileSync";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "../lib/supabase";
 import {
@@ -662,6 +663,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [profile]);
 
   const signedInId = profile?.id;
+  // Course quizzes, topics, exams and resources change points/streak on the server: reload them so Home and Profile
+  // show the new numbers (waits a moment so a burst of answers causes one refresh, not many).
+  useEffect(() => {
+    if (!signedInId) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const off = onProfileStale(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { fetchProfile(signedInId); }, 700);
+    });
+    return () => { off(); if (timer) clearTimeout(timer); };
+  }, [signedInId, fetchProfile]);
+
   useEffect(() => {
     if (!signedInId) { setPaywallEnabled(null); return; }
     refreshAppConfig();

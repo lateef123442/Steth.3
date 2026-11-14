@@ -9,6 +9,9 @@
   NODE_VERSION = "22"
   CI = "1"
   EXPO_NO_TELEMETRY = "1"
+  # These two are Supabase's PUBLIC values and are meant to be inside the website code. Without this,
+  # Netlify's secret scan mistakes them for leaked secrets and stops the build.
+  SECRETS_SCAN_OMIT_KEYS = "EXPO_PUBLIC_SUPABASE_ANON_KEY,EXPO_PUBLIC_SUPABASE_URL"
 
 [[redirects]]
   from = "/*"
