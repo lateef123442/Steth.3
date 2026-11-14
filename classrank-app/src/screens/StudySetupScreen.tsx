@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Notifications from "../lib/expoNotifications";
-import { View, Text, ScrollView, TextInput, Switch, Alert } from "react-native";
+import { View, Text, ScrollView, TextInput, Switch, Alert, Platform } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../theme/tokens";
 import { useApp } from "../context/AppContext";
@@ -30,6 +31,10 @@ export default function StudySetupScreen({ navigation }: any) {
   const [allowed, setAllowed] = useState(true);
   useEffect(() => { Notifications.getPermissionsAsync().then((r) => setAllowed(r.status === "granted")).catch(() => {}); }, []);
   const [qs, setQs] = useState(p.quietStart), [qe, setQe] = useState(p.quietEnd), [custom, setCustom] = useState("");
+  const [customDaily, setCustomDaily] = useState(String(p.dailyMinutes));
+  const [timePicker, setTimePicker] = useState<"preferred" | "quietStart" | "quietEnd" | null>(null);
+  const asTimeDate = (value: string) => { const [h, m] = value.split(":").map(Number); const d = new Date(); d.setHours(h || 0, m || 0, 0, 0); return d; };
+  const pickedTime = (value: Date) => `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
 
   const toggleGoal = (g: string) => setPrefs({ goals: p.goals.includes(g) ? p.goals.filter((x) => x !== g) : [...p.goals, g], setupDone: true });
   const toggleNotif = async (k: (typeof TYPES)[number]["key"], v: boolean) => {
@@ -37,11 +42,13 @@ export default function StudySetupScreen({ navigation }: any) {
     setPrefs({ notif: { ...p.notif, [k]: v } });
     if (k === "push") { if (v && profile?.id) registerPushToken(profile.id); else clearPushToken(profile?.id); }
   };
-  const saveQuiet = () => {
-    if (!isTime(qs) || !isTime(qe)) return Alert.alert("Quiet hours", "Use 24-hour HH:MM, e.g. 22:00 and 07:00.");
-    setPrefs({ quietStart: qs, quietEnd: qe });
+  const saveQuiet = () => setPrefs({ quietStart: qs, quietEnd: qe });
+  const saveCustom = () => { if (!isTime(custom)) return Alert.alert("Time", "Choose a valid time."); setPrefs({ preferredTime: custom, setupDone: true }); setCustom(""); };
+  const saveDailyMinutes = () => {
+    const value = Number(customDaily);
+    if (!Number.isInteger(value) || value < 1 || value > 1440) return Alert.alert("Study duration", "Enter a whole number from 1 to 1440 minutes.");
+    setPrefs({ dailyMinutes: value, setupDone: true });
   };
-  const saveCustom = () => { if (!isTime(custom)) return Alert.alert("Time", "Use 24-hour HH:MM, e.g. 19:30."); setPrefs({ preferredTime: custom, setupDone: true }); setCustom(""); };
 
   return (
     <SafeAreaView style={s.safe}>
@@ -60,14 +67,18 @@ export default function StudySetupScreen({ navigation }: any) {
 
         <Label>WHEN DO YOU LIKE TO STUDY?</Label>
         <View style={s.row}>{TIMES.map((t) => <Chip key={t} label={fmtTime12(t)} on={p.preferredTime === t} onPress={() => setPrefs({ preferredTime: t, setupDone: true })} />)}</View>
-        {!TIMES.includes(p.preferredTime) && <Muted style={{ marginTop: 6 }}>Current: {fmtTime12(p.preferredTime)}</Muted>}
+        <Btn ghost label={`Choose any time · ${fmtTime12(p.preferredTime)}`} onPress={() => setTimePicker("preferred")} />
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <TextInput style={[s.input, { flex: 1 }]} value={custom} onChangeText={setCustom} placeholder="Custom HH:MM" placeholderTextColor={colors.textFaint} keyboardType="numbers-and-punctuation" />
+          <TextInput style={[s.input, { flex: 1 }]} value={custom} onChangeText={setCustom} placeholder="Or enter HH:MM" placeholderTextColor={colors.textFaint} keyboardType="numbers-and-punctuation" />
           <Chip label="Set" on={false} onPress={saveCustom} />
         </View>
 
         <Label>TIME AVAILABLE PER DAY</Label>
-        <View style={s.row}>{MINS.map((m) => <Chip key={m} label={`${m} min`} on={p.dailyMinutes === m} onPress={() => setPrefs({ dailyMinutes: m, setupDone: true })} />)}</View>
+        <View style={s.row}>{MINS.map((m) => <Chip key={m} label={`${m} min`} on={p.dailyMinutes === m} onPress={() => { setCustomDaily(String(m)); setPrefs({ dailyMinutes: m, setupDone: true }); }} />)}</View>
+        <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>
+          <TextInput style={[s.input, { flex: 1 }]} value={customDaily} onChangeText={setCustomDaily} placeholder="Custom minutes" placeholderTextColor={colors.textFaint} keyboardType="number-pad" />
+          <Chip label="Set minutes" on={false} onPress={saveDailyMinutes} />
+        </View>
 
         <Label>CLOUD BACKUP</Label>
         <Card>
@@ -99,11 +110,19 @@ export default function StudySetupScreen({ navigation }: any) {
 
         <Label>QUIET HOURS</Label>
         <Muted>No study notifications during this window.</Muted>
-        <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <TextInput style={[s.input, { flex: 1 }]} value={qs} onChangeText={setQs} placeholder="22:00" placeholderTextColor={colors.textFaint} />
-          <TextInput style={[s.input, { flex: 1 }]} value={qe} onChangeText={setQe} placeholder="07:00" placeholderTextColor={colors.textFaint} />
+        <View style={s.row}>
+          <Chip label={`Starts · ${fmtTime12(qs)}`} on={false} onPress={() => setTimePicker("quietStart")} />
+          <Chip label={`Ends · ${fmtTime12(qe)}`} on={false} onPress={() => setTimePicker("quietEnd")} />
           <Chip label="Save" on={false} onPress={saveQuiet} />
         </View>
+        {timePicker && <>
+          <DateTimePicker value={asTimeDate(timePicker === "preferred" ? p.preferredTime : timePicker === "quietStart" ? qs : qe)} mode="time" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
+            if (event.type === "dismissed") { setTimePicker(null); return; }
+            if (value) { const next = pickedTime(value); if (timePicker === "preferred") setPrefs({ preferredTime: next, setupDone: true }); else if (timePicker === "quietStart") setQs(next); else setQe(next); }
+            if (Platform.OS !== "ios") setTimePicker(null);
+          }} />
+          {Platform.OS === "ios" && <Chip label="Done" on={false} onPress={() => setTimePicker(null)} />}
+        </>}
       </ScrollView>
     </SafeAreaView>
   );

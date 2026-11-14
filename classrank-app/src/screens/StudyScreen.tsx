@@ -42,10 +42,12 @@ export default function StudyScreen({ navigation, route }: Props) {
   }, [route.params?.subject, route.params?.notes]);
   const startedAt = useRef(0);
   const [minutes, setMinutes] = useState(25);
+  const [durationInput, setDurationInput] = useState("25");
   const [themeKey, setThemeKey] = useState<ThemeKey>("light");
   const [notes, setNotes] = useState("");
   const [active, setActive] = useState(false);
   const [breakMins, setBreakMins] = useState(5);
+  const [breakInput, setBreakInput] = useState("5");
   const [breakLeft, setBreakLeft] = useState(0); // >0 means a break is running
   const breakEnd = useRef(0);
   const doneToday = data.focus.filter((f) => f.date === dateStr()).length;
@@ -67,9 +69,15 @@ export default function StudyScreen({ navigation, route }: Props) {
   };
 
   const start = () => {
+    const duration = Number(durationInput);
+    const breakDuration = Number(breakInput);
+    if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return Alert.alert("Focus duration", "Enter a whole number from 1 to 1440 minutes.");
+    if (!Number.isInteger(breakDuration) || breakDuration < 1 || breakDuration > 180) return Alert.alert("Break duration", "Enter a whole number from 1 to 180 minutes.");
+    setMinutes(duration);
+    setBreakMins(breakDuration);
     startedAt.current = Date.now();
-    endAt.current = Date.now() + minutes * 60000;
-    setRemaining(minutes * 60);
+    endAt.current = Date.now() + duration * 60000;
+    setRemaining(duration * 60);
     setActive(true);
     setNotificationsMuted(true);
     activateKeepAwakeAsync();
@@ -169,10 +177,12 @@ export default function StudyScreen({ navigation, route }: Props) {
         <View style={styles.row}>{subjectList.map((s) => <Chip key={s} label={s} on={subject === s} onPress={() => setSubject(s)} />)}</View>
 
         <Text style={styles.label}>DURATION</Text>
-        <View style={styles.row}>{DURATIONS.map((d) => <Chip key={d} label={`${d} min`} on={minutes === d} onPress={() => setMinutes(d)} />)}</View>
+        <View style={styles.row}>{DURATIONS.map((d) => <Chip key={d} label={`${d} min`} on={minutes === d && durationInput === String(d)} onPress={() => { setMinutes(d); setDurationInput(String(d)); }} />)}</View>
+        <TextInput style={[styles.notes, { minHeight: 48, textAlignVertical: "center" }]} value={durationInput} onChangeText={setDurationInput} keyboardType="number-pad" placeholder="Custom focus duration in minutes (1–1440)" placeholderTextColor={colors.textFaint} />
 
         <Text style={styles.label}>BREAK</Text>
-        <View style={styles.row}>{BREAKS.map((b) => <Chip key={b} label={`${b} min`} on={breakMins === b} onPress={() => setBreakMins(b)} />)}</View>
+        <View style={styles.row}>{BREAKS.map((b) => <Chip key={b} label={`${b} min`} on={breakMins === b && breakInput === String(b)} onPress={() => { setBreakMins(b); setBreakInput(String(b)); }} />)}</View>
+        <TextInput style={[styles.notes, { minHeight: 48, textAlignVertical: "center" }]} value={breakInput} onChangeText={setBreakInput} keyboardType="number-pad" placeholder="Custom break duration in minutes (1–180)" placeholderTextColor={colors.textFaint} />
 
         <Text style={styles.label}>SCREEN</Text>
         <View style={styles.row}>

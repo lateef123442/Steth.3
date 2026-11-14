@@ -100,7 +100,16 @@ export const avatarUrl = (path?: string | null) => (path ? supabase.storage.from
 const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 /** Lets the user pick and crop a photo, uploads it to their own folder and sets it as their picture. Returns the new path, or null if cancelled. */
 export async function changeAvatar(userId: string, oldPath?: string | null): Promise<string | null> {
-  const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.6 });
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) {
+    throw new Error("Steth needs permission to access your photos. Allow photo access in your phone settings, then try again.");
+  }
+  const r = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsEditing: true,
+    aspect: [1, 1],
+    quality: 0.8,
+  });
   if (r.canceled || !r.assets?.[0]) return null;
   const a = r.assets[0];
   const mime = a.mimeType && EXT[a.mimeType] ? a.mimeType : "image/jpeg";

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, TextInput, Alert } from "react-native";
+import { View, Text, ScrollView, TextInput, Alert, Platform } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../theme/tokens";
 import PressableScale from "../components/animated/PressableScale";
@@ -11,15 +12,25 @@ import {
 import { WRAP } from "../components/responsive";
 
 const MINUTES = [10, 20, 30, 45];
+const localDateString = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parseDate = (value?: string) => { if (!value) return new Date(); const [y, m, d] = value.split("-").map(Number); return new Date(y, m - 1, d, 12); };
+const parseTime = (value: string) => { const [h, m] = value.split(":").map(Number); const d = new Date(); d.setHours(h || 0, m || 0, 0, 0); return d; };
+const formatTime = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 const dayLabel = (d: string) => (d === dateStr() ? "Today" : d === addDaysStr(1) ? "Tomorrow" : new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }));
 
 export default function PlannerScreen({ navigation }: any) {
   const { data } = useStudy();
   const [name, setName] = useState("");
   const [exam, setExam] = useState("");
+  const [examDate, setExamDate] = useState<Date>(new Date());
+  const [showExamPicker, setShowExamPicker] = useState(false);
   const [pickId, setPickId] = useState<string | null>(null);
   const [mins, setMins] = useState(20);
+  const [customMins, setCustomMins] = useState("20");
   const [offset, setOffset] = useState(0);
+  const [sessionDate, setSessionDate] = useState<Date>(new Date());
+  const [sessionTime, setSessionTime] = useState<Date>(() => parseTime(data.prefs.preferredTime));
+  const [sessionPicker, setSessionPicker] = useState<"date" | "time" | null>(null);
   const chosen = pickId ?? data.subjects[0]?.id;
   const missed = missedSessions(data);
   const days = Array.from({ length: 7 }, (_, i) => addDaysStr(i));
@@ -27,7 +38,6 @@ export default function PlannerScreen({ navigation }: any) {
 
   const saveSubject = () => {
     if (!name.trim()) return;
-    if (exam && (!/^\d{4}-\d{2}-\d{2}$/.test(exam) || isNaN(new Date(exam).getTime()))) return Alert.alert("Exam date", "Use the format YYYY-MM-DD, e.g. 2026-12-05.");
     addSubject(name, exam);
     setName(""); setExam("");
   };
@@ -105,10 +115,29 @@ export default function PlannerScreen({ navigation }: any) {
         {data.subjects.length > 0 && (
           <>
             <Label>ADD A SESSION</Label>
-            <View style={s.row}>{days.slice(0, 4).map((d, i) => <Chip key={d} label={i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayLabel(d).split(",")[0]} on={offset === i} onPress={() => setOffset(i)} />)}</View>
+            <View style={s.row}>{days.slice(0, 4).map((d, i) => <Chip key={d} label={i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayLabel(d).split(",")[0]} on={offset === i} onPress={() => { setOffset(i); setSessionDate(parseDate(d)); }} />)}</View>
             <View style={[s.row, { marginTop: spacing.sm }]}>{data.subjects.map((x) => <Chip key={x.id} label={x.name} on={chosen === x.id} onPress={() => setPickId(x.id)} />)}</View>
-            <View style={[s.row, { marginTop: spacing.sm }]}>{MINUTES.map((m) => <Chip key={m} label={`${m} min`} on={mins === m} onPress={() => setMins(m)} />)}</View>
-            <Btn label={`Add session · ${fmtTime12(data.prefs.preferredTime)}`} onPress={() => chosen && addSession(chosen, mins, addDaysStr(offset), data.prefs.preferredTime)} />
+            <View style={[s.row, { marginTop: spacing.sm }]}>{MINUTES.map((m) => <Chip key={m} label={`${m} min`} on={mins === m} onPress={() => { setMins(m); setCustomMins(String(m)); }} />)}</View>
+            <TextInput style={s.input} value={customMins} onChangeText={setCustomMins} placeholder="Session length in minutes" placeholderTextColor={colors.textFaint} keyboardType="number-pad" />
+            <View style={s.row}>
+              <Chip label={`Date · ${localDateString(sessionDate)}`} on={false} onPress={() => setSessionPicker("date")} />
+              <Chip label={`Time · ${fmtTime12(formatTime(sessionTime))}`} on={false} onPress={() => setSessionPicker("time")} />
+            </View>
+            <Btn label="Add session" onPress={() => {
+              const duration = Number(customMins);
+              if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return Alert.alert("Session length", "Enter a whole number from 1 to 1440 minutes.");
+              if (!chosen) return;
+              addSession(chosen, duration, localDateString(sessionDate), formatTime(sessionTime));
+            }} />
+            {sessionPicker && <>
+              <DateTimePicker value={sessionPicker === "date" ? sessionDate : sessionTime} mode={sessionPicker} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
+                if (event.type === "dismissed") { setSessionPicker(null); return; }
+                if (value) { if (sessionPicker === "date") setSessionDate(value); else setSessionTime(value); }
+                if (Platform.OS !== "ios") setSessionPicker(null);
+              }} />
+              {Platform.OS === "ios" && <Chip label="Done" on={false} onPress={() => setSessionPicker(null)} />}
+            </>}
+
           </>
         )}
 
@@ -125,7 +154,18 @@ export default function PlannerScreen({ navigation }: any) {
           </Card>
         ))}
         <TextInput style={s.input} placeholder="Subject (e.g. Anatomy)" placeholderTextColor={colors.textFaint} value={name} onChangeText={setName} />
-        <TextInput style={s.input} placeholder="Exam date YYYY-MM-DD (optional)" placeholderTextColor={colors.textFaint} value={exam} onChangeText={setExam} keyboardType="numbers-and-punctuation" />
+        <View style={s.row}>
+          <Chip label={exam ? `Exam · ${exam}` : "Choose exam date (optional)"} on={false} onPress={() => setShowExamPicker(true)} />
+          {exam ? <Chip label="Clear" on={false} onPress={() => setExam("")} /> : null}
+        </View>
+        {showExamPicker && <>
+          <DateTimePicker value={exam ? parseDate(exam) : examDate} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
+            if (event.type === "dismissed") { setShowExamPicker(false); return; }
+            if (value) { setExamDate(value); setExam(localDateString(value)); }
+            if (Platform.OS !== "ios") setShowExamPicker(false);
+          }} />
+          {Platform.OS === "ios" && <Chip label="Done" on={false} onPress={() => setShowExamPicker(false)} />}
+        </>}
         <Btn label="Add subject" onPress={saveSubject} />
       </ScrollView>
     </SafeAreaView>
