@@ -11,10 +11,9 @@ import AnimatedNumber from "../components/animated/AnimatedNumber";
 import StreakFlame from "../components/animated/StreakFlame";
 import PressableScale from "../components/animated/PressableScale";
 import { fetchRecentAnnouncements, Announcement } from "../lib/courseApi";
-import { useStudy, recommend, todaySessions, subjectName, focusMinutes, studyStreak, weakestTopic, fmtTime12 } from "../lib/studyStore";
+import { useStudy, recommend, todaySessions, subjectName, focusMinutes, weakestTopic, fmtTime12 } from "../lib/studyStore";
 import ArenaBackground from "../components/ArenaBackground";
 import StartHereCard from "../components/StartHereCard";
-import { effectiveStreak } from "../utils/streak";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 
@@ -41,7 +40,7 @@ export default function HomeScreen({ navigation }: Props) {
   const plannedMin = plan.reduce((a, x) => a + x.minutes, 0);
   const doneMin = plan.filter((x) => x.status === "done").reduce((a, x) => a + x.minutes, 0);
   const planProgress = plannedMin ? doneMin / plannedMin : 0;
-  const streak = studyStreak(study);
+  const streak = profile?.login_streak ?? 0;
   const weak = weakestTopic(study);
   const nextTimed = plan.filter((x) => x.status === "planned" && x.time).sort((a, b) => a.time!.localeCompare(b.time!))[0];
   const hour = new Date().getHours();
@@ -83,8 +82,8 @@ export default function HomeScreen({ navigation }: Props) {
 
             <View style={styles.chipRow}>
               <View style={styles.chip}>
-                <StreakFlame streak={Math.max(streak, effectiveStreak(profile))} size={18} />
-                <AnimatedNumber value={Math.max(streak, effectiveStreak(profile))} style={styles.chipValueText} />
+                <StreakFlame streak={streak} size={18} />
+                <AnimatedNumber value={streak} style={styles.chipValueText} />
                 <Text style={styles.chipLabel}>day streak</Text>
               </View>
 

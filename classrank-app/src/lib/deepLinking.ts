@@ -1,4 +1,5 @@
 import * as Linking from "expo-linking";
+import { Platform } from "react-native";
 import { supabase } from "./supabase";
 import { savePendingReferral } from "./referralApi";
 
@@ -48,5 +49,10 @@ export function initDeepLinking(): () => void {
 
 /** The URL the password-reset email should redirect back to. */
 export function getPasswordResetRedirectUrl(): string {
+  // Browser/PWA users must return to the deployed HTTPS app origin.
+  // A classrank:// scheme cannot be opened by a browser when the native
+  // app is not installed; the root page reads the PKCE `code` query and
+  // initDeepLinking() exchanges it for the recovery session.
+  if (Platform.OS === "web") return "https://steth-app-v1.vercel.app/";
   return Linking.createURL("reset-password");
 }
