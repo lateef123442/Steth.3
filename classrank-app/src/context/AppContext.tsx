@@ -217,6 +217,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       total_points: data.total_points,
       current_streak: data.current_streak,
       last_quiz_date: data.last_quiz_date,
+      login_streak: data.login_streak ?? 0,
+      last_login_date: data.last_login_date ?? null,
       is_pro: data.is_pro,
       pro_expires_at: data.pro_expires_at,
     });
