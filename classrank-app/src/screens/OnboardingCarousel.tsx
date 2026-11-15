@@ -49,7 +49,11 @@ export default function OnboardingCarousel({ onDone }: Props) {
 
   const handleNext = () => {
     if (index < SLIDES.length - 1) {
-      scrollRef.current?.scrollTo({ x: (index + 1) * SCREEN_WIDTH, animated: true });
+      const nextIndex = index + 1;
+      // Update the active slide immediately. Some web/mobile ScrollView implementations
+      // do not reliably emit onMomentumScrollEnd for programmatic scrollTo calls.
+      setIndex(nextIndex);
+      scrollRef.current?.scrollTo({ x: nextIndex * SCREEN_WIDTH, animated: true });
     } else {
       finish();
     }
