@@ -486,15 +486,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAuthError("Enter a valid email address first.");
       return false;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: getPasswordResetRedirectUrl(),
-    });
-    if (error) {
-      setAuthError(toUserMessage(error, "Couldn't send reset email."));
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: getPasswordResetRedirectUrl(),
+      });
+      if (error) {
+        setAuthError(toUserMessage(error, "Couldn't send reset email."));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      setAuthError(toUserMessage(err, "Couldn't send reset email. Check your connection and try again."));
       return false;
+    } finally {
+      setAuthLoading(false);
     }
-    setAuthError("Password reset email sent. Check your inbox.");
-    return true;
   };
 
   const completePasswordRecovery = async (newPassword: string): Promise<boolean> => {
