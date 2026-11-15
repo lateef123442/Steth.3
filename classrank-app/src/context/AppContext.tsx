@@ -226,7 +226,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (session?.user?.id) {
-      fetchProfile(session.user.id);
+      const userId = session.user.id;
+      fetchProfile(userId);
+      // Count one login day per calendar day. The database RPC is idempotent,
+      // so auth callbacks firing more than once cannot add duplicate days.
+      void (async () => {
+        const { error } = await supabase.rpc("record_login_streak");
+        if (error) {
+          console.warn("record_login_streak failed:", error.message);
+          return;
+        }
+        await fetchProfile(userId);
+      })();
       setUserContext(session.user.id);
       setStudyUser(session.user.id); // study data is stored per account, so a shared phone never mixes students
       // (push registration is handled in usePushRegistration, which respects the student's opt-out)
