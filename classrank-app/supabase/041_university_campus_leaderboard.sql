@@ -13,7 +13,10 @@ select
   p.university
 from public.profiles p
 join public.departments d on d.id = p.department_id
-where p.shadow_flagged = false;
+where p.shadow_flagged = false
+  and p.university = (
+    select me.university from public.profiles me where me.id = auth.uid()
+  );
 
 create or replace view public.leaderboard_normalized as
 select
@@ -30,7 +33,10 @@ select
   p.university
 from public.profiles p
 join public.departments d on d.id = p.department_id
-where p.shadow_flagged = false;
+where p.shadow_flagged = false
+  and p.university = (
+    select me.university from public.profiles me where me.id = auth.uid()
+  );
 
 -- Realtime subscriptions must be allowed to read only the signed-in user's own friendship rows.
 drop policy if exists "friendships: participants can read own requests" on public.friendships;
