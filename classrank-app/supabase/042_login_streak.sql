@@ -14,7 +14,7 @@ declare
   v_user uuid := auth.uid();
   v_last date;
   v_streak integer;
-  v_today date := current_date;
+  v_today date := (now() at time zone 'Africa/Lagos')::date;
 begin
   if v_user is null then
     raise exception 'Authentication required';
