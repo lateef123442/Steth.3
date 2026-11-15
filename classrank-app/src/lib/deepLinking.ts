@@ -4,55 +4,87 @@ import { supabase } from "./supabase";
 import { savePendingReferral } from "./referralApi";
 
 /**
- * Handles the incoming deep link from a password-reset email. Supabase's
- * reset email points at `<redirectTo>?code=...`; exchangeCodeForSession
- * trades that one-time code for a real session (this only works because
- * the client is configured with flowType: "pkce" — see supabase.ts).
- *
- * Once this succeeds, supabase-js fires an onAuthStateChange event with
- * event === "PASSWORD_RECOVERY" (see AppContext), which is what tells the
- * app to show SetNewPasswordScreen instead of dropping the user straight
- * into their account under their old password.
+ * Handles an incoming Supabase PKCE callback from a password-reset email.
+ * Supabase's exchangeCodeForSession API expects the one-time `code` value,
+ * not the full callback URL.
  */
 async function handleUrl(url: string | null) {
   if (!url) return;
-  // Invite link, e.g. classrank://invite?ref=ABC1234. Keep the code so sign-up (or Profile) can use it.
+
+  // Invite link, e.g. classrank://invite?ref=ABC1234.
   if (/[?&]ref=/i.test(url) && (/invite/i.test(url) || /^https?:/i.test(url))) {
-    try { const ref = Linking.parse(url).queryParams?.ref; if (typeof ref === "string") await savePendingReferral(ref); } catch { /* ignore */ }
+    try {
+      const ref = Linking.parse(url).queryParams?.ref;
+      if (typeof ref === "string") await savePendingReferral(ref);
+    } catch {
+      // Ignore malformed referral links.
+    }
     return;
   }
-  if (!url.includes("code=")) return; // not an auth deep link — ignore
+
+  let code: string | null = null;
+  try {
+    const parsed = new URL(url);
+    code = parsed.searchParams.get("code");
+    // Support providers that return the code in the URL fragment.
+    if (!code && parsed.hash.length > 1) {
+      code = new URLSearchParams(parsed.hash.slice(1)).get("code");
+    }
+  } catch {
+    // Ignore malformed or unrelated URLs.
+    return;
+  }
+  if (!code) return;
+
+  // Remove the one-time code from browser history/address bar once captured.
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    try {
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete("code");
+      clean.searchParams.delete("type");
+      window.history.replaceState(window.history.state, "", `${clean.pathname}${clean.search}${clean.hash}`);
+    } catch {
+      // URL cleanup must not prevent the recovery exchange.
+    }
+  }
 
   try {
-    const { error } = await supabase.auth.exchangeCodeForSession(url);
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      console.log("[deepLinking] exchangeCodeForSession failed:", error.message);
+      console.error("[deepLinking] Password recovery code exchange failed:", error.message);
     }
   } catch (err) {
-    console.log("[deepLinking] exchangeCodeForSession threw:", err);
+    console.error("[deepLinking] Password recovery code exchange threw:", err);
   }
 }
 
 /**
- * Call once at app startup. Handles both a cold start via the link (app
- * wasn't running) and the app already being open when the link is tapped.
+ * Call once at app startup. Explicitly reads the browser URL on web and uses
+ * Expo Linking for native cold starts and links opened while the app is live.
  */
 export function initDeepLinking(): () => void {
-  Linking.getInitialURL().then(handleUrl);
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    void handleUrl(window.location.href);
+    const handleBrowserNavigation = () => {
+      void handleUrl(window.location.href);
+    };
+    window.addEventListener("popstate", handleBrowserNavigation);
+    window.addEventListener("hashchange", handleBrowserNavigation);
+    return () => {
+      window.removeEventListener("popstate", handleBrowserNavigation);
+      window.removeEventListener("hashchange", handleBrowserNavigation);
+    };
+  }
 
+  void Linking.getInitialURL().then(handleUrl);
   const subscription = Linking.addEventListener("url", (event) => {
-    handleUrl(event.url);
+    void handleUrl(event.url);
   });
-
   return () => subscription.remove();
 }
 
 /** The URL the password-reset email should redirect back to. */
 export function getPasswordResetRedirectUrl(): string {
-  // Browser/PWA users must return to the deployed HTTPS app origin.
-  // A classrank:// scheme cannot be opened by a browser when the native
-  // app is not installed; the root page reads the PKCE `code` query and
-  // initDeepLinking() exchanges it for the recovery session.
   if (Platform.OS === "web") return "https://steth-app-v1.vercel.app/";
   return Linking.createURL("reset-password");
 }
