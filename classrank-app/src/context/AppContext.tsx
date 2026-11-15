@@ -229,15 +229,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (session?.user?.id) {
       const userId = session.user.id;
-      fetchProfile(userId);
-      // Count one login day per calendar day. The database RPC is idempotent,
-      // so auth callbacks firing more than once cannot add duplicate days.
+      // Count one login day per calendar day, then load the profile once.
+      // Do not fetch before the RPC: two overlapping reads can finish out of
+      // order and let the older zero value overwrite the freshly counted streak.
       void (async () => {
         const { error } = await supabase.rpc("record_login_streak");
         if (error) {
           console.warn("record_login_streak failed:", error.message);
-          return;
         }
+        // Even if the RPC fails, load the saved profile value rather than
+        // leaving the UI at its initial zero.
         await fetchProfile(userId);
       })();
       setUserContext(session.user.id);
