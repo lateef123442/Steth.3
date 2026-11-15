@@ -14,10 +14,9 @@ import ProPaymentModal from "../components/ProPaymentModal";
 import { hasActivePro, daysLeft } from "../lib/proApi";
 import { earnedBadges } from "../data/badges";
 import { useNewBadgeCelebration } from "../hooks/useNewBadgeCelebration";
-import { fetchReferralStats, redeemReferralCode, peekPendingReferral, clearPendingReferral } from "../lib/referralApi";
+import { fetchReferralStats, redeemReferralCode, peekPendingReferral, clearPendingReferral, ReferralStatsWithActivity } from "../lib/referralApi";
 import { inviteMessage } from "../lib/appLinks";
 import { runNotificationCheck } from "../lib/notifications";
-import { ReferralStats } from "../types";
 import { track, AnalyticsEvents } from "../lib/analytics";
 import { useNavigation } from "@react-navigation/native";
 import { useStudy, achievements, xpInfo, studyStreak } from "../lib/studyStore";
@@ -35,7 +34,7 @@ export default function ProfileScreen() {
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const { celebrating, dismiss } = useNewBadgeCelebration(profile);
-  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [referralStats, setReferralStats] = useState<ReferralStatsWithActivity | null>(null);
   const [themeMode, setThemeModeState] = useState<ThemeMode | null>(null);
   const [inviteInput, setInviteInput] = useState("");
   const [redeeming, setRedeeming] = useState(false);
@@ -268,9 +267,23 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.inviteStatsRow}>
               <Text style={styles.inviteStatText}>
-                {referralStats.total_referred} invited · {referralStats.total_rewarded} vested
+                {referralStats.total_referred} joined · {referralStats.total_rewarded} rewarded
               </Text>
             </View>
+            {referralStats.recent_referrals?.length > 0 && (
+              <View style={{ marginTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md }}>
+                <Text style={[styles.inviteTitle, { fontSize: 14, marginBottom: spacing.sm }]}>Recent sign-ups</Text>
+                {referralStats.recent_referrals.map((person) => (
+                  <View key={person.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 5 }}>
+                    <View style={{ flex: 1, marginRight: spacing.sm }}>
+                      <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>{person.name || "New student"}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>Joined using your referral</Text>
+                    </View>
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{new Date(person.created_at).toLocaleDateString()}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 

@@ -2,10 +2,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
 import { ReferralStats } from "../types";
 
-export async function fetchReferralStats(): Promise<ReferralStats> {
+export interface ReferralActivity {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export type ReferralStatsWithActivity = ReferralStats & {
+  recent_referrals: ReferralActivity[];
+};
+
+export async function fetchReferralStats(): Promise<ReferralStatsWithActivity> {
   const { data, error } = await supabase.rpc("get_my_referral_stats");
   if (error) throw error;
-  return data as ReferralStats;
+  return data as ReferralStatsWithActivity;
 }
 
 export interface RedeemReferralResult { ok: boolean; error?: string; pro_expires_at?: string; days?: number }
