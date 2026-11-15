@@ -20,6 +20,8 @@ export interface Profile {
   total_points: number;
   current_streak: number;
   last_quiz_date: string | null;
+  login_streak: number;
+  last_login_date: string | null;
   is_pro: boolean;
   pro_expires_at: string | null;
 }
