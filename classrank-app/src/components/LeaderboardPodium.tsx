@@ -8,6 +8,7 @@ import EmojiIcon from "./EmojiIcon";
 interface Props {
   top3: LeaderboardEntry[];
   currentUserId?: string;
+  renderAction?: (entry: LeaderboardEntry) => React.ReactNode;
 }
 
 const PODIUM_CONFIG = [
@@ -16,13 +17,14 @@ const PODIUM_CONFIG = [
   { place: 3, height: 68, order: 2, color: colors.bronze },
 ];
 
-function PodiumColumn({ entry, place, height, color, delay, isCurrentUser }: {
+function PodiumColumn({ entry, place, height, color, delay, isCurrentUser, action }: {
   entry: LeaderboardEntry;
   place: number;
   height: number;
   color: string;
   delay: number;
   isCurrentUser: boolean;
+  action?: React.ReactNode;
 }) {
   const progress = useSharedValue(0);
 
@@ -47,6 +49,7 @@ function PodiumColumn({ entry, place, height, color, delay, isCurrentUser }: {
         {entry.name}
       </Text>
       <Text style={styles.podiumPoints}>{entry.points.toLocaleString()}</Text>
+      <View style={styles.actionSlot}>{action}</View>
       <Animated.View style={[styles.bar, { height, backgroundColor: color }, columnStyle]}>
         <Text style={styles.placeNumber}>{place}</Text>
       </Animated.View>
@@ -54,7 +57,7 @@ function PodiumColumn({ entry, place, height, color, delay, isCurrentUser }: {
   );
 }
 
-export default function LeaderboardPodium({ top3, currentUserId }: Props) {
+export default function LeaderboardPodium({ top3, currentUserId, renderAction }: Props) {
   if (top3.length < 3) return null;
 
   const byPlace: Record<number, LeaderboardEntry> = { 1: top3[0], 2: top3[1], 3: top3[2] };
@@ -73,6 +76,7 @@ export default function LeaderboardPodium({ top3, currentUserId }: Props) {
             color={cfg.color}
             delay={i * 120}
             isCurrentUser={entry.id === currentUserId}
+            action={renderAction?.(entry)}
           />
         );
       })}
@@ -104,7 +108,8 @@ const styles = StyleSheet.create({
   avatarHighlight: { borderColor: colors.teal, borderWidth: 3 },
   avatarText: { color: "#fff", fontFamily: type.h3.fontFamily, fontSize: 18 },
   podiumName: { ...type.caption, color: colors.text, fontFamily: type.bodySemibold.fontFamily, maxWidth: 100 },
-  podiumPoints: { ...type.caption, color: colors.textMuted, marginBottom: spacing.sm },
+  podiumPoints: { ...type.caption, color: colors.textMuted, marginBottom: spacing.xs },
+  actionSlot: { minHeight: 30, justifyContent: "center", alignItems: "center", marginBottom: spacing.xs },
   bar: {
     width: "100%",
     borderTopLeftRadius: radii.sm,
