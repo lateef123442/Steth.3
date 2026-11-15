@@ -165,13 +165,13 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Learn" component={LearnScreen} />
-      <Tab.Screen name="Quiz" component={QuizScreen} />
+      <Tab.Screen name="Learn" component={LearnScreen} options={{ title: "Courses" }} />
+      <Tab.Screen name="Quiz" component={QuizScreen} options={{ title: "Quiz" }} />
       <Tab.Screen name="CommunityTab" component={CommunityScreen} options={{ title: "Community" }} />
-      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: "Ranks" }} />
       <Tab.Screen name="Profile" component={ExemptProfile} />
 
-      {/* Reachable from Home, but hidden from the bar */}
+      {/* These destinations stay available from clear Home shortcuts, keeping the main bar simple. */}
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: "Ranks", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Feed" component={FeedScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Practice" component={PracticeScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Study" component={StudyScreen} options={{ title: "Focus", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />

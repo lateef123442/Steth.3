@@ -66,6 +66,8 @@ export default function HomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe}>
       {isFocused && <StatusBar style="light" />}
       <ScrollView contentContainerStyle={styles.container}>
+        <StartHereCard onGo={go} />
+
         <ArenaBackground>
           <View style={styles.heroInner}>
             <Text style={styles.greeting}>{hello}, {profile.name.split(" ")[0]}</Text>
@@ -95,8 +97,6 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         </ArenaBackground>
 
-        <StartHereCard onGo={go} />
-
         {news.length > 0 && (
           <Reveal>
           <PressableScale style={[styles.planCard, { backgroundColor: colors.emberTint }]} onPress={() => go("Course", { courseId: news[0].course_id })} accessibilityRole="button">
@@ -107,7 +107,7 @@ export default function HomeScreen({ navigation }: Props) {
           </Reveal>
         )}
         <View style={styles.planCard}>
-          <Text style={styles.quizCardTitle}>Today's study plan</Text>
+          <Text style={styles.quizCardTitle}>Today's plan</Text>
           {plan.length === 0 ? (
             <Text style={styles.quizCardSubtitle}>Nothing planned yet.</Text>
           ) : (
@@ -128,8 +128,9 @@ export default function HomeScreen({ navigation }: Props) {
           </PressableScale>
         </View>
 
+        <Text style={styles.quickActionsTitle}>What would you like to do?</Text>
         <View style={styles.tiles}>
-          {([["🗓", "Planner", "Planner"], ["🎯", "Practice", "Practice"], ["📈", "Progress", "Progress"], ["🤖", "AI tutor", "Companion"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
+          {([["🗓", "Study plan", "Planner"], ["🎯", "Practice", "Practice"], ["📈", "My progress", "Progress"], ["🏆", "My rank", "Leaderboard"], ["🤖", "AI helper", "Companion"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
             <PressableScale key={target} style={styles.tile} onPress={() => go(target)} accessibilityRole="button">
               <EmojiIcon emoji={icon} style={{ fontSize: 22 }} />
               <Text style={styles.tileText}>{label}</Text>
@@ -146,14 +147,14 @@ export default function HomeScreen({ navigation }: Props) {
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.quizCardTitle}>
-              {hasCompletedTodaysQuiz ? "Department quiz: done" : "Ranked department quiz is ready"}
+              {hasCompletedTodaysQuiz ? "Department quiz: done" : "Your daily quiz is ready"}
             </Text>
             <Text style={styles.quizCardSubtitle}>
               {hasCompletedTodaysQuiz
                 ? "Come back tomorrow to keep your streak alive."
                 : todaysQuestions.length > 0
                 ? `${todaysQuestions.length} questions · ${profile.department}`
-                : "No quiz published yet. Check back soon."}
+                : "No quiz is ready yet. Please check back later."}
             </Text>
           </View>
           {!hasCompletedTodaysQuiz && todaysQuestions.length > 0 && (
@@ -165,13 +166,13 @@ export default function HomeScreen({ navigation }: Props) {
 
         <PressableScale style={styles.studyCard} onPress={() => go("Study", plan.find((x) => x.status === "planned") ? { subject: subjectName(study, plan.find((x) => x.status === "planned")!.subjectId) } : undefined)} haptic="medium" accessibilityRole="button">
           <View style={{ flex: 1 }}>
-            <Text style={styles.quizCardTitle}>⏱ Focus mode</Text>
-            <Text style={styles.quizCardSubtitle}>Continue studying. Timer on, notifications muted, screen stays on.</Text>
+            <Text style={styles.quizCardTitle}>⏱ Study with a timer</Text>
+            <Text style={styles.quizCardSubtitle}>Set a timer and focus on one subject without distractions.</Text>
           </View>
         </PressableScale>
 
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>How ranking works</Text>
+          <Text style={styles.infoTitle}>How your rank works</Text>
           <Text style={styles.infoText}>
             Your points are compared first within {profile.department}, so you're always ranked fairly against
             students in your own field, then rolled up into your faculty and campus-wide leaderboards.
@@ -232,9 +233,10 @@ const styles = StyleSheet.create({
   recText: { ...type.bodyMedium, color: colors.text, marginTop: spacing.md },
   recBtn: { backgroundColor: colors.teal, borderRadius: radii.md, paddingVertical: spacing.md, alignItems: "center", marginTop: spacing.md },
   recBtnText: { ...type.h3, color: "#fff" },
-  tiles: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
-  tile: { flex: 1, backgroundColor: colors.card, borderRadius: radii.md, paddingVertical: spacing.lg, alignItems: "center", ...shadow.card },
-  tileText: { ...type.caption, color: colors.text, marginTop: 4 },
+  quickActionsTitle: { ...type.h3, color: colors.text, marginTop: spacing.xl },
+  tiles: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md },
+  tile: { width: "31%", flexGrow: 1, backgroundColor: colors.card, borderRadius: radii.md, paddingVertical: spacing.lg, alignItems: "center", ...shadow.card },
+  tileText: { ...type.caption, color: colors.text, marginTop: 4, textAlign: "center" },
   studyCard: { flexDirection: "row", alignItems: "center", backgroundColor: colors.tealTint, borderRadius: radii.lg, padding: spacing.xl, marginTop: spacing.lg },
   infoCard: { backgroundColor: colors.violetTint, borderRadius: radii.md, padding: spacing.lg, marginTop: spacing.lg },
   infoTitle: { ...type.h3, color: colors.text, marginBottom: 6 },

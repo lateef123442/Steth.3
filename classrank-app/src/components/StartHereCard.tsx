@@ -8,9 +8,9 @@ import EmojiIcon from "./EmojiIcon";
 const KEY = "steth.startHereDismissed";
 
 const STEPS: { icon: string; title: string; hint: string; target: string }[] = [
-  { icon: "🎯", title: "Do today's quiz", hint: "Answer a few questions and earn points.", target: "Quiz" },
-  { icon: "📚", title: "Learn your courses", hint: "Read notes and watch videos.", target: "Learn" },
-  { icon: "🤖", title: "Ask the AI helper", hint: "Stuck? Ask it anything.", target: "Companion" },
+  { icon: "📚", title: "Open your courses", hint: "Find your subjects, notes and lessons.", target: "Learn" },
+  { icon: "🎯", title: "Try a quiz", hint: "Answer questions and earn points.", target: "Quiz" },
+  { icon: "🤖", title: "Ask for help", hint: "The AI helper can explain things you find difficult.", target: "Companion" },
 ];
 
 /** A friendly three-step guide for people who are new. Big icons, short words, one tap each. It can be hidden for good. */
@@ -23,8 +23,8 @@ export default function StartHereCard({ onGo }: { onGo: (target: string) => void
 
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>New here? Start here</Text>
-      <Text style={styles.sub}>Tap any big button to begin.</Text>
+      <Text style={styles.title}>Your first 3 steps</Text>
+      <Text style={styles.sub}>Choose one. You can come back here any time.</Text>
       {STEPS.map((s, i) => (
         <PressableScale key={s.target} style={styles.row} onPress={() => onGo(s.target)} accessibilityRole="button" accessibilityLabel={`${s.title}. ${s.hint}`}>
           <View style={styles.badge}><Text style={styles.badgeText}>{i + 1}</Text></View>
@@ -37,7 +37,7 @@ export default function StartHereCard({ onGo }: { onGo: (target: string) => void
         </PressableScale>
       ))}
       <PressableScale onPress={hide} style={styles.hide} haptic="none" accessibilityRole="button" accessibilityLabel="Hide this guide">
-        <Text style={styles.hideText}>Got it, hide this</Text>
+        <Text style={styles.hideText}>I know my way around</Text>
       </PressableScale>
     </View>
   );

@@ -17,19 +17,19 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   {
-    emoji: "🎯",
-    title: "Every department. One leaderboard.",
-    body: "Take daily quizzes in your own field, ranked fairly against students in your own department, not compared against subjects that aren't yours.",
+    emoji: "👋",
+    title: "Welcome to State",
+    body: "Your study space. Find your courses, answer questions and see your progress in one place.",
   },
   {
-    emoji: "🔥",
-    title: "Build a streak that matters",
-    body: "Answer today's quiz to keep your streak alive. Climb your department, faculty, and campus rankings as you go.",
+    emoji: "📚",
+    title: "Learn and practise",
+    body: "Tap Courses to open your subjects and study materials. Tap Quiz to answer questions and earn points.",
   },
   {
-    emoji: "🏆",
-    title: "Compete fairly, campus-wide",
-    body: "Faculty and Campus boards are normalized so a tough department never structurally outranks an easy one. Everyone competes on equal footing.",
+    emoji: "🤝",
+    title: "Get help and keep growing",
+    body: "Ask the AI helper when you are stuck. Check your streak and rank as you keep learning.",
   },
 ];
 
@@ -84,6 +84,7 @@ export default function OnboardingCarousel({ onDone }: Props) {
         </ScrollView>
 
         <View style={styles.footer}>
+          <Text style={styles.stepText}>Step {index + 1} of {SLIDES.length}</Text>
           <View style={styles.dots}>
             {SLIDES.map((_, i) => (
               <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
@@ -91,7 +92,7 @@ export default function OnboardingCarousel({ onDone }: Props) {
           </View>
 
           <PressableScale style={styles.nextButton} onPress={handleNext} haptic="medium">
-            <Text style={styles.nextButtonText}>{index < SLIDES.length - 1 ? "Next" : "Get Started"}</Text>
+            <Text style={styles.nextButtonText}>{index < SLIDES.length - 1 ? "Next" : "Enter State"}</Text>
           </PressableScale>
 
           {index < SLIDES.length - 1 && (
@@ -113,6 +114,7 @@ const styles = StyleSheet.create({
   title: { ...type.h1, color: colors.textOnDark, textAlign: "center", marginBottom: spacing.md },
   body: { ...type.body, color: colors.textOnDarkMuted, textAlign: "center", lineHeight: 22 },
   footer: { paddingHorizontal: spacing.xxl, paddingBottom: spacing.xl, alignItems: "center" },
+  stepText: { ...type.caption, color: colors.textOnDarkMuted, marginBottom: spacing.sm },
   dots: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.xl },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.25)" },
   dotActive: { backgroundColor: colors.teal, width: 20 },
