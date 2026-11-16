@@ -5,7 +5,7 @@ import { colors, radii, spacing, type } from "../theme/tokens";
 import PressableScale from "../components/animated/PressableScale";
 import { supabase } from "../lib/supabase";
 import { useStudy, subjectStats, topicStats, daysUntil, dueTopics, knowledgeGaps, generateSchedule, applySchedule, addQuestions, addCards, subjectName, topicName, fmtTime12, dateStr, addDaysStr } from "../lib/studyStore";
-import { generateQuestions, generateFlashcards, FileInfo } from "../lib/studyAi";
+import { generateQuestions, generateFlashcards, studyAiErrorMessage, FileInfo } from "../lib/studyAi";
 import { courseFilePaths } from "../lib/studyCourseSync";
 import { Loader } from "../components/animated/Loader";
 import { WRAP } from "../components/responsive";
@@ -55,8 +55,8 @@ export default function CompanionScreen({ navigation, route }: any) {
         reply(n ? `Added ${n} flashcards to ${label}. Rate them Again/Hard/Good/Easy and I'll space them out.${fileNote()}` : "You already have those cards.", n ? { label: "Review cards", run: () => navigation.navigate("Cards") } : undefined);
       }
       setTool(null);
-    } catch {
-      reply("I couldn't generate that right now. Check your connection, or that the study-companion function is deployed.");
+    } catch (error) {
+      reply(await studyAiErrorMessage(error));
     } finally { setBusy(false); }
   };
 
@@ -95,8 +95,8 @@ export default function CompanionScreen({ navigation, route }: any) {
       const { data: res, error } = await supabase.functions.invoke("study-companion", { body: { messages: next.slice(-12), context } });
       if (error || !res?.reply) throw error ?? new Error("empty");
       setMsgs([...next, { role: "assistant", content: res.reply }]);
-    } catch {
-      setMsgs([...next, { role: "assistant", content: "I couldn't reach the tutor. Check your connection. If this keeps happening, the study-companion function may not be deployed yet." }]);
+    } catch (error) {
+      setMsgs([...next, { role: "assistant", content: await studyAiErrorMessage(error) }]);
     } finally {
       setBusy(false);
       setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 100);
