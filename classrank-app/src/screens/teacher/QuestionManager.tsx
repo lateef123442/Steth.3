@@ -4,7 +4,7 @@ import { colors, spacing, type } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Btn, Card, Chip, Empty, Field, Label, Muted, Tag, s } from "../../components/study/ui";
 import { ChipRow } from "../../components/responsive";
-import { saveQuestion, deleteCourseContent } from "../../lib/courseApi";
+import { saveQuestion, saveQuestionsBulk, deleteCourseContent } from "../../lib/courseApi";
 import { CourseBundle, CourseTopic, QuestionPurpose } from "../../lib/studyCourseSync";
 import { generateQuestions, FileInfo } from "../../lib/studyAi";
 import { parseQuestionBlocks, ParsedQuestion } from "../../lib/bulkImport";
@@ -42,7 +42,7 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
     if (busy) return; setBusy(true);
     try { await fn(); await onChanged(); } catch (e: any) { Alert.alert(fail, e?.message ?? "Try again."); } finally { setBusy(false); }
   };
-  const idFor = (name: string) => (name.trim() ? topics.find((t) => t.title.toLowerCase() === name.trim().toLowerCase())?.id ?? effTopic : effTopic);
+  const idFor = (name: string) => (name.trim() ? topics.find((t) => t.title.toLowerCase() === name.trim().toLowerCase())?.id ?? null : effTopic);
 
   const add = () => {
     if (!text.trim() || opts.some((o) => !o.trim())) return Alert.alert("Incomplete", "Enter the question and all four options.");
@@ -52,11 +52,32 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
     }, "Couldn't save question");
   };
   const publish = async (items: ParsedQuestion[]) => {
-    if (busy || !items.length) return 0; setBusy(true); let ok = 0;
-    try { for (const it of items) { await saveQuestion({ courseId, topicId: idFor(it.topic), purpose, question: it.question, options: it.options, correctIndex: it.correctIndex, explanation: it.explanation }); ok++; } }
-    catch (e: any) { Alert.alert("Stopped early", `${ok} of ${items.length} saved. ${e?.message ?? "Try again."}`); }
-    finally { setBusy(false); await onChanged(); }
-    return ok;
+    if (busy || !items.length) return 0;
+    if (items.length > 500) {
+      Alert.alert("Too many questions", "Import up to 500 questions at a time. Split the remaining questions into another batch.");
+      return 0;
+    }
+    const unknownTopics = [...new Set(items.map((it) => it.topic.trim()).filter((name) => name && !topics.some((t) => t.title.toLowerCase() === name.toLowerCase())))];
+    if (unknownTopics.length) {
+      Alert.alert("Topic not found", `Create or select these course topics first, or remove their Topic lines:\n\n${unknownTopics.join(", ")}`);
+      return 0;
+    }
+    setBusy(true);
+    try {
+      const count = await saveQuestionsBulk({
+        courseId,
+        purpose,
+        questions: items.map((it) => ({ topicId: idFor(it.topic), question: it.question, options: it.options, correctIndex: it.correctIndex, explanation: it.explanation })),
+      });
+      await onChanged();
+      Alert.alert("Import complete", `${count} question${count === 1 ? " was" : "s were"} saved successfully.`);
+      return count;
+    } catch (e: any) {
+      Alert.alert("Questions not imported", e?.message ?? "The batch could not be saved. No questions from this batch were added. Check the question format and try again.");
+      return 0;
+    } finally {
+      setBusy(false);
+    }
   };
   const del = (id: string) => Alert.alert("Delete question?", "This can't be undone.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => run(() => deleteCourseContent("question", id), "Couldn't delete") }]);
 
@@ -136,15 +157,15 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
       {drafts.length > 1 && <Btn label={`Publish all ${drafts.length}`} disabled={busy} onPress={async () => { if (await publish(drafts)) setDrafts([]); }} />}
 
       <Label>PASTE MANY QUESTIONS</Label>
-      <Muted>One block per question, blank line between: "Q:" text, options A) to D), then "Answer: B". Optional "Why:" and "Topic:" (a topic name from this course) lines.</Muted>
+      Paste questions in the format below. Blank lines are supported, and numbered questions or Q: headings can also start new questions without blank lines. Each question needs four options and an Answer line. Optional Why: and Topic: lines are supported. Import is saved as one safe batch: if a question is invalid, none of that batch is saved, and the error is shown.</Muted>
       <TextInput style={[s.input, { minHeight: 130, textAlignVertical: "top" }]} multiline value={paste} onChangeText={setPaste} autoCapitalize="none"
         placeholder={"Q: What is the SI unit of force?\nA) Joule\nB) Newton\nC) Watt\nD) Pascal\nAnswer: B\nWhy: F = ma, measured in newtons."} placeholderTextColor={colors.textFaint} />
       {parsed && (
         <>
-          <Muted style={{ marginTop: 6 }}>{parsed.questions.length} ready{parsed.errors.length ? ` · ${parsed.errors.length} with problems (skipped)` : ""}</Muted>
+          <Muted style={{ marginTop: 6 }}>{parsed.questions.length} valid question{parsed.questions.length === 1 ? "" : "s"} ready{parsed.errors.length ? ` · ${parsed.errors.length} need fixing` : ""}. Maximum 500 per import.</Muted>
           {parsed.errors.map((e) => <Text key={e.block} style={[type.caption, { color: colors.danger }]}>Question {e.block}: {e.message}</Text>)}
           <Btn label={`Import ${parsed.questions.length} question${parsed.questions.length === 1 ? "" : "s"}`} disabled={busy || parsed.questions.length === 0}
-            onPress={async () => { const n = await publish(parsed.questions); if (n === parsed.questions.length) { setPaste(""); Alert.alert("Imported", `${n} questions saved.`); } }} />
+            onPress={async () => { const n = await publish(parsed.questions); if (n === parsed.questions.length && n > 0) setPaste(""); }} />
         </>
       )}
     </View>
