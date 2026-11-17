@@ -157,7 +157,7 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
       {drafts.length > 1 && <Btn label={`Publish all ${drafts.length}`} disabled={busy} onPress={async () => { if (await publish(drafts)) setDrafts([]); }} />}
 
       <Label>PASTE MANY QUESTIONS</Label>
-      Paste questions in the format below. Blank lines are supported, and numbered questions or Q: headings can also start new questions without blank lines. Each question needs four options and an Answer line. Optional Why: and Topic: lines are supported. Import is saved as one safe batch: if a question is invalid, none of that batch is saved, and the error is shown.</Muted>
+      <Muted>Paste questions in the format below. Blank lines are supported, and numbered questions or Q: headings can also start new questions without blank lines. Each question needs four options and an Answer line. Optional Why: and Topic: lines are supported. Import is saved as one safe batch: if a question is invalid, none of that batch is saved, and the error is shown.</Muted>
       <TextInput style={[s.input, { minHeight: 130, textAlignVertical: "top" }]} multiline value={paste} onChangeText={setPaste} autoCapitalize="none"
         placeholder={"Q: What is the SI unit of force?\nA) Joule\nB) Newton\nC) Watt\nD) Pascal\nAnswer: B\nWhy: F = ma, measured in newtons."} placeholderTextColor={colors.textFaint} />
       {parsed && (
