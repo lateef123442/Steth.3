@@ -25,6 +25,7 @@ import AdminProScreen from "../screens/admin/AdminProScreen";
 import LearnScreen from "../screens/LearnScreen";
 import PracticeScreen from "../screens/PracticeScreen";
 import PracticeSessionScreen from "../screens/PracticeSessionScreen";
+import PDFPracticeScreen from "../screens/PDFPracticeScreen";
 import SubjectRoomScreen from "../screens/SubjectRoomScreen";
 import StudySetupScreen from "../screens/StudySetupScreen";
 import { useStudyReminderSync } from "../hooks/useStudyReminderSync";
@@ -63,7 +64,7 @@ export type RootStackParamList = {
   Cards: undefined;
   Progress: undefined;
   Companion: { prompt?: string } | undefined;
-  PracticeSession: { mode: "quick" | "topic" | "subject" | "mock" | "daily"; subjectId?: string; topicId?: string };
+  PracticeSession: { mode: "quick" | "topic" | "subject" | "mock" | "daily" | "review"; subjectId?: string; topicId?: string; questionCount?: number };
   Subject: { subjectId: string };
   StudySetup: undefined;
   Community: undefined;
@@ -89,6 +90,7 @@ export type MainTabParamList = {
   Home: undefined;
   Learn: undefined;
   Practice: undefined;
+  PDFPractice: undefined;
   Study: { subject?: string; notes?: string } | undefined;
   Leaderboard: undefined;
   CommunityTab: undefined;
@@ -153,6 +155,7 @@ function MainTabs() {
             Home: "home",
             Learn: "library",
             Practice: "help-circle",
+            PDFPractice: "document-text",
             CommunityTab: "people",
             Quiz: "help-circle",
             Leaderboard: "trophy",
@@ -174,6 +177,7 @@ function MainTabs() {
       <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: "Ranks", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Feed" component={FeedScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Practice" component={PracticeScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
+      <Tab.Screen name="PDFPractice" component={PDFPracticeScreen} options={{ title: "PDF to CBT", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Study" component={StudyScreen} options={{ title: "Focus", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
     </Tab.Navigator>
   );

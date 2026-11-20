@@ -22,9 +22,9 @@ const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStar
 const LETTERS = ["A", "B", "C", "D"];
 
 export default function PracticeSessionScreen({ navigation, route }: any) {
-  const { mode, subjectId, topicId } = route.params as { mode: QuizMode; subjectId?: string; topicId?: string };
+  const { mode, subjectId, topicId, questionCount } = route.params as { mode: QuizMode; subjectId?: string; topicId?: string; questionCount?: number };
   const { data } = useStudy();
-  const [quiz] = useState(() => buildQuiz(data, mode, subjectId, topicId)); // frozen at start, like the ranked quiz
+  const [quiz] = useState(() => buildQuiz(data, mode, subjectId, topicId, questionCount)); // frozen at start, like the ranked quiz
   const qs = quiz.questions;
   const [idx, setIdx] = useState(0);
   const [picks, setPicks] = useState<(number | null)[]>(() => qs.map(() => null));

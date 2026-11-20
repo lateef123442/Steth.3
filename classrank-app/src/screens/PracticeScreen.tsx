@@ -4,17 +4,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../theme/tokens";
 import { useApp } from "../context/AppContext";
 import { Card, Chip, Label, Muted, Tag, s } from "../components/study/ui";
-import { useStudy, questionPool, topicStats, scoreHistory, subjectName, attemptedToday, QuizMode, QUIZ_SIZE } from "../lib/studyStore";
+import { useStudy, questionPool, topicStats, scoreHistory, subjectName, attemptedToday, QuizMode } from "../lib/studyStore";
 import StaggerIn from "../components/animated/StaggerIn";
 import { WRAP } from "../components/responsive";
 
 import EmojiIcon from "../components/EmojiIcon";
 const MODES: { mode: QuizMode; icon: string; title: string; blurb: (n: number) => string; need: "subject" | "topic" | "any" }[] = [
   { mode: "review", icon: "🔁", title: "Spaced Review", blurb: () => "3 to 5 questions from each topic that is due or that you are struggling with", need: "any" },
-  { mode: "quick", icon: "⚡", title: "Quick Quiz", blurb: () => "5 questions, leaning toward your weak spots", need: "any" },
+  { mode: "quick", icon: "⚡", title: "Quick Quiz", blurb: () => "A short quiz focused on your weak spots", need: "any" },
   { mode: "topic", icon: "🎯", title: "Topic Quiz", blurb: () => "Drill one topic", need: "topic" },
-  { mode: "subject", icon: "📚", title: "Subject Quiz", blurb: (n) => `Up to ${Math.min(n, QUIZ_SIZE.subject)} questions across the subject`, need: "subject" },
-  { mode: "mock", icon: "⏱", title: "Mock Exam", blurb: (n) => `Timed, no hints until the end · up to ${Math.min(n, QUIZ_SIZE.mock)} questions`, need: "subject" },
+  { mode: "subject", icon: "📚", title: "Subject Quiz", blurb: (n) => `Up to ${Math.min(n, 100)} questions across the subject`, need: "subject" },
+  { mode: "mock", icon: "⏱", title: "Mock Exam", blurb: (n) => `Timed, no hints until the end · up to ${Math.min(n, 100)} questions`, need: "subject" },
   { mode: "daily", icon: "🌅", title: "Daily Challenge", blurb: () => "5 mixed questions across your subjects", need: "any" },
 ];
 
@@ -23,13 +23,14 @@ export default function PracticeScreen({ navigation }: any) {
   const { data } = useStudy();
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [topicId, setTopicId] = useState<string | null>(null);
+  const [questionCount, setQuestionCount] = useState(10);
   const topics = topicStats(data).filter((t) => !subjectId || t.subjectId === subjectId);
   const hist = scoreHistory(data);
   const recent = hist.slice(-5);
   const trend = hist.length >= 4 ? Math.round(avg(hist.slice(-3)) - avg(hist.slice(-6, -3).length ? hist.slice(-6, -3) : hist.slice(0, -3))) : null;
 
   const count = (m: (typeof MODES)[number]) => questionPool(data, m.mode, subjectId ?? undefined, topicId ?? undefined).length;
-  const start = (m: (typeof MODES)[number]) => navigation.navigate("PracticeSession", { mode: m.mode, subjectId: subjectId ?? undefined, topicId: topicId ?? undefined });
+  const start = (m: (typeof MODES)[number]) => navigation.navigate("PracticeSession", { mode: m.mode, subjectId: subjectId ?? undefined, topicId: topicId ?? undefined, ...(["quick", "topic", "subject", "mock"].includes(m.mode) ? { questionCount } : {}) });
   const blocked = (m: (typeof MODES)[number]) => (m.mode === "topic" && !topicId) ? "Pick a topic above" : ((m.mode === "subject" || m.mode === "mock") && !subjectId) ? "Pick a subject above" : count(m) === 0 ? (m.mode === "review" ? "Nothing due. You're on top of it" : "No questions yet") : null;
 
   return (
@@ -37,6 +38,11 @@ export default function PracticeScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }}>
         <Text style={s.h1}>Practice</Text>
         <Muted style={{ marginTop: 4 }}>Test yourself, see where you're weak, then fix it.</Muted>
+
+        <Card onPress={() => navigation.navigate("PDFPractice")} style={{ marginTop: spacing.lg, backgroundColor: colors.violetTint, borderWidth: 0 }}>
+          <Text style={s.h3}>📄 Turn a PDF into a CBT</Text>
+          <Muted>Upload lecture notes or a textbook PDF and generate a separate multiple-choice practice test.</Muted>
+        </Card>
 
         {data.subjects.length === 0 ? (
           <Card style={{ marginTop: spacing.lg }} onPress={() => navigation.navigate("Planner")}>
@@ -56,17 +62,29 @@ export default function PracticeScreen({ navigation }: any) {
               </>
             )}
 
+            <Label>QUESTIONS PER SESSION</Label>
+            <Muted>Choose from 5 to 100 questions. The quiz uses as many as are available.</Muted>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: spacing.sm }}>
+              <View style={s.row}>
+                {Array.from({ length: 20 }, (_, i) => (i + 1) * 5).map((n) => <Chip key={n} label={String(n)} on={questionCount === n} onPress={() => setQuestionCount(n)} />)}
+              </View>
+            </ScrollView>
+
             <Label>CHOOSE A MODE</Label>
             {MODES.map((m, mi) => {
               const why = blocked(m);
               const done = m.mode === "daily" && attemptedToday(data, "daily");
+              const available = count(m);
+              const detail = ["quick", "topic", "subject", "mock"].includes(m.mode)
+                ? `Up to ${Math.min(available, questionCount)} questions${m.mode === "mock" ? " · timed, no hints until the end" : m.mode === "quick" ? " · focused on weak spots" : ""}`
+                : m.blurb(available);
               return (
                 <StaggerIn key={m.mode} index={mi}><Card onPress={() => (why ? null : start(m))} style={why ? { opacity: 0.5 } : undefined}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <EmojiIcon emoji={m.icon} style={{ fontSize: 26, marginRight: spacing.md }} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.h3}>{m.title}{done ? "  · Done" : ""}</Text>
-                      <Muted>{why ?? m.blurb(count(m))}</Muted>
+                      <Muted>{why ?? detail}</Muted>
                     </View>
                   </View>
                 </Card></StaggerIn>
