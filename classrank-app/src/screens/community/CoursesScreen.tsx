@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { View, Text, Alert, RefreshControl } from "react-native";
+import { View, Text, RefreshControl } from "react-native";
 import { colors, spacing } from "../../theme/tokens";
-import { Bar, Btn, Card, Empty, Field, Label, Muted, Tag, YearTag, s, ListSkeleton } from "../../components/study/ui";
+import { Bar, Card, Empty, Muted, Tag, YearTag, s, ListSkeleton } from "../../components/study/ui";
 import { Grid, Screen } from "../../components/responsive";
-import { fetchMyCourses, joinCourse, MyCourse } from "../../lib/courseApi";
+import { fetchMyCourses, MyCourse } from "../../lib/courseApi";
 import { daysUntil } from "../../lib/studyStore";
 import { useApp } from "../../context/AppContext";
 import StaggerIn from "../../components/animated/StaggerIn";
@@ -13,9 +13,7 @@ import CourseThumb from "../../components/CourseThumb";
 export default function CoursesScreen({ navigation }: any) {
   const { profile } = useApp();
   const [courses, setCourses] = useState<MyCourse[] | null>(null);
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false), [refreshing, setRefreshing] = useState(false);
-  const [showJoin, setShowJoin] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -24,19 +22,10 @@ export default function CoursesScreen({ navigation }: any) {
   }, []);
   useEffect(() => { load(); return navigation.addListener("focus", load); }, [load, navigation]);
 
-  const join = async () => {
-    if (!code.trim() || busy) return;
-    setBusy(true);
-    try {
-      const j = await joinCourse(code);
-      setCode(""); setShowJoin(false); await load();
-      Alert.alert(`Added ${j.code}`, "This course is now in your list.", [{ text: "Open", onPress: () => navigation.navigate("Course", { courseId: j.course_id }) }, { text: "OK" }]);
-    } catch (e: any) { Alert.alert("Couldn't join", e?.message ?? "Check the code and try again."); } finally { setBusy(false); }
-  };
-
   return (
     <Screen wide refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}>
       <Text style={s.h1}>My courses</Text>
+      <Muted style={{ marginTop: 4 }}>Your department and year courses appear here automatically. You do not need a course code.</Muted>
       {!!profile?.department && <Muted>{profile.department}{profile.year ? ` · Year ${profile.year}` : ""}</Muted>}
 
       {courses === null && <ListSkeleton rows={4} />}
@@ -73,16 +62,7 @@ export default function CoursesScreen({ navigation }: any) {
         })}
       </Grid>
 
-      <View style={{ maxWidth: 560 }}>
-        <Label>COURSE FROM ANOTHER DEPARTMENT OR YEAR?</Label>
-        {!showJoin ? <Btn ghost label="Join with a code" onPress={() => setShowJoin(true)} /> : (
-          <>
-            <Field value={code} onChangeText={setCode} placeholder="Course code from the teacher" autoCapitalize="characters" autoCorrect={false} />
-            <Muted style={{ marginTop: 6 }}>Your answers to its practice questions are shared with the teacher as class statistics.</Muted>
-            <Btn label={busy ? "Joining…" : "Join course"} onPress={join} disabled={busy || !code.trim()} />
-          </>
-        )}
-      </View>
+
     </Screen>
   );
 }

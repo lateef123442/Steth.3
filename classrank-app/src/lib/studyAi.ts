@@ -31,6 +31,17 @@ export async function generateQuestions(opts: { subject: string; topic?: string;
   return ok.map((x) => ({ q: x.q.trim(), options: x.options.map((o: string) => o.trim()), correct: x.correct, explanation: String(x.explanation ?? "").trim(), source: "ai" as const }));
 }
 
+/** Generate a standalone CBT from a private PDF stored in the signed-in student's own folder. */
+export async function generateQuestionsFromPdf(pdfPath: string, count: number): Promise<Omit<Question, "id" | "subjectId" | "topicId">[]> {
+  if (!Number.isInteger(count) || count < 5 || count > 100 || count % 5 !== 0) throw new Error("Choose between 5 and 100 questions in steps of 5.");
+  const { data, error } = await supabase.functions.invoke("study-companion", { body: { task: "pdf_questions", pdf_path: pdfPath, count } });
+  if (error) throw new Error(await studyAiErrorMessage(error));
+  if (!Array.isArray(data?.questions)) throw new Error("The PDF did not produce a valid question set. Try another PDF.");
+  const valid = (data.questions as any[]).filter((x) => typeof x?.q === "string" && Array.isArray(x.options) && x.options.length === 4 && x.options.every((o: any) => typeof o === "string") && Number.isInteger(x.correct) && x.correct >= 0 && x.correct <= 3);
+  if (valid.length < 5) throw new Error("The PDF did not contain enough readable material to create questions.");
+  return valid.slice(0, count).map((x) => ({ q: x.q.trim(), options: x.options.map((o: string) => o.trim()), correct: x.correct, explanation: String(x.explanation ?? "").trim(), source: "ai" as const }));
+}
+
 /** Flashcards from a topic and/or the student's notes. Same validation approach as generateQuestions. */
 export async function generateFlashcards(opts: { subject: string; topic?: string; notes?: string; count?: number; files?: string[]; onFiles?: (i: FileInfo) => void }): Promise<{ front: string; back: string }[]> {
   const { onFiles, ...rest } = opts;

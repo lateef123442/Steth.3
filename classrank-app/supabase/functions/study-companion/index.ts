@@ -167,6 +167,26 @@ Deno.serve(async (req) => {
     }
     const body = await req.json();
     const { messages, context } = body;
+    if (body.task === "pdf_questions") {
+      const count = Number(body.count);
+      const path = typeof body.pdf_path === "string" ? body.pdf_path : "";
+      const match = path.match(/^([0-9a-f-]{36})\/([A-Za-z0-9._-]{1,180}\.pdf)$/i);
+      if (!Number.isInteger(count) || count < 5 || count > 100 || count % 5 !== 0 || !match || match[1].toLowerCase() !== authData.user.id.toLowerCase()) {
+        return new Response(JSON.stringify({ error: "INVALID_PDF_REQUEST" }), { status: 400, headers: { ...cors, "content-type": "application/json" } });
+      }
+      const { data: pdf, error: pdfError } = await sb.storage.from("pdf-practice").download(path);
+      if (pdfError || !pdf) return new Response(JSON.stringify({ error: "PDF_NOT_FOUND" }), { status: 404, headers: { ...cors, "content-type": "application/json" } });
+      if (pdf.size <= 0 || pdf.size > 10 * 1024 * 1024) return new Response(JSON.stringify({ error: "PDF_SIZE_LIMIT" }), { status: 413, headers: { ...cors, "content-type": "application/json" } });
+      const bytes = new Uint8Array(await pdf.arrayBuffer());
+      const prompt = `Create exactly ${count} different university-level multiple-choice questions based ONLY on the attached PDF. Cover different sections and key concepts. Mix recall, understanding and application. Avoid duplicates. If the PDF is too short to support ${count} distinct questions, return as many high-quality questions as the material supports. Do not invent facts not supported by the PDF.`;
+      const generated = await callGemini(QUESTION_SYSTEM, [{ role: "user", parts: [{ text: `Student PDF: ${match[2]}` }, { inlineData: { mimeType: "application/pdf", data: encodeBase64(bytes) } }, { text: prompt }] }], Math.min(24000, 900 + count * 190), true);
+      const questions = JSON.parse(generated);
+      if (!Array.isArray(questions)) throw new Error("AI_INVALID_JSON");
+      const valid = questions.filter((q: any) => typeof q?.q === "string" && Array.isArray(q.options) && q.options.length === 4 && q.options.every((o: any) => typeof o === "string") && Number.isInteger(q.correct) && q.correct >= 0 && q.correct <= 3).slice(0, count);
+      if (valid.length < 5) throw new Error("AI_INSUFFICIENT_PDF_CONTENT");
+      return new Response(JSON.stringify({ questions: valid, requested: count, generated: valid.length }), { headers: { ...cors, "content-type": "application/json" } });
+    }
+
     if (body.task === "questions" || body.task === "flashcards") {
       // Structured generation for Practice + Flashcards. The client validates the shape again.
       const isCards = body.task === "flashcards";

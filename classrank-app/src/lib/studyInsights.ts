@@ -138,13 +138,14 @@ export function questionPool(d: StudyData, mode: QuizMode, subjectId?: string, t
   }
   return subjectId ? d.questions.filter((q) => q.subjectId === subjectId) : d.questions;
 }
-export function buildQuiz(d: StudyData, mode: QuizMode, subjectId?: string, topicId?: string) {
+export function buildQuiz(d: StudyData, mode: QuizMode, subjectId?: string, topicId?: string, requestedCount?: number) {
   if (mode === "review") return { questions: buildReviewQuiz(d, subjectId), timeLimit: undefined };
   const rank = new Map(topicStats(d).map((t) => [t.id, t.label === "Needs review" ? 0 : t.label === "Not enough data" ? 1 : 2]));
   const pool = shuffle(questionPool(d, mode, subjectId, topicId));
   // Short quizzes lean toward what the student is weakest at; long ones cover everything.
   const ordered = mode === "quick" || mode === "daily" ? pool.sort((a, b) => (rank.get(a.topicId ?? "") ?? 1) - (rank.get(b.topicId ?? "") ?? 1)) : pool;
-  const questions = ordered.slice(0, QUIZ_SIZE[mode]);
+  const limit = Number.isInteger(requestedCount) && requestedCount! >= 5 && requestedCount! <= 100 && requestedCount! % 5 === 0 ? requestedCount! : QUIZ_SIZE[mode];
+  const questions = ordered.slice(0, limit);
   return { questions, timeLimit: mode === "mock" ? questions.length * 60 : undefined };
 }
 
