@@ -8,7 +8,7 @@ export interface PersonResult extends Person { university: string; relation: Rel
 export interface Friends { friends: Person[]; incoming: Person[]; outgoing: Person[] }
 export interface Conversation extends Person { last_body: string; last_at: string; last_mine: boolean; unread: number }
 export interface ChatMessage { id: string; sender_id: string; recipient_id?: string; sender_name?: string; avatar_path?: string | null; body: string; created_at: string }
-export interface GroupMember extends Person { role: string; is_owner: boolean }
+export interface GroupMember extends Person { role: string; is_owner: boolean; group_role?: "member" | "admin" }
 
 const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> => {
   const { data, error } = await supabase.rpc(fn, args);
