@@ -196,7 +196,7 @@ export default function HomeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
-  aiFab: { position: "absolute", right: spacing.xl, bottom: spacing.lg, width: 58, height: 58, borderRadius: 29, backgroundColor: colors.tealDeep, alignItems: "center", justifyContent: "center", elevation: 8, shadowColor: "#000", shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 2, borderColor: "#FFFFFF" },
+  aiFab: { position: "absolute", right: spacing.lg, bottom: spacing.xs, zIndex: 100, width: 58, height: 58, borderRadius: 29, backgroundColor: colors.tealDeep, alignItems: "center", justifyContent: "center", elevation: 14, shadowColor: "#000", shadowOpacity: 0.24, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, borderWidth: 2, borderColor: "#FFFFFF" },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl * 2 },
   heroInner: { alignItems: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
   greeting: { ...type.h1, color: colors.textOnDark, alignSelf: "flex-start" },
