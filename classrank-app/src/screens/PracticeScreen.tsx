@@ -68,10 +68,6 @@ export default function PracticeScreen({ navigation }: any) {
         <Text style={s.h1}>Practice</Text>
         <Muted style={{ marginTop: 4 }}>Test yourself, see where you're weak, then fix it.</Muted>
 
-        <Card onPress={() => navigation.navigate("PDFPractice")} style={{ marginTop: spacing.lg, backgroundColor: colors.violetTint, borderWidth: 0 }}>
-          <Text style={s.h3}>📄 Turn a PDF into a CBT</Text>
-          <Muted>Upload lecture notes or a textbook PDF and generate a separate multiple-choice practice test.</Muted>
-        </Card>
 
         {!!courseSyncError && <Muted style={{ color: colors.danger, marginTop: spacing.md }}>{courseSyncError}</Muted>}
         {(!ready || syncingCourses) && data.subjects.length === 0 && <Muted style={{ marginTop: spacing.lg }}>Loading your teacher-assigned courses…</Muted>}
