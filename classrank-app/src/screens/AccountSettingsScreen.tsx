@@ -16,6 +16,7 @@ export default function AccountSettingsScreen() {
   const { profile, session, refreshMyProfile } = useApp();
   const [name, setName] = useState(profile?.name ?? "");
   const [username, setUsername] = useState(profile?.username ?? "");
+  const [bio, setBio] = useState(profile?.bio ?? "");
   const [savingProfile, setSavingProfile] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -32,10 +33,11 @@ export default function AccountSettingsScreen() {
       const { error } = await supabase.rpc("update_my_account_profile", {
         p_name: name.trim(),
         p_username: normalizedUsername,
+        p_bio: bio.trim(),
       });
       if (error) throw error;
       await refreshMyProfile();
-      Alert.alert("Profile updated", "Your name and username have been saved.");
+      Alert.alert("Profile updated", "Your name, username and bio have been saved.");
     } catch (error: any) {
       const message = String(error?.message ?? "Couldn't update your profile.");
       Alert.alert("Couldn't save profile", message.includes("profiles_username_lower_uidx") || message.includes("already taken")
@@ -99,6 +101,9 @@ export default function AccountSettingsScreen() {
           <Text style={styles.label}>Username</Text>
           <TextInput style={styles.input} value={username} onChangeText={setUsername} placeholder="e.g. ahmed_dev" placeholderTextColor={colors.textFaint} autoCapitalize="none" autoCorrect={false} maxLength={20} />
           <Text style={styles.hint}>3–20 characters. Use lowercase letters, numbers or underscores. Your username must be unique.</Text>
+          <Text style={styles.label}>Bio</Text>
+          <TextInput style={[styles.input, styles.bioInput]} value={bio} onChangeText={setBio} placeholder="Tell people a little about yourself..." placeholderTextColor={colors.textFaint} multiline maxLength={240} textAlignVertical="top" />
+          <Text style={styles.hint}>{bio.length}/240 characters. This appears on your public profile.</Text>
           {!profileValid && (name.length > 0 || username.length > 0) && <Text style={styles.error}>Enter a name (2–60 characters) and a valid username.</Text>}
           <PressableScale style={[styles.button, (!profileValid || savingProfile) && styles.disabled]} onPress={saveProfile} disabled={!profileValid || savingProfile}>
             {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Save profile</Text>}
@@ -139,6 +144,7 @@ const styles = StyleSheet.create({
   hint: { ...type.caption, color: colors.textMuted, marginTop: spacing.xs, lineHeight: 18 },
   label: { ...type.label, color: colors.textMuted, marginTop: spacing.lg, marginBottom: spacing.sm },
   input: { backgroundColor: colors.paper, borderRadius: radii.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.md, fontSize: 15, fontFamily: type.body.fontFamily, borderWidth: 1, borderColor: colors.border, color: colors.text },
+  bioInput: { minHeight: 88, paddingTop: spacing.md },
   error: { ...type.caption, color: colors.danger, marginTop: spacing.sm },
   button: { marginTop: spacing.xl, backgroundColor: colors.navy, borderRadius: radii.md, paddingVertical: spacing.lg, alignItems: "center" },
   disabled: { opacity: 0.45 },
