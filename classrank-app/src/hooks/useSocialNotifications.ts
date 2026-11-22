@@ -17,7 +17,8 @@ export default function useSocialNotifications(): SocialNotificationCounts {
   const refresh = useCallback(async () => {
     if (!profile?.id) { setCounts(EMPTY); return; }
     try {
-      const [friends, conversations, welcomes] = await Promise.all([fetchFriends(), fetchConversations(), fetchMyGroupWelcomeNotifications()]);
+      const [friends, conversations] = await Promise.all([fetchFriends(), fetchConversations()]);
+      const welcomes = await fetchMyGroupWelcomeNotifications().catch(() => []);
       const requestCount = friends.incoming.length;
       const unreadMessageCount = conversations.reduce((sum, conversation) => sum + Number(conversation.unread || 0), 0);
       const groupWelcomeCount = welcomes.length;
