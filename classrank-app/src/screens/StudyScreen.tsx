@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TextInput, Alert, Linking, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -12,6 +12,7 @@ import { useStudy, logFocus, todaySessions, setSessionStatus, subjectName, focus
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 import { WRAP } from "../components/responsive";
+import { syncMyCoursesToStudy } from "../lib/courseApi";
 
 type Props = BottomTabScreenProps<MainTabParamList, "Study">;
 
@@ -28,6 +29,21 @@ const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "
 
 export default function StudyScreen({ navigation, route }: Props) {
   const { data, ready } = useStudy();
+  const [courseSyncError, setCourseSyncError] = useState<string | null>(null);
+  const syncCourses = useCallback(async () => {
+    try {
+      const result = await syncMyCoursesToStudy();
+      setCourseSyncError(result.failedCourseIds.length ? "Some assigned courses could not refresh." : null);
+    } catch (error: any) {
+      setCourseSyncError(error?.message ?? "Could not load assigned courses.");
+    }
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    void syncCourses();
+    const unsubscribe = navigation.addListener("focus", syncCourses);
+    return unsubscribe;
+  }, [ready, syncCourses, navigation]);
   const courseList = data.subjects.map((item) => item.name);
   const [course, setCourse] = useState(data.subjects[0]?.name ?? "");
   useEffect(() => { if (!courseList.includes(course)) setCourse(courseList[0] ?? ""); }, [courseList.join("|")]);
@@ -179,6 +195,7 @@ export default function StudyScreen({ navigation, route }: Props) {
         ) : (
           <Text style={styles.sub}>{ready ? "No courses have been assigned yet. Your teachers' courses will appear here automatically." : "Loading your assigned courses…"}</Text>
         )}
+        {!!courseSyncError && <Text style={styles.sub}>{courseSyncError}</Text>}
 
         <Text style={styles.label}>DURATION</Text>
         <View style={styles.row}>{DURATIONS.map((d) => <Chip key={d} label={`${d} min`} on={minutes === d && durationInput === String(d)} onPress={() => { setMinutes(d); setDurationInput(String(d)); }} />)}</View>
