@@ -47,7 +47,7 @@ export default function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     if (!profile?.id || !isFocused) return;
     refreshGroupWelcomes();
-    const stop = subscribeGroupWelcomeNotifications(profile.id, refreshGroupWelcomes);
+    const stop = subscribeGroupWelcomeNotifications(profile.id, refreshGroupWelcomes, "home");
     return stop;
   }, [profile?.id, isFocused, refreshGroupWelcomes]);
   const openGroupWelcome = async (item: GroupWelcomeNotification) => {

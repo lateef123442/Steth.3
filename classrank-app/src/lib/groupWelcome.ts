@@ -20,8 +20,8 @@ export async function markGroupWelcomeNotificationRead(id: string): Promise<void
   if (error) throw error;
 }
 
-export function subscribeGroupWelcomeNotifications(profileId: string, onChange: () => void) {
-  const channel = supabase.channel(`group-welcome:${profileId}`)
+export function subscribeGroupWelcomeNotifications(profileId: string, onChange: () => void, scope = "badge") {
+  const channel = supabase.channel("group-welcome:" + profileId + ":" + scope)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_welcome_notifications", filter: `profile_id=eq.${profileId}` }, onChange)
     .subscribe();
   return () => { supabase.removeChannel(channel); };
