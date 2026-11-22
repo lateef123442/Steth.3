@@ -6,7 +6,7 @@ import ChatView from "../../components/ChatView";
 import ReportModal, { ReportTarget } from "../../components/ReportModal";
 import PressableScale from "../../components/animated/PressableScale";
 import { fetchGroupMessages, sendGroupMsg, subscribeGroup, fetchGroupMembers, fetchBlocks, blockUser, GroupMember } from "../../lib/socialApi";
-import { fetchMyGroups } from "../../lib/groupApi";
+import { fetchMyGroups, markGroupMessagesRead } from "../../lib/groupApi";
 import { createGroupQuestion, fetchGroupQuestions, submitGroupQuestionAnswer, GroupQuestion } from "../../lib/groupQuestions";
 
 export default function GroupChatScreen({ navigation, route }: any) {
@@ -80,6 +80,7 @@ export default function GroupChatScreen({ navigation, route }: any) {
         subtitle={members.length ? members.length + " members · tap for members" : "Group chat"}
         meId={profile.id} load={load} send={send} subscribe={subscribe} nameOf={nameOf} hideSender={hideSender}
         onBack={() => navigation.goBack()}
+        onFocusRefresh={() => { markGroupMessagesRead(groupId).catch(() => {}); }}
         onHeaderPress={() => navigation.navigate("GroupMembers", { groupId, name })}
         renderMessage={renderMessage}
         headerAction={isManager ? <PressableScale onPress={() => setComposer(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.violetTint }}><Text style={{ color: colors.violet, fontWeight: "700", fontSize: 12 }}>Create question</Text></PressableScale> : null}

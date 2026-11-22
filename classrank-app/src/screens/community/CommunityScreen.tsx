@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Text, ScrollView, View } from "react-native";
+import { Text, ScrollView, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { spacing, colors } from "../../theme/tokens";
 import { Back, Card, Muted, Tag, s } from "../../components/study/ui";
@@ -10,7 +10,14 @@ import { fetchMyGroups, StudyGroup } from "../../lib/groupApi";
 export default function CommunityScreen({ navigation }: any) {
   const { requestCount, unreadMessageCount, groupWelcomeCount } = useSocialNotifications();
   const [groups, setGroups] = useState<StudyGroup[]>([]);
-  const loadGroups = useCallback(() => fetchMyGroups().then(setGroups).catch(() => setGroups([])), []);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+  const loadGroups = useCallback(async () => {
+    setGroupsLoading(true);
+    try { setGroups(await fetchMyGroups()); setGroupsError(null); }
+    catch (e: any) { setGroupsError(e?.message ?? "Couldn't load your group chats."); }
+    finally { setGroupsLoading(false); }
+  }, []);
   useEffect(() => {
     loadGroups();
     return navigation.addListener("focus", loadGroups);
@@ -39,7 +46,13 @@ export default function CommunityScreen({ navigation }: any) {
           <Text style={s.h3}>GROUP CHATS</Text>
           {groupWelcomeCount > 0 && <Tag label={groupWelcomeCount > 99 ? "99+" : String(groupWelcomeCount)} color={colors.danger} />}
         </View>
-        {groups.length === 0 ? (
+        {groupsLoading ? <ActivityIndicator style={{ marginTop: spacing.lg }} color={colors.teal} /> : groupsError ? (
+          <Card style={{ marginTop: spacing.md }}>
+            <Text style={[s.h3, { color: colors.danger }]}>Could not load Community groups</Text>
+            <Muted>{groupsError}</Muted>
+            <Text onPress={() => { void loadGroups(); }} style={{ color: colors.tealDeep, fontWeight: "800", marginTop: 12 }}>Try again</Text>
+          </Card>
+        ) : groups.length === 0 ? (
           <Card style={{ marginTop: spacing.md }}>
             <Text style={s.h3}>No group chats yet</Text>
             <Muted>Your official department group will appear here when your teacher creates it.</Muted>
