@@ -121,7 +121,7 @@ export default function PracticeScreen({ navigation }: any) {
             })}
             {data.questions.length === 0 && <Muted>No practice questions yet. Your teachers can publish course questions for practice.</Muted>}
           </>
-        )}
+        ) : null}
 
         <Label>RANKED</Label>
         <Card onPress={() => navigation.navigate("Quiz")} style={hasCompletedTodaysQuiz ? { opacity: 0.6 } : undefined}>
