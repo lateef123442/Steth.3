@@ -182,6 +182,13 @@ export default function ProfileScreen() {
             <Text style={{ color: colors.tealDeep, fontWeight: "800" }}>＋ Add username</Text>
           </PressableScale>
         )}
+        {profile.bio?.trim() ? (
+          <Text style={[styles.meta, { color: colors.textMuted, marginTop: spacing.sm, maxWidth: 320, textAlign: "center", lineHeight: 20 }]}>{profile.bio}</Text>
+        ) : (
+          <PressableScale onPress={() => navigation.navigate("AccountSettings")} style={{ marginTop: spacing.sm, paddingVertical: spacing.xs }}>
+            <Text style={{ ...type.caption, color: colors.tealDeep, fontWeight: "700" }}>＋ Add a short bio</Text>
+          </PressableScale>
+        )}
         <PressableScale
           style={{ alignSelf: "stretch", marginTop: spacing.lg, backgroundColor: colors.tealTint, borderRadius: radii.md, padding: spacing.lg }}
           onPress={() => navigation.navigate("AccountSettings")}
@@ -189,7 +196,7 @@ export default function ProfileScreen() {
           accessibilityLabel="Account settings"
         >
           <Text style={{ ...type.h3, color: colors.tealDeep }}>Account settings →</Text>
-          <Text style={{ ...type.caption, color: colors.textMuted, marginTop: 3 }}>Change your name, username and password.</Text>
+          <Text style={{ ...type.caption, color: colors.textMuted, marginTop: 3 }}>Change your name, username, bio and password.</Text>
         </PressableScale>
 
         <PressableScale style={[styles.signOutTop, signingOut && { opacity: 0.6 }]} onPress={handleSignOut} disabled={signingOut} haptic="medium" accessibilityRole="button" accessibilityLabel="Log out">

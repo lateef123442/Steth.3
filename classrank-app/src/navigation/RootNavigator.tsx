@@ -15,6 +15,7 @@ import HomeScreen from "../screens/HomeScreen";
 import QuizScreen from "../screens/QuizScreen";
 import LeaderboardScreen from "../screens/LeaderboardScreen";
 import FeedScreen from "../screens/social/FeedScreen";
+import PublicProfileScreen from "../screens/social/PublicProfileScreen";
 import CardsScreen from "../screens/CardsScreen";
 import ProgressScreen from "../screens/ProgressScreen";
 import CompanionScreen from "../screens/CompanionScreen";
@@ -79,6 +80,7 @@ export type RootStackParamList = {
   Friends: { initialTab?: "Chats" | "Friends" | "Requests" | "Find people" | "Blocked" } | undefined;
   Feedback: undefined;
   AccountSettings: undefined;
+  PublicProfile: { userId: string };
   Chat: { userId: string; name: string; department?: string | null; year?: number | null; avatar_path?: string | null };
   GroupChat: { groupId: string; name: string };
   GroupMembers: { groupId: string; name: string };
@@ -199,13 +201,13 @@ function MainTabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Learn" component={CoursesScreen} options={{ title: "Courses" }} />
+      <Tab.Screen name="Feed" component={FeedScreen} options={{ title: "Feed" }} />
       <Tab.Screen name="Quiz" component={QuizScreen} options={{ title: "Quiz" }} />
       <Tab.Screen name="CommunityTab" component={CommunityScreen} options={{ title: "Community" }} />
       <Tab.Screen name="Profile" component={ExemptProfile} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
 
       {/* These destinations stay available from clear Home shortcuts, keeping the main bar simple. */}
       <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: "Ranks", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
-      <Tab.Screen name="Feed" component={FeedScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Practice" component={PracticeScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="PDFPractice" component={PDFPracticeScreen} options={{ title: "PDF to CBT", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Study" component={StudyScreen} options={{ title: "Focus", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
@@ -328,6 +330,7 @@ export default function RootNavigator() {
           <Stack.Screen name="TeacherCourse" component={TeacherCourseScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
           <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+          <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
         </>
       ) : profile.role === "teacher" ? (
         <>
@@ -338,6 +341,7 @@ export default function RootNavigator() {
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
           <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+          <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
         </>
       ) : (
         <>
@@ -361,6 +365,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Friends" component={FriendsScreen} />
           <Stack.Screen name="Feedback" component={ExemptFeedback} />
           <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+          <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
           <Stack.Screen name="Chat" component={ChatScreen} />
           <Stack.Screen name="GroupQuiz" component={GroupQuizScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />
           <Stack.Screen name="Exam" component={ExamScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />
