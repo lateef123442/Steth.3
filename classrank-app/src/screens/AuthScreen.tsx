@@ -9,7 +9,7 @@ import Dropdown from "../components/Dropdown";
 import { NIGERIAN_UNIVERSITIES } from "../data/nigerianUniversities";
 import { peekPendingReferral, clearPendingReferral } from "../lib/referralApi";
 
-type Mode = "signup" | "teacher" | "login";
+type Mode = "signup" | "teacher" | "login" | "forgot";
 const UNIVERSITY_OPTIONS = NIGERIAN_UNIVERSITIES.map((u) => ({ value: u, label: u }));
 
 export default function AuthScreen() {
@@ -25,13 +25,16 @@ export default function AuthScreen() {
   const [year, setYear] = useState<number | null>(null);
   const [referralCode, setReferralCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   useEffect(() => { peekPendingReferral().then((c) => { if (c) setReferralCode((cur) => cur || c); }); }, []);
   const [inviteCode, setInviteCode] = useState("");
 
   const emailLooksValid = isValidEmail(email);
 
   const canSubmit =
-    mode === "login"
+    mode === "forgot"
+      ? emailLooksValid
+      : mode === "login"
       ? emailLooksValid && password.length > 0
       : mode === "signup"
       ? emailLooksValid && password.length >= 8 && name.trim().length > 0 && university !== "" && departmentId !== null && year !== null
@@ -44,11 +47,17 @@ export default function AuthScreen() {
 
   const switchMode = (next: Mode) => {
     clearAuthError();
+    setResetSent(false);
     setMode(next);
   };
 
   const handleSubmit = async () => {
     if (!canSubmit || authLoading) return;
+    if (mode === "forgot") {
+      const sent = await resetPassword(email);
+      if (sent) { setResetSent(true); clearAuthError(); }
+      return;
+    }
     if (mode === "login") {
       await signIn(email, password);
     } else if (mode === "signup" && departmentId && year) {
@@ -59,17 +68,19 @@ export default function AuthScreen() {
     }
   };
 
-  const handleForgotPassword = async () => {
-    await resetPassword(email);
+  const handleForgotPassword = () => {
+    clearAuthError();
+    setResetSent(false);
+    setMode("forgot");
   };
 
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Steth</Text>
-        <Text style={styles.subtitle}>Every department. One leaderboard.</Text>
+        <Text style={styles.subtitle}>{mode === "forgot" ? "Enter your account email and we’ll send you a secure password reset link." : "Every department. One leaderboard."}</Text>
 
-        <View style={styles.modeRow}>
+        {mode !== "forgot" && <View style={styles.modeRow}>
           {(["signup", "teacher", "login"] as Mode[]).map((m) => (
             <PressableScale
               key={m}
@@ -84,7 +95,7 @@ export default function AuthScreen() {
               </Text>
             </PressableScale>
           ))}
-        </View>
+        </View>}
 
         {mode === "teacher" && (
           <View style={styles.noticeBox}>
@@ -134,6 +145,7 @@ export default function AuthScreen() {
         />
         {email.length > 0 && !emailLooksValid && <Text style={styles.hintText}>That doesn't look like a valid email.</Text>}
 
+        {mode !== "forgot" && (<>
         <Text style={styles.label}>Password</Text>
         <View style={styles.passwordRow}>
           <TextInput
@@ -159,6 +171,8 @@ export default function AuthScreen() {
             <Text style={styles.forgotLinkText}>Forgot password?</Text>
           </PressableScale>
         )}
+
+        </>)}
 
         {(mode === "signup" || mode === "teacher") && (
           <>
@@ -215,6 +229,7 @@ export default function AuthScreen() {
           </>
         )}
 
+        {mode === "forgot" && resetSent && <Text style={styles.successText}>If an account exists for this email, a password reset link has been sent. Check your inbox and spam folder.</Text>}
         {authError && <Text style={styles.errorText}>{authError}</Text>}
 
         <PressableScale
@@ -229,10 +244,15 @@ export default function AuthScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.buttonText}>
-              {mode === "login" ? "Log In" : mode === "teacher" ? "Create Teacher Account" : "Create Account"}
+              {mode === "forgot" ? (resetSent ? "Send another reset link" : "Send reset link") : mode === "login" ? "Log In" : mode === "teacher" ? "Create Teacher Account" : "Create Account"}
             </Text>
           )}
         </PressableScale>
+        {mode === "forgot" && (
+          <PressableScale onPress={() => switchMode("login")} style={styles.forgotLink} haptic="none">
+            <Text style={styles.forgotLinkText}>Back to Log In</Text>
+          </PressableScale>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -280,6 +300,7 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: colors.teal, borderColor: colors.teal },
   chipText: { color: colors.text, fontSize: 13, fontFamily: type.bodySemibold.fontFamily },
   chipTextSelected: { color: "#fff" },
+  successText: { ...type.caption, color: colors.tealDeep, marginTop: spacing.lg, textAlign: "center" },
   errorText: { color: colors.danger, ...type.caption, marginTop: spacing.lg, textAlign: "center" },
   button: {
     marginTop: spacing.xxl,

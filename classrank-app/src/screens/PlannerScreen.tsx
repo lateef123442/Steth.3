@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, ScrollView, TextInput, Alert, Platform } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -6,10 +6,11 @@ import { colors, spacing } from "../theme/tokens";
 import PressableScale from "../components/animated/PressableScale";
 import { Back, Btn, Card, Chip, Label, Muted, s } from "../components/study/ui";
 import {
-  useStudy, addSubject, removeSubject, addSession, setSessionStatus, rescheduleSession, removeSession, applySchedule,
+  useStudy, addSession, setSessionStatus, rescheduleSession, removeSession, applySchedule,
   generateSchedule, missedSessions, subjectName, topicName, daysUntil, dateStr, addDaysStr, fmtTime12, PlannedSession,
 } from "../lib/studyStore";
 import { WRAP } from "../components/responsive";
+import { syncMyCoursesToStudy } from "../lib/courseApi";
 
 const MINUTES = [10, 20, 30, 45];
 const localDateString = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -17,13 +18,57 @@ const parseDate = (value?: string) => { if (!value) return new Date(); const [y,
 const parseTime = (value: string) => { const [h, m] = value.split(":").map(Number); const d = new Date(); d.setHours(h || 0, m || 0, 0, 0); return d; };
 const formatTime = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 const dayLabel = (d: string) => (d === dateStr() ? "Today" : d === addDaysStr(1) ? "Tomorrow" : new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }));
+const timeMinutes = (value: string) => { const [h, m] = value.split(":").map(Number); return h * 60 + m; };
+const timeFromMinutes = (value: number) => `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+
+function hasSessionConflict(data: ReturnType<typeof useStudy>["data"], date: string, time: string, minutes: number, ignoreId?: string) {
+  const start = timeMinutes(time), end = start + minutes;
+  return data.sessions.some((session) => {
+    if (session.id === ignoreId || session.date !== date || session.status !== "planned") return false;
+    const otherStart = timeMinutes(session.time ?? data.prefs.preferredTime);
+    return start < otherStart + session.minutes && end > otherStart;
+  });
+}
+
+function nextAvailableSlot(data: ReturnType<typeof useStudy>["data"], minutes: number) {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  let date = dateStr();
+  let start = Math.max(timeMinutes(data.prefs.preferredTime), Math.ceil((nowMinutes + 15) / 15) * 15);
+  for (let day = 0; day < 7; day++) {
+    const sessions = data.sessions.filter((session) => session.date === date && session.status === "planned");
+    for (let attempt = 0; attempt <= sessions.length; attempt++) {
+      if (start + minutes > 24 * 60) break;
+      const conflict = sessions.map((session) => {
+        const from = timeMinutes(session.time ?? data.prefs.preferredTime);
+        return { from, to: Math.min(24 * 60, from + session.minutes) };
+      }).filter((slot) => start < slot.to && start + minutes > slot.from).sort((a, b) => a.to - b.to)[0];
+      if (!conflict) return { date, time: timeFromMinutes(start) };
+      start = Math.ceil(conflict.to / 15) * 15;
+    }
+    date = addDaysStr(1, parseDate(date));
+    start = timeMinutes(data.prefs.preferredTime);
+  }
+  return null;
+}
 
 export default function PlannerScreen({ navigation }: any) {
-  const { data } = useStudy();
-  const [name, setName] = useState("");
-  const [exam, setExam] = useState("");
-  const [examDate, setExamDate] = useState<Date>(new Date());
-  const [showExamPicker, setShowExamPicker] = useState(false);
+  const { data, ready } = useStudy();
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncCourses = useCallback(async () => {
+    try {
+      const result = await syncMyCoursesToStudy();
+      setSyncError(result.failedCourseIds.length ? `${result.failedCourseIds.length} course(s) could not refresh. Try again.` : null);
+    } catch (error: any) {
+      setSyncError(error?.message ?? "Could not load assigned courses.");
+    }
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    void syncCourses();
+    const unsubscribe = navigation.addListener("focus", syncCourses);
+    return unsubscribe;
+  }, [ready, syncCourses, navigation]);
   const [pickId, setPickId] = useState<string | null>(null);
   const [mins, setMins] = useState(20);
   const [customMins, setCustomMins] = useState("20");
@@ -31,32 +76,21 @@ export default function PlannerScreen({ navigation }: any) {
   const [sessionDate, setSessionDate] = useState<Date>(new Date());
   const [sessionTime, setSessionTime] = useState<Date>(() => parseTime(data.prefs.preferredTime));
   const [sessionPicker, setSessionPicker] = useState<"date" | "time" | null>(null);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const chosen = pickId ?? data.subjects[0]?.id;
   const missed = missedSessions(data);
   const days = Array.from({ length: 7 }, (_, i) => addDaysStr(i));
   const upcoming = (d: string) => data.sessions.filter((x) => x.date === d).sort((a, b) => (a.time ?? "99").localeCompare(b.time ?? "99"));
 
-  const saveSubject = () => {
-    if (!name.trim()) return;
-    addSubject(name, exam);
-    setName(""); setExam("");
-  };
-
   const suggest = () => {
     const plan = generateSchedule(data, 7);
-    if (!plan.length) return Alert.alert("Nothing to suggest", data.subjects.length ? "Your next 7 days are already full for your daily study time." : "Add a subject first.");
+    if (!plan.length) return Alert.alert("Nothing to suggest", data.subjects.length ? "Your next 7 days are already full for your daily study time." : "Wait for your teacher to assign courses.");
     const preview = plan.slice(0, 6).map((p) => `${dayLabel(p.date)} ${fmtTime12(p.time)} · ${subjectName(data, p.subjectId)}${p.topicId ? ` (${topicName(data, p.topicId)})` : ""}, ${p.minutes} min`).join("\n");
     Alert.alert(`Suggested week · ${plan.length} sessions`, `${preview}${plan.length > 6 ? `\n…and ${plan.length - 6} more` : ""}\n\nBased on your exams, weak areas, missed sessions and ${data.prefs.dailyMinutes} min/day.`, [
       { text: "Not now", style: "cancel" }, { text: "Add to planner", onPress: () => applySchedule(plan) },
     ]);
   };
 
-  const move = (x: PlannedSession) =>
-    Alert.alert("Move session", `${subjectName(data, x.subjectId)} · ${x.minutes} min`, [
-      { text: "Later today", onPress: () => rescheduleSession(x.id, dateStr(), "21:00") },
-      { text: "Tomorrow", onPress: () => rescheduleSession(x.id, addDaysStr(1)) },
-      { text: "Cancel", style: "cancel" },
-    ]);
 
   const Session = ({ x }: { x: PlannedSession }) => (
     <Card style={{ flexDirection: "row", alignItems: "center" }}>
@@ -67,12 +101,13 @@ export default function PlannerScreen({ navigation }: any) {
       {x.status === "planned" ? (
         <View style={{ gap: 6 }}>
           <View style={s.row}>
+            <Chip label="Start focus" on onPress={() => navigation.navigate("Main", { screen: "Study", params: { subject: subjectName(data, x.subjectId) } })} />
             <Chip label="Done" on onPress={() => setSessionStatus(x.id, "done")} />
-            <Chip label="Move" on={false} onPress={() => move(x)} />
+            <Chip label="Edit date & time" on={false} onPress={() => { setSessionDate(parseDate(x.date)); setSessionTime(parseTime(x.time ?? data.prefs.preferredTime)); setEditingSessionId(x.id); setSessionPicker("date"); }} />
           </View>
           <View style={s.row}>
             <Chip label="Skip" on={false} onPress={() => setSessionStatus(x.id, "skipped")} />
-            <Chip label="Remove" on={false} onPress={() => removeSession(x.id)} />
+            <Chip label="Remove session" on={false} onPress={() => removeSession(x.id)} />
           </View>
         </View>
       ) : (
@@ -86,7 +121,22 @@ export default function PlannerScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }} keyboardShouldPersistTaps="handled">
         <Back onPress={() => navigation.goBack()} />
         <Text style={s.h1}>Study planner</Text>
+        <Muted style={{ marginTop: spacing.xs }}>Plan when you will study each course. Add your own sessions or ask Steth to suggest a week based on your exam dates and areas to improve. Mark sessions done, skip them, or change their date and time here.</Muted>
         <Btn ghost label="Suggest my week" onPress={suggest} disabled={!data.subjects.length} />
+        {!!syncError && <Muted style={{ color: colors.danger, marginTop: spacing.sm }}>{syncError}</Muted>}
+
+        <Label>YOUR COURSES</Label>
+        {data.subjects.length === 0 ? (
+          <Muted>No courses have been assigned yet. Courses published by your teachers will appear here automatically.</Muted>
+        ) : data.subjects.map((x) => (
+          <Card key={x.id}>
+            <PressableScale onPress={() => navigation.navigate("Subject", { subjectId: x.id })}>
+              <Text style={s.h3}>{x.name}</Text>
+              {x.examDate && <Muted>{daysUntil(x.examDate) >= 0 ? `Exam in ${daysUntil(x.examDate)} days` : "Exam passed"} · {x.examDate}</Muted>}
+              <Muted>{x.courseId ? "Assigned by your teacher · fixed" : "Saved course · fixed"}</Muted>
+            </PressableScale>
+          </Card>
+        ))}
 
         {missed.length > 0 && (
           <>
@@ -94,7 +144,11 @@ export default function PlannerScreen({ navigation }: any) {
             {missed.map((x) => (
               <Card key={x.id} style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.emberTint }}>
                 <View style={{ flex: 1 }}><Text style={s.h3}>{subjectName(data, x.subjectId)} · {x.minutes} min</Text><Muted>{dayLabel(x.date)}</Muted></View>
-                <Chip label="Move to today" on onPress={() => rescheduleSession(x.id, dateStr(), data.prefs.preferredTime)} />
+                <Chip label="Find next free time" on onPress={() => {
+                  const slot = nextAvailableSlot(data, x.minutes);
+                  if (!slot) return Alert.alert("No free time found", "There is no open slot in the next 7 days. Edit or skip another session first.");
+                  rescheduleSession(x.id, slot.date, slot.time);
+                }} />
               </Card>
             ))}
           </>
@@ -106,7 +160,7 @@ export default function PlannerScreen({ navigation }: any) {
           return (
             <View key={d}>
               <Label>{dayLabel(d).toUpperCase()}</Label>
-              {list.length === 0 && <Muted>No sessions planned. Add one below.</Muted>}
+              {list.length === 0 && <Muted>No sessions planned yet.</Muted>}
               {list.map((x) => <Session key={x.id} x={x} />)}
             </View>
           );
@@ -123,14 +177,34 @@ export default function PlannerScreen({ navigation }: any) {
               <Chip label={`Date · ${localDateString(sessionDate)}`} on={false} onPress={() => setSessionPicker("date")} />
               <Chip label={`Time · ${fmtTime12(formatTime(sessionTime))}`} on={false} onPress={() => setSessionPicker("time")} />
             </View>
-            <Btn label="Add session" onPress={() => {
-              const duration = Number(customMins);
-              if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return Alert.alert("Session length", "Enter a whole number from 1 to 1440 minutes.");
-              if (!chosen) return;
-              addSession(chosen, duration, localDateString(sessionDate), formatTime(sessionTime));
-            }} />
+            {editingSessionId ? (
+              <View style={s.row}>
+                <Btn label="Save date & time" onPress={() => {
+                const date = localDateString(sessionDate), time = formatTime(sessionTime);
+                const start = timeMinutes(time);
+                const session = data.sessions.find((item) => item.id === editingSessionId);
+                if (!session) return Alert.alert("Session not found", "Refresh the planner and try again.");
+                if (date < dateStr() || (date === dateStr() && start <= new Date().getHours() * 60 + new Date().getMinutes())) return Alert.alert("Choose a future time", "A planned session must be scheduled for a future time.");
+                if (start + session.minutes > 24 * 60) return Alert.alert("Time range", "This session would run past midnight. Choose an earlier start time.");
+                if (hasSessionConflict(data, date, time, session.minutes, editingSessionId)) return Alert.alert("Time conflict", "Another planned session already overlaps this time. Choose a different time.");
+                rescheduleSession(editingSessionId, date, time); setEditingSessionId(null); setSessionPicker(null);
+              }} />
+                <Btn ghost label="Cancel edit" onPress={() => { setEditingSessionId(null); setSessionPicker(null); }} />
+              </View>
+            ) : (
+              <Btn label="Add session" onPress={() => {
+                const duration = Number(customMins);
+                if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return Alert.alert("Session length", "Enter a whole number from 1 to 1440 minutes.");
+                if (!chosen) return;
+                const date = localDateString(sessionDate), time = formatTime(sessionTime), start = timeMinutes(time);
+                if (date < dateStr() || (date === dateStr() && start <= new Date().getHours() * 60 + new Date().getMinutes())) return Alert.alert("Choose a future time", "A planned session must be scheduled for a future time.");
+                if (start + duration > 24 * 60) return Alert.alert("Time range", "This session would run past midnight. Choose an earlier start time.");
+                if (hasSessionConflict(data, date, time, duration)) return Alert.alert("Time conflict", "Another planned session already overlaps this time. Choose a different time.");
+                addSession(chosen, duration, date, time);
+              }} />
+            )}
             {sessionPicker && <>
-              <DateTimePicker value={sessionPicker === "date" ? sessionDate : sessionTime} mode={sessionPicker} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
+              <DateTimePicker value={sessionPicker === "date" ? sessionDate : sessionTime} mode={sessionPicker} minimumDate={sessionPicker === "date" ? new Date() : undefined} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
                 if (event.type === "dismissed") { setSessionPicker(null); return; }
                 if (value) { if (sessionPicker === "date") setSessionDate(value); else setSessionTime(value); }
                 if (Platform.OS !== "ios") setSessionPicker(null);
@@ -141,32 +215,6 @@ export default function PlannerScreen({ navigation }: any) {
           </>
         )}
 
-        <Label>SUBJECTS</Label>
-        {data.subjects.map((x) => (
-          <Card key={x.id} style={{ flexDirection: "row", alignItems: "center" }}>
-            <PressableScale style={{ flex: 1 }} onPress={() => navigation.navigate("Subject", { subjectId: x.id })}>
-              <Text style={s.h3}>{x.name}</Text>
-              {x.examDate && <Muted>{daysUntil(x.examDate) >= 0 ? `Exam in ${daysUntil(x.examDate)} days` : "Exam passed"} · {x.examDate}</Muted>}
-            </PressableScale>
-            <PressableScale onPress={() => Alert.alert("Remove subject?", "Its topics, notes, questions, cards and sessions will be removed too.", [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeSubject(x.id) }])}>
-              <Text style={s.muted}>Remove</Text>
-            </PressableScale>
-          </Card>
-        ))}
-        <TextInput style={s.input} placeholder="Subject (e.g. Anatomy)" placeholderTextColor={colors.textFaint} value={name} onChangeText={setName} />
-        <View style={s.row}>
-          <Chip label={exam ? `Exam · ${exam}` : "Choose exam date (optional)"} on={false} onPress={() => setShowExamPicker(true)} />
-          {exam ? <Chip label="Clear" on={false} onPress={() => setExam("")} /> : null}
-        </View>
-        {showExamPicker && <>
-          <DateTimePicker value={exam ? parseDate(exam) : examDate} mode="date" display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
-            if (event.type === "dismissed") { setShowExamPicker(false); return; }
-            if (value) { setExamDate(value); setExam(localDateString(value)); }
-            if (Platform.OS !== "ios") setShowExamPicker(false);
-          }} />
-          {Platform.OS === "ios" && <Chip label="Done" on={false} onPress={() => setShowExamPicker(false)} />}
-        </>}
-        <Btn label="Add subject" onPress={saveSubject} />
       </ScrollView>
     </SafeAreaView>
   );

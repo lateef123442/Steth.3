@@ -6,7 +6,6 @@ import { changeAvatar, removeAvatar } from "../lib/socialApi";
 import { LinearGradient } from "expo-linear-gradient";
 import { colors, radii, spacing, type, shadow, getActiveScheme, ThemeMode } from "../theme/tokens";
 import { loadThemeMode, saveThemeMode, restartApp } from "../theme/themeMode";
-import { effectiveStreak } from "../utils/streak";
 import { useApp } from "../context/AppContext";
 import PressableScale from "../components/animated/PressableScale";
 import StaggerIn from "../components/animated/StaggerIn";
@@ -15,10 +14,9 @@ import ProPaymentModal from "../components/ProPaymentModal";
 import { hasActivePro, daysLeft } from "../lib/proApi";
 import { earnedBadges } from "../data/badges";
 import { useNewBadgeCelebration } from "../hooks/useNewBadgeCelebration";
-import { fetchReferralStats, redeemReferralCode, peekPendingReferral, clearPendingReferral } from "../lib/referralApi";
+import { fetchReferralStats, redeemReferralCode, peekPendingReferral, clearPendingReferral, ReferralStatsWithActivity } from "../lib/referralApi";
 import { inviteMessage } from "../lib/appLinks";
 import { runNotificationCheck } from "../lib/notifications";
-import { ReferralStats } from "../types";
 import { track, AnalyticsEvents } from "../lib/analytics";
 import { useNavigation } from "@react-navigation/native";
 import { useStudy } from "../lib/studyStore";
@@ -37,7 +35,7 @@ export default function ProfileScreen() {
   const [confirmText, setConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const { celebrating, dismiss } = useNewBadgeCelebration(profile);
-  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [referralStats, setReferralStats] = useState<ReferralStatsWithActivity | null>(null);
   const [themeMode, setThemeModeState] = useState<ThemeMode | null>(null);
   const [inviteInput, setInviteInput] = useState("");
   const [redeeming, setRedeeming] = useState(false);
@@ -173,6 +171,34 @@ export default function ProfileScreen() {
           {profile.department ?? "All departments"}
           {profile.year ? ` · Year ${profile.year}` : ""}
         </Text>
+        {profile.username ? (
+          <Text style={[styles.meta, { color: colors.tealDeep, fontWeight: "700" }]}>@{profile.username}</Text>
+        ) : (
+          <PressableScale
+            onPress={() => navigation.navigate("AccountSettings")}
+            style={{ alignSelf: "center", marginTop: spacing.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: radii.pill, backgroundColor: colors.tealTint, flexDirection: "row", alignItems: "center", gap: spacing.xs }}
+            accessibilityRole="button"
+            accessibilityLabel="Add your username"
+          >
+            <Text style={{ color: colors.tealDeep, fontWeight: "800" }}>＋ Add username</Text>
+          </PressableScale>
+        )}
+        {profile.bio?.trim() ? (
+          <Text style={[styles.meta, { color: colors.textMuted, marginTop: spacing.sm, maxWidth: 320, textAlign: "center", lineHeight: 20 }]}>{profile.bio}</Text>
+        ) : (
+          <PressableScale onPress={() => navigation.navigate("AccountSettings")} style={{ marginTop: spacing.sm, paddingVertical: spacing.xs }}>
+            <Text style={{ ...type.caption, color: colors.tealDeep, fontWeight: "700" }}>＋ Add a short bio</Text>
+          </PressableScale>
+        )}
+        <PressableScale
+          style={{ alignSelf: "stretch", marginTop: spacing.lg, backgroundColor: colors.tealTint, borderRadius: radii.md, padding: spacing.lg }}
+          onPress={() => navigation.navigate("AccountSettings")}
+          accessibilityRole="button"
+          accessibilityLabel="Account settings"
+        >
+          <Text style={{ ...type.h3, color: colors.tealDeep }}>Account settings →</Text>
+          <Text style={{ ...type.caption, color: colors.textMuted, marginTop: 3 }}>Change your name, username, bio and password.</Text>
+        </PressableScale>
 
         <PressableScale style={[styles.signOutTop, signingOut && { opacity: 0.6 }]} onPress={handleSignOut} disabled={signingOut} haptic="medium" accessibilityRole="button" accessibilityLabel="Log out">
           {signingOut ? <ActivityIndicator color={colors.danger} size="small" /> : <Text style={styles.signOutButtonText}>Log Out</Text>}
@@ -186,8 +212,8 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBlock}>
-              <Text style={[styles.statValue, { color: colors.ember }]}>{effectiveStreak(profile)}</Text>
-              <Text style={styles.statLabel}>Day Streak</Text>
+              <Text style={[styles.statValue, { color: colors.ember }]}>{profile.login_streak ?? 0}</Text>
+              <Text style={styles.statLabel}>🔥 Login Streak</Text>
             </View>
           </View>
         )}
@@ -270,9 +296,23 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.inviteStatsRow}>
               <Text style={styles.inviteStatText}>
-                {referralStats.total_referred} invited · {referralStats.total_rewarded} vested
+                {referralStats.total_referred} joined · {referralStats.total_rewarded} rewarded
               </Text>
             </View>
+            {referralStats.recent_referrals?.length > 0 && (
+              <View style={{ marginTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md }}>
+                <Text style={[styles.inviteTitle, { fontSize: 14, marginBottom: spacing.sm }]}>Recent sign-ups</Text>
+                {referralStats.recent_referrals.map((person) => (
+                  <View key={person.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 5 }}>
+                    <View style={{ flex: 1, marginRight: spacing.sm }}>
+                      <Text style={{ color: colors.text, fontSize: 13, fontWeight: "600" }}>{person.name || "New student"}</Text>
+                      <Text style={{ color: colors.textMuted, fontSize: 11 }}>Joined using your referral</Text>
+                    </View>
+                    <Text style={{ color: colors.textMuted, fontSize: 11 }}>{new Date(person.created_at).toLocaleDateString()}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 

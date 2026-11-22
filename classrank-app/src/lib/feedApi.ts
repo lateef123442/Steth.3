@@ -1,26 +1,67 @@
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "./supabase";
-import { FeedPost } from "../types";
+import { FeedComment, FeedPost, PublicProfile } from "../types";
 
-export type FeedScope = "department" | "campus";
+export type FeedScope = "for_you" | "department" | "campus" | "trending";
 
-export async function fetchFeed(scope: FeedScope, departmentId: string, limit = 30, offset = 0): Promise<FeedPost[]> {
+/** A blended, chronological feed: department posts plus posts shared campus-wide. */
+export async function fetchFeed(scope: FeedScope, departmentId: string, limit = 25, offset = 0): Promise<FeedPost[]> {
   let query = supabase
     .from("feed_posts")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .select("*");
 
-  // "Campus" shows every public post regardless of department; "Department"
-  // shows this student's own department feed (which, per the RLS policy,
-  // already includes public posts from elsewhere too — but we filter
-  // client-side to keep the department tab feeling like a department feed,
-  // not a mixed one).
-  query = scope === "campus" ? query.eq("is_public", true) : query.eq("department_id", departmentId);
+  if (scope === "department") {
+    query = query.eq("department_id", departmentId).order("created_at", { ascending: false });
+  } else if (scope === "campus") {
+    query = query.eq("is_public", true).order("created_at", { ascending: false });
+  } else {
+    // For You mixes the student's department with campus-wide posts.
+    query = query.or(`department_id.eq.${departmentId},is_public.eq.true`);
+    if (scope === "trending") {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      query = query.gte("created_at", weekAgo)
+        .order("like_count", { ascending: false })
+        .order("created_at", { ascending: false });
+    } else {
+      query = query.order("created_at", { ascending: false });
+    }
+  }
 
-  const { data, error } = await query;
+  const { data, error } = await query.range(offset, offset + limit - 1);
   if (error) throw error;
   return (data as FeedPost[]) ?? [];
+}
+
+export async function fetchProfilePosts(userId: string, limit = 30): Promise<FeedPost[]> {
+  const { data, error } = await supabase
+    .from("feed_posts")
+    .select("*")
+    .eq("author_id", userId)
+    .order("created_at", { ascending: false })
+    .range(0, limit - 1);
+  if (error) throw error;
+  return (data as FeedPost[]) ?? [];
+}
+
+export async function fetchPublicProfile(userId: string): Promise<PublicProfile | null> {
+  const { data, error } = await supabase.rpc("get_public_profile", { p_user_id: userId });
+  if (error) throw error;
+  return (data as PublicProfile | null) ?? null;
+}
+
+/** Live inserts and engagement changes refresh the visible feed; reconnects also re-fetch missed activity. */
+export function subscribeFeedChanges(onChange: () => void) {
+  let firstSubscription = true;
+  const channel = supabase.channel(`feed-live:${Math.random().toString(36).slice(2, 10)}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, () => onChange())
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "posts" }, () => onChange())
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "post_comments" }, () => onChange())
+    .subscribe((status) => {
+      if (status !== "SUBSCRIBED") return;
+      if (firstSubscription) { firstSubscription = false; return; }
+      onChange();
+    });
+  return () => { void supabase.removeChannel(channel); };
 }
 
 export async function pickFeedImage(): Promise<string | null> {
@@ -69,4 +110,20 @@ export async function fetchMyLikedPostIds(postIds: string[]): Promise<Set<string
   const { data, error } = await supabase.rpc("get_my_liked_post_ids", { p_post_ids: postIds });
   if (error) throw error;
   return new Set((data as string[]) ?? []);
+}
+
+export async function fetchPostComments(postId: string): Promise<FeedComment[]> {
+  const { data, error } = await supabase
+    .from("feed_post_comments")
+    .select("*")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as FeedComment[]) ?? [];
+}
+
+export async function createPostComment(postId: string, content: string): Promise<FeedComment> {
+  const { data, error } = await supabase.rpc("create_post_comment", { p_post_id: postId, p_content: content.trim() });
+  if (error) throw error;
+  return data as FeedComment;
 }

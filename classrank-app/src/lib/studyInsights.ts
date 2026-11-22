@@ -10,7 +10,7 @@ export const REVIEW_INTERVALS = [1, 3, 7, 14, 30]; // days between reviews as a 
 export type Strength = "Strong" | "Improving" | "Needs review" | "Not enough data";
 
 // ── lookups ──
-export const subjectName = (d: StudyData, id: string) => d.subjects.find((s) => s.id === id)?.name ?? "Subject";
+export const subjectName = (d: StudyData, id: string) => d.subjects.find((s) => s.id === id)?.name ?? "Course";
 export const topicName = (d: StudyData, id?: string) => (id ? d.topics.find((t) => t.id === id)?.name : undefined) ?? "General";
 export const todaySessions = (d: StudyData) => d.sessions.filter((s) => s.date === dateStr());
 export const focusMinutes = (d: StudyData, fromDaysAgo: number, toDaysAgo: number) =>
@@ -138,13 +138,14 @@ export function questionPool(d: StudyData, mode: QuizMode, subjectId?: string, t
   }
   return subjectId ? d.questions.filter((q) => q.subjectId === subjectId) : d.questions;
 }
-export function buildQuiz(d: StudyData, mode: QuizMode, subjectId?: string, topicId?: string) {
+export function buildQuiz(d: StudyData, mode: QuizMode, subjectId?: string, topicId?: string, requestedCount?: number) {
   if (mode === "review") return { questions: buildReviewQuiz(d, subjectId), timeLimit: undefined };
   const rank = new Map(topicStats(d).map((t) => [t.id, t.label === "Needs review" ? 0 : t.label === "Not enough data" ? 1 : 2]));
   const pool = shuffle(questionPool(d, mode, subjectId, topicId));
   // Short quizzes lean toward what the student is weakest at; long ones cover everything.
   const ordered = mode === "quick" || mode === "daily" ? pool.sort((a, b) => (rank.get(a.topicId ?? "") ?? 1) - (rank.get(b.topicId ?? "") ?? 1)) : pool;
-  const questions = ordered.slice(0, QUIZ_SIZE[mode]);
+  const limit = Number.isInteger(requestedCount) && requestedCount! >= 5 && requestedCount! <= 100 && requestedCount! % 5 === 0 ? requestedCount! : QUIZ_SIZE[mode];
+  const questions = ordered.slice(0, limit);
   return { questions, timeLimit: mode === "mock" ? questions.length * 60 : undefined };
 }
 
@@ -187,7 +188,7 @@ export type NavTarget = "Study" | "Planner" | "Cards" | "Progress" | "Practice" 
 export interface Recommendation { text: string; cta: string; target: NavTarget; params?: any; steps?: string[] }
 
 export function recommend(d: StudyData): Recommendation {
-  if (d.subjects.length === 0) return { text: "Add your first subject so I can plan your study time.", cta: "Set up subjects", target: "Planner" };
+  if (d.subjects.length === 0) return { text: "Your teacher-assigned courses will appear here so I can plan your study time.", cta: "View courses", target: "Planner" };
 
   // Brand-new student who hasn't told us their goals / study times yet.
   if (!d.prefs.setupDone && d.attempts.length === 0 && d.sessions.length === 0)
@@ -201,7 +202,7 @@ export function recommend(d: StudyData): Recommendation {
     return {
       text: `You scored ${weak!.accuracy}% in ${weak!.name}${examIn !== null && examIn >= 0 ? ` and have a ${weakSubject!.name} exam in ${examIn} day${examIn === 1 ? "" : "s"}` : ""}.`,
       steps: [`Review ${weak!.name}`, "Study for 15 minutes", "Take a 5-question quiz"],
-      cta: hasQ ? "Start topic quiz" : "Open subject room",
+      cta: hasQ ? "Start topic quiz" : "Open course",
       ...(hasQ ? { target: "PracticeSession" as const, params: { mode: "topic", subjectId: weak!.subjectId, topicId: weak!.id } } : { target: "Subject" as const, params: { subjectId: weak!.subjectId } }),
     };
   };
@@ -224,7 +225,7 @@ export function recommend(d: StudyData): Recommendation {
   if (exam && todaySessions(d).length === 0) return { text: `${exam.name} exam in ${daysUntil(exam.examDate!)} days. Plan a session today.`, cta: "Plan a session", target: "Planner" };
 
   if (d.questions.length >= 3 && !attemptedToday(d)) return { text: "Your daily challenge is waiting. Five questions, a few minutes.", cta: "Start daily challenge", target: "PracticeSession", params: { mode: "daily" } };
-  if (d.questions.length === 0) return { text: "Add practice questions to a subject (or generate them) so I can find your weak spots.", cta: "Open a subject", target: "Subject", params: { subjectId: d.subjects[0].id } };
+  if (d.questions.length === 0) return { text: "Your courses need practice questions before I can find your weak spots.", cta: "Open a course", target: "Subject", params: { subjectId: d.subjects[0].id } };
   return { text: todaySessions(d).length ? "Today's plan is done. Nice work. Take a break." : "Nothing planned today. Add a short session?", cta: "Open planner", target: "Planner" };
 }
 
@@ -253,7 +254,13 @@ export function generateSchedule(d: StudyData, days = 7): Proposal[] {
     const existing = d.sessions.filter((s) => s.date === date && s.status !== "skipped");
     let remaining = budget - existing.reduce((a, s) => a + s.minutes, 0);
     const used = new Set(existing.map((s) => s.subjectId));
-    let cursorMin = tm(d.prefs.preferredTime) + existing.reduce((a, s) => a + s.minutes, 0);
+    // Respect the actual times already in the planner. Adding durations to the preferred
+    // time alone can still place a suggested block on top of a later, manually scheduled one.
+    const occupied = existing.map((s) => {
+      const start = tm(s.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.time) ? s.time : d.prefs.preferredTime);
+      return { start, end: Math.min(24 * 60, start + Math.max(1, s.minutes)) };
+    });
+    let cursorMin = tm(d.prefs.preferredTime);
     if (i === 0) { // today: start at the next quarter-hour at least 15 min from now, never in the past
       const n = new Date();
       cursorMin = Math.max(cursorMin, Math.ceil((n.getHours() * 60 + n.getMinutes() + 15) / 15) * 15);
@@ -271,9 +278,19 @@ export function generateSchedule(d: StudyData, days = 7): Proposal[] {
       if (!scored.length) break;
       const pick = scored[0];
       const block = Math.min(remaining, remaining >= 30 && pick.score > 1 ? 25 : remaining >= 20 ? 20 : remaining >= 15 ? 15 : 10);
-      out.push({ subjectId: pick.s.id, topicId: weakTopic.get(pick.s.id), date, minutes: block, time: hhmm(cursorMin) });
+      let start = cursorMin;
+      // Move the proposed block past every conflicting interval, including earlier
+      // suggestions from this same generated plan. Round to the next quarter-hour.
+      for (let attempts = 0; attempts <= occupied.length; attempts++) {
+        const conflict = occupied.filter((slot) => start < slot.end && start + block > slot.start).sort((a, b) => a.end - b.end)[0];
+        if (!conflict) break;
+        start = Math.ceil(conflict.end / 15) * 15;
+      }
+      if (start > LAST_START || start + block > 24 * 60) break;
+      out.push({ subjectId: pick.s.id, topicId: weakTopic.get(pick.s.id), date, minutes: block, time: hhmm(start) });
+      occupied.push({ start, end: start + block });
       assigned.set(pick.s.id, (assigned.get(pick.s.id) ?? 0) + 1);
-      used.add(pick.s.id); remaining -= block; cursorMin += block; count++;
+      used.add(pick.s.id); remaining -= block; cursorMin = start + block; count++;
     }
   }
   return out;

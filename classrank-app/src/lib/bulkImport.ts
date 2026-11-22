@@ -17,7 +17,28 @@ const L = "ABCD";
 
 export function parseQuestionBlocks(text: string): ParseResult {
   const out: ParseResult = { questions: [], errors: [] };
-  const blocks = text.replace(/\r/g, "").split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  // Accept both blank-line-separated blocks and consecutive numbered/Q: blocks.
+  // Many AI-generated question lists omit blank lines, which previously merged
+  // the entire paste into one invalid question.
+  const lines = text.replace(/\r/g, "").split("\n");
+  const blocks: string[] = [];
+  let current: string[] = [];
+  const flush = () => {
+    const block = current.join("\n").trim();
+    if (block) blocks.push(block);
+    current = [];
+  };
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const startsQuestion = /^(?:q(?:uestion)?\s*\d*\s*[:.)-]|\d+\s*[.)])\s*\S/i.test(trimmed);
+    if (startsQuestion && current.some((part) => part.trim())) flush();
+    if (!trimmed) {
+      if (current.some((part) => part.trim())) flush();
+      continue;
+    }
+    current.push(line);
+  }
+  flush();
   blocks.forEach((block, bi) => {
     const q: string[] = [];
     const opts: string[] = ["", "", "", ""];

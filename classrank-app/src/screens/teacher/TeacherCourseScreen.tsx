@@ -4,7 +4,7 @@ import { colors, spacing } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Back, Btn, Card, Chip, Field, Label, Muted, Tag, YearTag, s, ListSkeleton } from "../../components/study/ui";
 import { Screen, ChipRow } from "../../components/responsive";
-import { fetchCourseContent, fetchCourseStats, CourseStats, postCourseEvent, deleteCourseContent, deleteCourse, fetchStaffCourses, removeCourseFiles, fetchCourseThumbnail, changeCourseThumbnail, removeCourseThumbnail } from "../../lib/courseApi";
+import { fetchCourseContent, fetchCourseStats, CourseStats, postCourseEvent, deleteCourseContent, deleteCourse, fetchStaffCourses, removeCourseFiles, fetchCourseThumbnail, changeCourseThumbnail, removeCourseThumbnail, updateCourseDetails } from "../../lib/courseApi";
 import { CourseBundle } from "../../lib/studyCourseSync";
 import TeacherExamsPanel from "./TeacherExamsPanel";
 import TeacherTopicsPanel from "./TeacherTopicsPanel";
@@ -27,6 +27,9 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [thumb, setThumb] = useState<string | null>(null);
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [editCode, setEditCode] = useState("");
+  const [editTitle, setEditTitle] = useState("");
   const [eKind, setEKind] = useState<"announcement" | "exam">("announcement"), [eTitle, setETitle] = useState(""), [eBody, setEBody] = useState(""), [eDate, setEDate] = useState("");
 
   const load = useCallback(async () => {
@@ -37,6 +40,29 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
     } catch (e: any) { setError(e?.message ?? "Couldn't load this course."); }
   }, [courseId]);
   useEffect(() => { load(); }, [load]);
+
+  const beginEditDetails = () => {
+    if (!bundle) return;
+    setEditCode(bundle.course.code ?? "");
+    setEditTitle(bundle.course.title ?? "");
+    setEditingDetails(true);
+  };
+  const saveDetails = async () => {
+    if (busy) return;
+    if (editCode.trim().length < 2 || editCode.trim().length > 20) return Alert.alert("Course code", "Enter a course code between 2 and 20 characters.");
+    if (editTitle.trim().length < 2 || editTitle.trim().length > 120) return Alert.alert("Course name", "Enter a course name between 2 and 120 characters.");
+    setBusy(true);
+    try {
+      await updateCourseDetails(courseId, editCode.trim(), editTitle.trim());
+      setEditingDetails(false);
+      await load();
+      Alert.alert("Course updated", "The course details have been saved.");
+    } catch (e: any) {
+      Alert.alert("Couldn't update course", e?.message ?? "Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const saveEvent = async () => {
     if (busy) return;
@@ -75,6 +101,26 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
         {c.year != null && <YearTag year={c.year} />}
       </View>
       <Muted>{c.title}{c.department ? ` · ${c.department}` : ""}</Muted>
+      {!editingDetails ? (
+        <View style={{ alignSelf: "flex-start", marginTop: spacing.xs }}>
+          <PressableScale onPress={beginEditDetails} accessibilityRole="button" accessibilityLabel="Edit course details">
+            <Text style={[s.muted, { color: colors.teal, fontWeight: "700" }]}>Edit course details</Text>
+          </PressableScale>
+        </View>
+      ) : (
+        <Card style={{ marginTop: spacing.sm }}>
+          <Text style={s.h3}>Edit course details</Text>
+          <Label>COURSE CODE</Label>
+          <Field value={editCode} onChangeText={setEditCode} placeholder="Course code" autoCapitalize="characters" />
+          <Label>COURSE NAME</Label>
+          <Field value={editTitle} onChangeText={setEditTitle} placeholder="Course name" />
+          <View style={[s.row, { marginTop: spacing.sm }]}>
+            <Btn label={busy ? "Saving…" : "Save changes"} disabled={busy} onPress={saveDetails} />
+            <Btn ghost label="Cancel" disabled={busy} onPress={() => setEditingDetails(false)} />
+          </View>
+          <Muted>Department and year remain unchanged so existing student access and sharing are not unexpectedly altered.</Muted>
+        </Card>
+      )}
       <View style={{ marginTop: spacing.sm }}>
         <CourseThumb path={thumb} height={150} />
         <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "center" }}>

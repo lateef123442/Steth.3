@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, radii, spacing, type, shadow } from "../theme/tokens";
 import { useApp } from "../context/AppContext";
 import PulseRing from "../components/animated/PulseRing";
@@ -11,10 +12,9 @@ import AnimatedNumber from "../components/animated/AnimatedNumber";
 import StreakFlame from "../components/animated/StreakFlame";
 import PressableScale from "../components/animated/PressableScale";
 import { fetchRecentAnnouncements, Announcement } from "../lib/courseApi";
-import { useStudy, recommend, todaySessions, subjectName, focusMinutes, studyStreak, weakestTopic, fmtTime12 } from "../lib/studyStore";
+import { useStudy, recommend, todaySessions, subjectName, focusMinutes, weakestTopic, fmtTime12 } from "../lib/studyStore";
 import ArenaBackground from "../components/ArenaBackground";
 import StartHereCard from "../components/StartHereCard";
-import { effectiveStreak } from "../utils/streak";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 
@@ -38,10 +38,11 @@ export default function HomeScreen({ navigation }: Props) {
     load();
     return (navigation as any).addListener?.("focus", load);
   }, [navigation]);
-  const plannedMin = plan.reduce((a, x) => a + x.minutes, 0);
-  const doneMin = plan.filter((x) => x.status === "done").reduce((a, x) => a + x.minutes, 0);
+  const activePlan = plan.filter((x) => x.status !== "skipped");
+  const plannedMin = activePlan.reduce((a, x) => a + x.minutes, 0);
+  const doneMin = activePlan.filter((x) => x.status === "done").reduce((a, x) => a + x.minutes, 0);
   const planProgress = plannedMin ? doneMin / plannedMin : 0;
-  const streak = studyStreak(study);
+  const streak = profile?.login_streak ?? 0;
   const weak = weakestTopic(study);
   const nextTimed = plan.filter((x) => x.status === "planned" && x.time).sort((a, b) => a.time!.localeCompare(b.time!))[0];
   const hour = new Date().getHours();
@@ -67,6 +68,8 @@ export default function HomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safe}>
       {isFocused && <StatusBar style="light" />}
       <ScrollView contentContainerStyle={styles.container}>
+        <StartHereCard onGo={go} />
+
         <ArenaBackground>
           <View style={styles.heroInner}>
             <Text style={styles.greeting}>{hello}, {profile.name.split(" ")[0]}</Text>
@@ -83,8 +86,8 @@ export default function HomeScreen({ navigation }: Props) {
 
             <View style={styles.chipRow}>
               <View style={styles.chip}>
-                <StreakFlame streak={Math.max(streak, effectiveStreak(profile))} size={18} />
-                <AnimatedNumber value={Math.max(streak, effectiveStreak(profile))} style={styles.chipValueText} />
+                <StreakFlame streak={streak} size={18} />
+                <AnimatedNumber value={streak} style={styles.chipValueText} />
                 <Text style={styles.chipLabel}>day streak</Text>
               </View>
 
@@ -96,8 +99,6 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
         </ArenaBackground>
 
-        <StartHereCard onGo={go} />
-
         {news.length > 0 && (
           <Reveal>
           <PressableScale style={[styles.planCard, { backgroundColor: colors.emberTint }]} onPress={() => go("Course", { courseId: news[0].course_id })} accessibilityRole="button">
@@ -108,7 +109,7 @@ export default function HomeScreen({ navigation }: Props) {
           </Reveal>
         )}
         <View style={styles.planCard}>
-          <Text style={styles.quizCardTitle}>Today's study plan</Text>
+          <Text style={styles.quizCardTitle}>Today's plan</Text>
           {plan.length === 0 ? (
             <Text style={styles.quizCardSubtitle}>Nothing planned yet.</Text>
           ) : (
@@ -129,8 +130,9 @@ export default function HomeScreen({ navigation }: Props) {
           </PressableScale>
         </View>
 
+        <Text style={styles.quickActionsTitle}>What would you like to do?</Text>
         <View style={styles.tiles}>
-          {([["🗓", "Planner", "Planner"], ["🎯", "Practice", "Practice"], ["📈", "Progress", "Progress"], ["🤖", "AI tutor", "Companion"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
+          {([["🗓", "Study plan", "Planner"], ["🎯", "Practice", "Practice"], ["📄", "PDF to CBT", "PDFPractice"], ["📈", "My progress", "Progress"], ["🏆", "My rank", "Leaderboard"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
             <PressableScale key={target} style={styles.tile} onPress={() => go(target)} accessibilityRole="button">
               <EmojiIcon emoji={icon} style={{ fontSize: 22 }} />
               <Text style={styles.tileText}>{label}</Text>
@@ -147,14 +149,14 @@ export default function HomeScreen({ navigation }: Props) {
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.quizCardTitle}>
-              {hasCompletedTodaysQuiz ? "Department quiz: done" : "Ranked department quiz is ready"}
+              {hasCompletedTodaysQuiz ? "Department quiz: done" : "Your daily quiz is ready"}
             </Text>
             <Text style={styles.quizCardSubtitle}>
               {hasCompletedTodaysQuiz
                 ? "Come back tomorrow to keep your streak alive."
                 : todaysQuestions.length > 0
                 ? `${todaysQuestions.length} questions · ${profile.department}`
-                : "No quiz published yet. Check back soon."}
+                : "No quiz is ready yet. Please check back later."}
             </Text>
           </View>
           {!hasCompletedTodaysQuiz && todaysQuestions.length > 0 && (
@@ -166,25 +168,35 @@ export default function HomeScreen({ navigation }: Props) {
 
         <PressableScale style={styles.studyCard} onPress={() => go("Study", plan.find((x) => x.status === "planned") ? { subject: subjectName(study, plan.find((x) => x.status === "planned")!.subjectId) } : undefined)} haptic="medium" accessibilityRole="button">
           <View style={{ flex: 1 }}>
-            <Text style={styles.quizCardTitle}>⏱ Focus mode</Text>
-            <Text style={styles.quizCardSubtitle}>Continue studying. Timer on, notifications muted, screen stays on.</Text>
+            <Text style={styles.quizCardTitle}>⏱ Study with a timer</Text>
+            <Text style={styles.quizCardSubtitle}>Set a timer and focus on one course without distractions.</Text>
           </View>
         </PressableScale>
 
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>How ranking works</Text>
+          <Text style={styles.infoTitle}>How your rank works</Text>
           <Text style={styles.infoText}>
             Your points are compared first within {profile.department}, so you're always ranked fairly against
             students in your own field, then rolled up into your faculty and campus-wide leaderboards.
           </Text>
         </View>
       </ScrollView>
+      <PressableScale
+        style={styles.aiFab}
+        onPress={() => go("Companion")}
+        accessibilityRole="button"
+        accessibilityLabel="Open AI study helper"
+        haptic="medium"
+      >
+        <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+      </PressableScale>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
+  aiFab: { position: "absolute", right: spacing.lg, bottom: spacing.xs, zIndex: 100, width: 58, height: 58, borderRadius: 29, backgroundColor: colors.tealDeep, alignItems: "center", justifyContent: "center", elevation: 14, shadowColor: "#000", shadowOpacity: 0.24, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, borderWidth: 2, borderColor: "#FFFFFF" },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl * 2 },
   heroInner: { alignItems: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
   greeting: { ...type.h1, color: colors.textOnDark, alignSelf: "flex-start" },
@@ -233,9 +245,10 @@ const styles = StyleSheet.create({
   recText: { ...type.bodyMedium, color: colors.text, marginTop: spacing.md },
   recBtn: { backgroundColor: colors.teal, borderRadius: radii.md, paddingVertical: spacing.md, alignItems: "center", marginTop: spacing.md },
   recBtnText: { ...type.h3, color: "#fff" },
-  tiles: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
-  tile: { flex: 1, backgroundColor: colors.card, borderRadius: radii.md, paddingVertical: spacing.lg, alignItems: "center", ...shadow.card },
-  tileText: { ...type.caption, color: colors.text, marginTop: 4 },
+  quickActionsTitle: { ...type.h3, color: colors.text, marginTop: spacing.xl },
+  tiles: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md },
+  tile: { width: "31%", flexGrow: 1, backgroundColor: colors.card, borderRadius: radii.md, paddingVertical: spacing.lg, alignItems: "center", ...shadow.card },
+  tileText: { ...type.caption, color: colors.text, marginTop: 4, textAlign: "center" },
   studyCard: { flexDirection: "row", alignItems: "center", backgroundColor: colors.tealTint, borderRadius: radii.lg, padding: spacing.xl, marginTop: spacing.lg },
   infoCard: { backgroundColor: colors.violetTint, borderRadius: radii.md, padding: spacing.lg, marginTop: spacing.lg },
   infoTitle: { ...type.h3, color: colors.text, marginBottom: 6 },

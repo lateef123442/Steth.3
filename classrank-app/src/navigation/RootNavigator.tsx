@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { View, Text, Pressable } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -14,21 +15,25 @@ import HomeScreen from "../screens/HomeScreen";
 import QuizScreen from "../screens/QuizScreen";
 import LeaderboardScreen from "../screens/LeaderboardScreen";
 import FeedScreen from "../screens/social/FeedScreen";
+import PublicProfileScreen from "../screens/social/PublicProfileScreen";
 import CardsScreen from "../screens/CardsScreen";
 import ProgressScreen from "../screens/ProgressScreen";
 import CompanionScreen from "../screens/CompanionScreen";
 import PlannerScreen from "../screens/PlannerScreen";
 import StudyScreen from "../screens/StudyScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import Avatar from "../components/Avatar";
+import AccountSettingsScreen from "../screens/AccountSettingsScreen";
 import { useProGate, ProGateExempt } from "../components/proGateCore";
 import AdminProScreen from "../screens/admin/AdminProScreen";
-import LearnScreen from "../screens/LearnScreen";
 import PracticeScreen from "../screens/PracticeScreen";
 import PracticeSessionScreen from "../screens/PracticeSessionScreen";
+import PDFPracticeScreen from "../screens/PDFPracticeScreen";
 import SubjectRoomScreen from "../screens/SubjectRoomScreen";
 import StudySetupScreen from "../screens/StudySetupScreen";
 import { useStudyReminderSync } from "../hooks/useStudyReminderSync";
 import { usePushRegistration, usePushTapNavigation } from "../hooks/usePushSync";
+import useSocialNotifications from "../hooks/useSocialNotifications";
 import { useStudyCloudSync } from "../hooks/useStudyCloudSync";
 import TabIcon from "../components/animated/TabIcon";
 import { LoadingScreen } from "../components/animated/Loader";
@@ -63,7 +68,7 @@ export type RootStackParamList = {
   Cards: undefined;
   Progress: undefined;
   Companion: { prompt?: string } | undefined;
-  PracticeSession: { mode: "quick" | "topic" | "subject" | "mock" | "daily"; subjectId?: string; topicId?: string };
+  PracticeSession: { mode: "quick" | "topic" | "subject" | "mock" | "daily" | "review"; subjectId?: string; topicId?: string; questionCount?: number };
   Subject: { subjectId: string };
   StudySetup: undefined;
   Community: undefined;
@@ -72,8 +77,10 @@ export type RootStackParamList = {
   CourseTopic: { courseId: string; topicId: string };
   CourseDaily: { courseId: string; code?: string };
   Groups: undefined;
-  Friends: undefined;
+  Friends: { initialTab?: "Chats" | "Friends" | "Requests" | "Find people" | "Blocked" } | undefined;
   Feedback: undefined;
+  AccountSettings: undefined;
+  PublicProfile: { userId: string };
   Chat: { userId: string; name: string; department?: string | null; year?: number | null; avatar_path?: string | null };
   GroupChat: { groupId: string; name: string };
   GroupMembers: { groupId: string; name: string };
@@ -89,6 +96,7 @@ export type MainTabParamList = {
   Home: undefined;
   Learn: undefined;
   Practice: undefined;
+  PDFPractice: undefined;
   Study: { subject?: string; notes?: string } | undefined;
   Leaderboard: undefined;
   CommunityTab: undefined;
@@ -118,6 +126,18 @@ export type AdminTabParamList = {
 const ExemptProfile = (props: any) => <ProGateExempt><ProfileScreen {...props} /></ProGateExempt>;
 const ExemptFeedback = (props: any) => <ProGateExempt><FeedbackScreen {...props} /></ProGateExempt>;
 
+/** Profile shortcut stays in the header; the AI helper lives as a Home-screen floating action. */
+function MainHeaderActions({ navigation }: { navigation: any }) {
+  const { profile } = useApp();
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 4 }}>
+      <Pressable onPress={() => navigation.navigate("Profile")} accessibilityRole="button" accessibilityLabel="Open your profile and account settings" style={{ padding: 2, borderRadius: 24, borderWidth: 2, borderColor: colors.teal }}>
+        {profile ? <Avatar name={profile.name} path={profile.avatar_path} size={34} /> : <Ionicons name="person-circle" size={36} color={colors.teal} />}
+      </Pressable>
+    </View>
+  );
+}
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const TeacherTab = createBottomTabNavigator<TeacherTabParamList>();
@@ -136,6 +156,7 @@ function useTabChrome() {
 }
 
 function MainTabs() {
+  const socialNotifications = useSocialNotifications();
   useStudyReminderSync();
   useStudyCloudSync();
   usePushRegistration();
@@ -143,8 +164,21 @@ function MainTabs() {
   const chrome = useTabChrome();
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
+      screenOptions={({ route, navigation }) => ({
+        headerShown: true,
+        headerTitle: () => (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+            <Ionicons name="school" size={22} color={colors.teal} />
+            <Text style={{ color: colors.ink, fontWeight: "800", fontSize: 18 }}>Steth</Text>
+          </View>
+        ),
+        headerStyle: { backgroundColor: colors.paper },
+        headerShadowVisible: false,
+        headerRight: () => <MainHeaderActions navigation={navigation} />,
+        tabBarBadge: route.name === "CommunityTab" && socialNotifications.total > 0
+          ? (socialNotifications.total > 99 ? "99+" : socialNotifications.total)
+          : undefined,
+        tabBarBadgeStyle: { backgroundColor: colors.danger, color: "#FFFFFF", fontSize: 10, fontWeight: "800" },
         tabBarActiveTintColor: colors.teal,
         tabBarInactiveTintColor: colors.textMuted,
         ...chrome,
@@ -153,6 +187,7 @@ function MainTabs() {
             Home: "home",
             Learn: "library",
             Practice: "help-circle",
+            PDFPractice: "document-text",
             CommunityTab: "people",
             Quiz: "help-circle",
             Leaderboard: "trophy",
@@ -165,15 +200,16 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Learn" component={LearnScreen} />
-      <Tab.Screen name="Quiz" component={QuizScreen} />
+      <Tab.Screen name="Learn" component={CoursesScreen} options={{ title: "Courses" }} />
+      <Tab.Screen name="Feed" component={FeedScreen} options={{ title: "Feed" }} />
+      <Tab.Screen name="Quiz" component={QuizScreen} options={{ title: "Quiz" }} />
       <Tab.Screen name="CommunityTab" component={CommunityScreen} options={{ title: "Community" }} />
-      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: "Ranks" }} />
-      <Tab.Screen name="Profile" component={ExemptProfile} />
+      <Tab.Screen name="Profile" component={ExemptProfile} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
 
-      {/* Reachable from Home, but hidden from the bar */}
-      <Tab.Screen name="Feed" component={FeedScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
+      {/* These destinations stay available from clear Home shortcuts, keeping the main bar simple. */}
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: "Ranks", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Practice" component={PracticeScreen} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
+      <Tab.Screen name="PDFPractice" component={PDFPracticeScreen} options={{ title: "PDF to CBT", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
       <Tab.Screen name="Study" component={StudyScreen} options={{ title: "Focus", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
     </Tab.Navigator>
   );
@@ -283,7 +319,7 @@ export default function RootNavigator() {
       screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 280 }}
       // Safety net for routes reached without a tap (push notifications, links): without Pro, bounce back and ask.
       screenListeners={({ navigation, route }) => ({
-        focus: () => { if (gate.locked && route.name !== "Main" && route.name !== "Feedback") { if (navigation.canGoBack()) navigation.goBack(); gate.prompt(); } },
+        focus: () => { if (gate.locked && route.name !== "Main" && route.name !== "Feedback" && route.name !== "AccountSettings") { if (navigation.canGoBack()) navigation.goBack(); gate.prompt(); } },
       })}
     >
       {!isAuthenticated ? (
@@ -293,6 +329,8 @@ export default function RootNavigator() {
           <Stack.Screen name="Admin" component={AdminTabs} />
           <Stack.Screen name="TeacherCourse" component={TeacherCourseScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
+          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+          <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
         </>
       ) : profile.role === "teacher" ? (
         <>
@@ -302,6 +340,8 @@ export default function RootNavigator() {
           <Stack.Screen name="GroupChat" component={GroupChatScreen} />
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
+          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+          <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
         </>
       ) : (
         <>
@@ -309,7 +349,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Planner" component={PlannerScreen} />
           <Stack.Screen name="Cards" component={CardsScreen} />
           <Stack.Screen name="Progress" component={ProgressScreen} />
-          <Stack.Screen name="Companion" component={CompanionScreen} options={{ animation: "slide_from_bottom" }} />
+          <Stack.Screen name="Companion" component={CompanionScreen} options={{ presentation: "transparentModal", animation: "fade", contentStyle: { backgroundColor: "transparent" } }} />
           <Stack.Screen name="PracticeSession" component={PracticeSessionScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />
           <Stack.Screen name="Subject" component={SubjectRoomScreen} />
           <Stack.Screen name="StudySetup" component={StudySetupScreen} />
@@ -324,6 +364,8 @@ export default function RootNavigator() {
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
           <Stack.Screen name="Friends" component={FriendsScreen} />
           <Stack.Screen name="Feedback" component={ExemptFeedback} />
+          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+          <Stack.Screen name="PublicProfile" component={PublicProfileScreen} />
           <Stack.Screen name="Chat" component={ChatScreen} />
           <Stack.Screen name="GroupQuiz" component={GroupQuizScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />
           <Stack.Screen name="Exam" component={ExamScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />

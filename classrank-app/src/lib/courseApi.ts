@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { markProfileStale } from "./profileSync";
 import { notifyAnnouncement } from "./pushNotify";
 import { CourseBundle, QuestionPurpose, reportableAnswers } from "./studyCourseSync";
-import { getStudyData, QuizAttempt } from "./studyStore";
+import { getStudyData, importCourseBundle, QuizAttempt } from "./studyStore";
 import { uid } from "./studyTypes";
 import { secondsLeft } from "./examTime";
 import { mimeFor, storagePath, validateFile, MAX_FILE_BYTES } from "./fileRules";
@@ -30,6 +30,18 @@ export const fetchMyCourses = async () => (await call<MyCourse[]>("my_courses"))
 export interface Announcement { id: string; title: string; body: string; created_at: string; course_id: string; course_code: string }
 export const fetchRecentAnnouncements = async () => (await call<Announcement[]>("my_recent_announcements", { p_days: 14 })) ?? [];
 export const fetchCourseContent = (courseId: string) => call<CourseBundle>("get_course_content", { p_course_id: courseId });
+
+/** Load every course assigned to this student into the shared planner/practice study model. */
+export async function syncMyCoursesToStudy(): Promise<{ courses: MyCourse[]; failedCourseIds: string[] }> {
+  const courses = await fetchMyCourses();
+  const results = await Promise.allSettled(courses.map((course) => fetchCourseContent(course.id)));
+  const failedCourseIds: string[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled" && result.value.course?.id === courses[index].id) importCourseBundle(result.value);
+    else failedCourseIds.push(courses[index].id);
+  });
+  return { courses, failedCourseIds };
+}
 
 /**
  * Fire-and-forget: tells each course's teacher how the student did on that course's questions
@@ -156,6 +168,20 @@ export const saveResource = (m: { id?: string | null; courseId: string; topicId:
   call<string>("staff_save_material", { p_id: m.id ?? null, p_course_id: m.courseId, p_topic_id: m.topicId, p_title: m.title, p_kind: m.kind, p_body: m.body });
 export const saveQuestion = (q: { id?: string | null; courseId: string; topicId: string | null; purpose: QuestionPurpose; question: string; options: string[]; correctIndex: number; explanation: string }) =>
   call<string>("staff_save_question", { p_id: q.id ?? null, p_course_id: q.courseId, p_topic_id: q.topicId, p_purpose: q.purpose, p_question: q.question, p_options: q.options, p_correct_index: q.correctIndex, p_explanation: q.explanation });
+export const saveQuestionsBulk = (q: { courseId: string; purpose: QuestionPurpose; questions: { topicId: string | null; question: string; options: string[]; correctIndex: number; explanation: string }[] }) =>
+  call<number>("staff_save_questions_bulk", {
+    p_course_id: q.courseId,
+    p_purpose: q.purpose,
+    p_questions: q.questions.map((item) => ({
+      topic_id: item.topicId,
+      question: item.question,
+      options: item.options,
+      correct_index: item.correctIndex,
+      explanation: item.explanation,
+    })),
+  });
+export const updateCourseDetails = (courseId: string, code: string, title: string) =>
+  call<void>("staff_update_course_details", { p_course_id: courseId, p_code: code, p_title: title });
 export const fetchTopicProgress = (courseId: string) => call<{ topic_count: number; students: { name: string; done: number }[] }>("staff_topic_progress", { p_course_id: courseId });
 
 export const markMaterialRead = async (materialId: string) => {

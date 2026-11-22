@@ -9,6 +9,8 @@ export type Role = "student" | "teacher" | "admin";
 export interface Profile {
   id: string;
   name: string;
+  username?: string | null;
+  bio?: string | null;
   university: string;
   department_id: string | null; // null only possible for admins
   department: string | null; // joined department name, for convenience
@@ -20,11 +22,13 @@ export interface Profile {
   total_points: number;
   current_streak: number;
   last_quiz_date: string | null;
+  login_streak: number;
+  last_login_date: string | null;
   is_pro: boolean;
   pro_expires_at: string | null;
 }
 
-// The client only ever sees quiz_questions_public — never correct_index —
+// The client only ever sees quiz_questions_public â never correct_index â
 // until it submits an answer for grading (see submit_single_answer).
 export interface QuizQuestionPublic {
   id: string;
@@ -111,6 +115,21 @@ export interface FeedPost {
   author_id: string;
   author_name: string;
   author_role: Role;
+  author_username?: string | null;
+  author_avatar_path?: string | null;
+  comment_count: number;
+}
+
+export interface FeedComment {
+  id: string;
+  post_id: string;
+  author_id: string;
+  author_name: string;
+  author_role: Role;
+  author_username?: string | null;
+  author_avatar_path?: string | null;
+  content: string;
+  created_at: string;
 }
 
 export interface LeaderboardEntry {
@@ -124,3 +143,19 @@ export interface LeaderboardEntry {
   department_percentile?: number; // 0-1, only present on Faculty/Campus queries
 }
 
+
+export interface PublicProfile {
+  id: string;
+  name: string;
+  username: string | null;
+  bio: string;
+  university: string;
+  department: string | null;
+  faculty: string | null;
+  year: number | null;
+  role: Role;
+  avatar_path: string | null;
+  post_count: number;
+  member_since: string;
+  relation: "none" | "friend" | "sent" | "received";
+}

@@ -28,7 +28,7 @@ export default function SubjectRoomScreen({ navigation, route }: any) {
   const [busy, setBusy] = useState(false);
   const [exam, setExam] = useState(sub?.examDate ?? "");
 
-  if (!sub) return <SafeAreaView style={s.safe}><View style={{ padding: spacing.xl }}><Back onPress={() => navigation.goBack()} /><Text style={s.h1}>Subject not found</Text></View></SafeAreaView>;
+  if (!sub) return <SafeAreaView style={s.safe}><View style={{ padding: spacing.xl }}><Back onPress={() => navigation.goBack()} /><Text style={s.h1}>Course not found</Text></View></SafeAreaView>;
 
   const stat = subjectStats(data).find((x) => x.id === subjectId)!;
   const topics = topicStats(data).filter((t) => t.subjectId === subjectId);
@@ -82,11 +82,11 @@ export default function SubjectRoomScreen({ navigation, route }: any) {
             </View>
             <Label>LEARN → PRACTICE</Label>
             <Btn label="Quick quiz" onPress={() => practice("quick")} disabled={!questions.length} />
-            <Btn ghost label="Subject quiz" onPress={() => practice("subject")} disabled={!questions.length} />
+            <Btn ghost label="Course quiz" onPress={() => practice("subject")} disabled={!questions.length} />
             <Btn ghost label="⏱ Mock exam" onPress={() => practice("mock")} disabled={!questions.length} />
             <Btn ghost label="⏱ Start a focus session" onPress={() => navigation.navigate("Main", { screen: "Study", params: { subject: sub.name } })} />
             <Btn ghost label="🃏 Flashcards" onPress={() => navigation.navigate("Cards")} />
-            <Btn ghost label="Ask the tutor about this subject" onPress={() => navigation.navigate("Companion", { prompt: `Help me study ${sub.name}. Ask me what I already know first.` })} />
+            <Btn ghost label="Ask the tutor about this course" onPress={() => navigation.navigate("Companion", { prompt: `Help me study ${sub.name}. Ask me what I already know first.` })} />
             {!questions.length && <Muted style={{ marginTop: spacing.sm }}>Add questions in the Questions tab to unlock quizzes.</Muted>}
             <Label>EXAM DATE</Label>
             <TextInput style={s.input} value={exam} onChangeText={setExam} placeholder="YYYY-MM-DD" placeholderTextColor={colors.textFaint} keyboardType="numbers-and-punctuation" />
@@ -96,7 +96,7 @@ export default function SubjectRoomScreen({ navigation, route }: any) {
 
         {tab === "Topics" && (
           <>
-            {topics.length === 0 && <Muted>Break the subject into topics (e.g. Genetics, Cell Structure). Quizzes then show exactly which ones need work.</Muted>}
+            {topics.length === 0 && <Muted>Break the course into topics (e.g. Genetics, Cell Structure). Quizzes then show exactly which ones need work.</Muted>}
             {topics.map((t) => {
               const full = data.topics.find((x) => x.id === t.id)!;
               return (
@@ -108,7 +108,7 @@ export default function SubjectRoomScreen({ navigation, route }: any) {
                   <View style={[s.row, { marginTop: spacing.sm }]}>
                     <Chip label="Mark learned" on={false} onPress={() => { markTopicLearned(t.id); Alert.alert("Nice", "I'll bring this back for review tomorrow, then at longer gaps."); }} />
                     <Chip label="Quiz" on={false} onPress={() => (data.questions.some((q) => q.topicId === t.id) ? practice("topic", t.id) : Alert.alert("No questions", "Add questions for this topic first."))} />
-                    <Chip label="Delete" on={false} onPress={() => Alert.alert("Delete topic?", "Its questions stay in the subject.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => removeTopic(t.id) }])} />
+                    <Chip label="Delete" on={false} onPress={() => Alert.alert("Delete topic?", "Its questions stay in the course.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => removeTopic(t.id) }])} />
                   </View>
                 </Card>
               );
@@ -167,7 +167,7 @@ export default function SubjectRoomScreen({ navigation, route }: any) {
             <TextInput style={s.input} value={why} onChangeText={setWhy} placeholder="Explanation (shown after answering)" placeholderTextColor={colors.textFaint} multiline />
             <Btn label="Save question" onPress={saveQuestion} />
 
-            <Label>{questions.length} IN THIS SUBJECT</Label>
+            <Label>{questions.length} IN THIS COURSE</Label>
             {questions.map((q) => (
               <Card key={q.id} style={{ flexDirection: "row", alignItems: "center" }}>
                 <View style={{ flex: 1 }}>

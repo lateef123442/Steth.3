@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TextInput, KeyboardAvoidingView, Platform, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radii, spacing, type } from "../theme/tokens";
 import PressableScale from "../components/animated/PressableScale";
 import { supabase } from "../lib/supabase";
 import { useStudy, subjectStats, topicStats, daysUntil, dueTopics, knowledgeGaps, generateSchedule, applySchedule, addQuestions, addCards, subjectName, topicName, fmtTime12, dateStr, addDaysStr } from "../lib/studyStore";
-import { generateQuestions, generateFlashcards, FileInfo } from "../lib/studyAi";
+import { generateQuestions, generateFlashcards, studyAiErrorMessage, FileInfo } from "../lib/studyAi";
 import { courseFilePaths } from "../lib/studyCourseSync";
 import { Loader } from "../components/animated/Loader";
 import { WRAP } from "../components/responsive";
@@ -55,15 +55,15 @@ export default function CompanionScreen({ navigation, route }: any) {
         reply(n ? `Added ${n} flashcards to ${label}. Rate them Again/Hard/Good/Easy and I'll space them out.${fileNote()}` : "You already have those cards.", n ? { label: "Review cards", run: () => navigation.navigate("Cards") } : undefined);
       }
       setTool(null);
-    } catch {
-      reply("I couldn't generate that right now. Check your connection, or that the study-companion function is deployed.");
+    } catch (error) {
+      reply(await studyAiErrorMessage(error));
     } finally { setBusy(false); }
   };
 
   const planWeek = () => {
     setMsgs((m) => [...m, { role: "user", content: "Plan my week" }]);
     const plan = generateSchedule(data, 7);
-    if (!plan.length) return reply(data.subjects.length ? `Your next 7 days are already full for ${data.prefs.dailyMinutes} min/day.` : "Add a subject first and I'll build a plan around it.");
+    if (!plan.length) return reply(data.subjects.length ? `Your next 7 days are already full for ${data.prefs.dailyMinutes} min/day.` : "Your teacher-assigned courses will appear here before I build a study plan.");
     const day = (d: string) => (d === dateStr() ? "Today" : d === addDaysStr(1) ? "Tomorrow" : new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "long" }));
     const lines = plan.map((p) => `${day(p.date)} ${fmtTime12(p.time)} · ${subjectName(data, p.subjectId)}${p.topicId ? ` (${topicName(data, p.topicId)})` : ""}, ${p.minutes} min`);
     reply(`Here's a week that fits ${data.prefs.dailyMinutes} min/day, weighted toward your exams and weak spots:\n\n${lines.join("\n")}`, { label: "Add to planner", run: () => { applySchedule(plan); reply("Added. You'll get reminders before each session."); } });
@@ -95,8 +95,8 @@ export default function CompanionScreen({ navigation, route }: any) {
       const { data: res, error } = await supabase.functions.invoke("study-companion", { body: { messages: next.slice(-12), context } });
       if (error || !res?.reply) throw error ?? new Error("empty");
       setMsgs([...next, { role: "assistant", content: res.reply }]);
-    } catch {
-      setMsgs([...next, { role: "assistant", content: "I couldn't reach the tutor. Check your connection. If this keeps happening, the study-companion function may not be deployed yet." }]);
+    } catch (error) {
+      setMsgs([...next, { role: "assistant", content: await studyAiErrorMessage(error) }]);
     } finally {
       setBusy(false);
       setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 100);
@@ -104,59 +104,71 @@ export default function CompanionScreen({ navigation, route }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <View style={{ padding: spacing.xl, paddingBottom: 0 }}>
-          <PressableScale onPress={() => navigation.goBack()}><Text style={styles.back}>← Back</Text></PressableScale>
-          <Text style={styles.h1}>Study companion</Text>
-        </View>
-        <ScrollView ref={scroll} contentContainerStyle={{ ...WRAP, padding: spacing.xl }}>
-          {msgs.length === 0 && (
-            <>
-              <Text style={styles.muted}>I'll guide you with hints and questions rather than just handing over answers.</Text>
-              <View style={styles.row}>{PROMPTS.map((p) => (
-                <PressableScale key={p} style={styles.chip} onPress={() => setText(p)}><Text style={styles.chipText}>{p}</Text></PressableScale>
-              ))}</View>
-            </>
-          )}
-          {msgs.map((m, i) => (
-            <View key={i} style={[styles.bubble, m.role === "user" ? styles.me : styles.bot]}>
-              <Text style={[styles.msg, m.role === "user" && { color: "#fff" }]}>{m.content}</Text>
-              {m.action && <PressableScale style={styles.action} onPress={m.action.run}><Text style={styles.actionText}>{m.action.label} →</Text></PressableScale>}
+    <View style={styles.modalRoot}>
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={() => navigation.goBack()}
+        accessibilityRole="button"
+        accessibilityLabel="Close study companion"
+      />
+      <View style={styles.sheet}>
+        <SafeAreaView style={styles.safe}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+            <View style={{ padding: spacing.xl, paddingBottom: 0 }}>
+              <PressableScale onPress={() => navigation.goBack()}><Text style={styles.back}>← Close</Text></PressableScale>
+              <Text style={styles.h1}>Study companion</Text>
             </View>
-          ))}
-          {!busy && msgs.length > 0 && msgs[msgs.length - 1].role === "assistant" && !msgs[msgs.length - 1].action && (
-            <View style={styles.row}>{FOLLOW_UPS.map((f) => <PressableScale key={f} style={styles.chip} onPress={() => send(f)}><Text style={styles.chipText}>{f}</Text></PressableScale>)}</View>
-          )}
-          {busy && <View style={{ marginTop: spacing.md, alignSelf: "flex-start", marginLeft: spacing.md }}><Loader size={7} /></View>}
-        </ScrollView>
-        {tool && (
-          <View style={styles.panel}>
-            <Text style={styles.panelTitle}>{tool === "quiz" ? "Generate a quiz for…" : "Make flashcards for…"}</Text>
-            {data.subjects.length === 0 ? <Text style={styles.muted}>Add a subject first.</Text> : (
-              <>
-                <View style={styles.rowTight}>{data.subjects.map((x) => <PressableScale key={x.id} style={[styles.chip, pickSub === x.id && styles.chipOn]} onPress={() => { setTSub(x.id); setTTopic(undefined); }}><Text style={[styles.chipText, pickSub === x.id && { color: "#fff" }]}>{x.name}</Text></PressableScale>)}</View>
-                {data.topics.some((t) => t.subjectId === pickSub) && <View style={styles.rowTight}>{data.topics.filter((t) => t.subjectId === pickSub).map((t) => <PressableScale key={t.id} style={[styles.chip, tTopic === t.id && styles.chipOn]} onPress={() => setTTopic(tTopic === t.id ? undefined : t.id)}><Text style={[styles.chipText, tTopic === t.id && { color: "#fff" }]}>{t.name}</Text></PressableScale>)}</View>}
-                <PressableScale style={[styles.send, { alignSelf: "stretch", alignItems: "center", marginTop: spacing.sm }, busy && { opacity: 0.5 }]} disabled={busy} onPress={generate}><Text style={styles.sendText}>{busy ? "Generating…" : "Generate"}</Text></PressableScale>
-              </>
+            <ScrollView ref={scroll} contentContainerStyle={{ ...WRAP, padding: spacing.xl }}>
+              {msgs.length === 0 && (
+                <>
+                  <Text style={styles.muted}>I'll guide you with hints and questions rather than just handing over answers.</Text>
+                  <View style={styles.row}>{PROMPTS.map((p) => (
+                    <PressableScale key={p} style={styles.chip} onPress={() => setText(p)}><Text style={styles.chipText}>{p}</Text></PressableScale>
+                  ))}</View>
+                </>
+              )}
+              {msgs.map((m, i) => (
+                <View key={i} style={[styles.bubble, m.role === "user" ? styles.me : styles.bot]}>
+                  <Text style={[styles.msg, m.role === "user" && { color: "#fff" }]}>{m.content}</Text>
+                  {m.action && <PressableScale style={styles.action} onPress={m.action.run}><Text style={styles.actionText}>{m.action.label} →</Text></PressableScale>}
+                </View>
+              ))}
+              {!busy && msgs.length > 0 && msgs[msgs.length - 1].role === "assistant" && !msgs[msgs.length - 1].action && (
+                <View style={styles.row}>{FOLLOW_UPS.map((f) => <PressableScale key={f} style={styles.chip} onPress={() => send(f)}><Text style={styles.chipText}>{f}</Text></PressableScale>)}</View>
+              )}
+              {busy && <View style={{ marginTop: spacing.md, alignSelf: "flex-start", marginLeft: spacing.md }}><Loader size={7} /></View>}
+            </ScrollView>
+            {tool && (
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>{tool === "quiz" ? "Generate a quiz for…" : "Make flashcards for…"}</Text>
+                {data.subjects.length === 0 ? <Text style={styles.muted}>No courses assigned yet. Your teachers' courses will appear here automatically.</Text> : (
+                  <>
+                    <View style={styles.rowTight}>{data.subjects.map((x) => <PressableScale key={x.id} style={[styles.chip, pickSub === x.id && styles.chipOn]} onPress={() => { setTSub(x.id); setTTopic(undefined); }}><Text style={[styles.chipText, pickSub === x.id && { color: "#fff" }]}>{x.name}</Text></PressableScale>)}</View>
+                    {data.topics.some((t) => t.subjectId === pickSub) && <View style={styles.rowTight}>{data.topics.filter((t) => t.subjectId === pickSub).map((t) => <PressableScale key={t.id} style={[styles.chip, tTopic === t.id && styles.chipOn]} onPress={() => setTTopic(tTopic === t.id ? undefined : t.id)}><Text style={[styles.chipText, tTopic === t.id && { color: "#fff" }]}>{t.name}</Text></PressableScale>)}</View>}
+                    <PressableScale style={[styles.send, { alignSelf: "stretch", alignItems: "center", marginTop: spacing.sm }, busy && { opacity: 0.5 }]} disabled={busy} onPress={generate}><Text style={styles.sendText}>{busy ? "Generating…" : "Generate"}</Text></PressableScale>
+                  </>
+                )}
+              </View>
             )}
-          </View>
-        )}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: spacing.md, gap: spacing.sm }}>
-          {([["✨ Quiz me", () => setTool(tool === "quiz" ? null : "quiz")], ["🃏 Flashcards", () => setTool(tool === "cards" ? null : "cards")], ["🗓 Plan my week", planWeek], ["🔍 My gaps", findGaps]] as [string, () => void][]).map(([l, f]) => (
-            <PressableScale key={l} style={styles.chip} onPress={f}><Text style={styles.chipText}>{l}</Text></PressableScale>
-          ))}
-        </ScrollView>
-        <View style={styles.inputRow}>
-          <TextInput style={styles.input} placeholder="Ask anything…" placeholderTextColor={colors.textFaint} value={text} onChangeText={setText} multiline />
-          <PressableScale style={styles.send} onPress={() => send(text)}><Text style={styles.sendText}>Send</Text></PressableScale>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: spacing.md, gap: spacing.sm }}>
+              {([["✨ Quiz me", () => setTool(tool === "quiz" ? null : "quiz")], ["🃏 Flashcards", () => setTool(tool === "cards" ? null : "cards")], ["🗓 Plan my week", planWeek], ["🔍 My gaps", findGaps]] as [string, () => void][]).map(([l, f]) => (
+                <PressableScale key={l} style={styles.chip} onPress={f}><Text style={styles.chipText}>{l}</Text></PressableScale>
+              ))}
+            </ScrollView>
+            <View style={styles.inputRow}>
+              <TextInput style={styles.input} placeholder="Ask anything…" placeholderTextColor={colors.textFaint} value={text} onChangeText={setText} multiline />
+              <PressableScale style={styles.send} onPress={() => send(text)}><Text style={styles.sendText}>Send</Text></PressableScale>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  modalRoot: { flex: 1, backgroundColor: "rgba(8, 15, 25, 0.52)", justifyContent: "flex-end", paddingTop: spacing.xl },
+  sheet: { height: "90%", maxHeight: 840, width: "100%", maxWidth: 560, alignSelf: "center", backgroundColor: colors.paper, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" },
   safe: { flex: 1, backgroundColor: colors.paper },
   back: { ...type.bodyMedium, color: colors.tealDeep, marginBottom: spacing.sm },
   h1: { ...type.h1, color: colors.text },

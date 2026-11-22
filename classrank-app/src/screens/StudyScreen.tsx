@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TextInput, Alert, Linking, BackHandler } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -12,10 +12,10 @@ import { useStudy, logFocus, todaySessions, setSessionStatus, subjectName, focus
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 import { WRAP } from "../components/responsive";
+import { syncMyCoursesToStudy } from "../lib/courseApi";
 
 type Props = BottomTabScreenProps<MainTabParamList, "Study">;
 
-const SUBJECTS = ["Anatomy", "Physiology", "Physics", "Chemistry", "Biology", "Mathematics"];
 const DURATIONS = [15, 25, 45, 60];
 const BREAKS = [5, 10, 15];
 const THEMES = {
@@ -28,15 +28,32 @@ type ThemeKey = keyof typeof THEMES;
 const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 export default function StudyScreen({ navigation, route }: Props) {
-  const { data } = useStudy();
-  const subjectList = data.subjects.length ? data.subjects.map((s) => s.name) : SUBJECTS;
-  const [subject, setSubject] = useState(SUBJECTS[0]);
-  useEffect(() => { if (!subjectList.includes(subject)) setSubject(subjectList[0]); }, [subjectList.join("|")]);
+  const { data, ready } = useStudy();
+  const [courseSyncError, setCourseSyncError] = useState<string | null>(null);
+  const syncCourses = useCallback(async () => {
+    try {
+      const result = await syncMyCoursesToStudy();
+      setCourseSyncError(result.failedCourseIds.length ? "Some assigned courses could not refresh." : null);
+    } catch (error: any) {
+      setCourseSyncError(error?.message ?? "Could not load assigned courses.");
+    }
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    void syncCourses();
+    const unsubscribe = navigation.addListener("focus", syncCourses);
+    return unsubscribe;
+  }, [ready, syncCourses, navigation]);
+  const courseList = data.subjects.map((item) => item.name);
+  const nextPlannedSession = todaySessions(data).filter((session) => session.status === "planned").sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"))[0];
+  const defaultCourse = nextPlannedSession ? subjectName(data, nextPlannedSession.subjectId) : courseList[0] ?? "";
+  const [course, setCourse] = useState(defaultCourse);
+  useEffect(() => { if (!courseList.includes(course)) setCourse(defaultCourse); }, [courseList.join("|"), defaultCourse]);
   // Arriving from a Subject Room / recommendation: preselect the subject (and load the note to read).
   useEffect(() => {
     const p = route.params;
     if (!p?.subject && !p?.notes) return;
-    if (p.subject) setSubject(p.subject);
+    if (p.subject) setCourse(p.subject);
     if (p.notes) setNotes(p.notes);
     navigation.setParams({ subject: undefined, notes: undefined });
   }, [route.params?.subject, route.params?.notes]);
@@ -57,9 +74,9 @@ export default function StudyScreen({ navigation, route }: Props) {
 
   const stop = (completed = false) => {
     // Log real time spent so Home and analytics reflect actual study, not just intent.
-    logFocus(subject, Math.round((Date.now() - startedAt.current) / 60000));
+    logFocus(course, Math.round((Date.now() - startedAt.current) / 60000));
     if (completed) {
-      const planned = todaySessions(data).find((s) => s.status === "planned" && subjectName(data, s.subjectId) === subject);
+      const planned = todaySessions(data).filter((s) => s.status === "planned" && subjectName(data, s.subjectId) === course).sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"))[0];
       if (planned) setSessionStatus(planned.id, "done");
     }
     setActive(false);
@@ -69,6 +86,7 @@ export default function StudyScreen({ navigation, route }: Props) {
   };
 
   const start = () => {
+    if (!course) return Alert.alert("No courses yet", "Your teacher-assigned courses will appear here before you start a focus session.");
     const duration = Number(durationInput);
     const breakDuration = Number(breakInput);
     if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return Alert.alert("Focus duration", "Enter a whole number from 1 to 1440 minutes.");
@@ -97,7 +115,7 @@ export default function StudyScreen({ navigation, route }: Props) {
       setRemaining(left);
       if (left === 0) {
         stop(true);
-        Alert.alert("Session complete", `${minutes} minutes of ${subject}. Nice focus! Take a ${breakMins}-minute break?`, [
+        Alert.alert("Session complete", `${minutes} minutes of ${course}. Nice focus! Take a ${breakMins}-minute break?`, [
           { text: "Skip break", style: "cancel" },
           { text: "Start break", onPress: () => { breakEnd.current = Date.now() + breakMins * 60000; setBreakLeft(breakMins * 60); } },
         ]);
@@ -139,7 +157,7 @@ export default function StudyScreen({ navigation, route }: Props) {
         <StatusBar style={themeKey === "dark" ? "light" : "dark"} />
         <View style={styles.sessionBar}>
           <View>
-            <Text style={[styles.sessionSubject, { color: theme.text }]}>{subject}</Text>
+            <Text style={[styles.sessionSubject, { color: theme.text }]}>{course}</Text>
             <Breathing amount={0.05}><Text style={[styles.sessionTimer, { color: theme.muted }]}>⏱ {fmt(remaining)} left</Text></Breathing>
             <Text style={[styles.sessionTimer, { color: theme.muted }]}>Focus. Your study partner is here.</Text>
           </View>
@@ -166,15 +184,27 @@ export default function StudyScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl }}>
         <Text style={styles.h1}>Focus</Text>
-        <Text style={styles.sub}>Pick what to study. Steth mutes its own notifications and keeps your screen on.</Text>
+        <Text style={styles.sub}>A quiet study timer for one course. Choose a course and duration, then read your notes or textbook while the countdown runs.</Text>
+        <View style={{ marginTop: spacing.md, padding: spacing.lg, borderRadius: radii.md, backgroundColor: colors.violetTint }}>
+          <Text style={[type.bodyMedium, { color: colors.text }]}>What happens when you focus?</Text>
+          <Text style={[type.caption, { color: colors.textMuted, marginTop: 4 }]}>Steth keeps this screen awake and mutes Steth notifications. When the timer finishes, your actual study time is recorded and one planned session for that course today is marked complete. If you end early, only the time you spent is recorded. Other apps' notifications are controlled by your phone's Do Not Disturb setting.</Text>
+        </View>
+        <PressableScale style={[styles.dnd, { marginTop: spacing.sm }]} onPress={() => navigation.getParent()?.navigate("Planner")}>
+          <Text style={styles.dndText}>View or edit your study plan →</Text>
+        </PressableScale>
         <View style={[styles.row, { marginTop: spacing.lg }]}>
-          {[[`${focusMinutes(data, 0, 0)} min`, "today"], [`${doneToday}`, "sessions today"], [`${focusMinutes(data, 6, 0)} min`, "this week"]].map(([v, k]) => (
+          {[[`${focusMinutes(data, 0, 0)} min`, "today"], [`${doneToday}`, "focus sessions"], [`${focusMinutes(data, 6, 0)} min`, "this week"]].map(([v, k]) => (
             <View key={k} style={styles.stat}><Text style={styles.statV}>{v}</Text><Text style={styles.statK}>{k}</Text></View>
           ))}
         </View>
 
-        <Text style={styles.label}>SUBJECT</Text>
-        <View style={styles.row}>{subjectList.map((s) => <Chip key={s} label={s} on={subject === s} onPress={() => setSubject(s)} />)}</View>
+        <Text style={styles.label}>COURSE</Text>
+        {courseList.length ? (
+          <View style={styles.row}>{courseList.map((name) => <Chip key={name} label={name} on={course === name} onPress={() => setCourse(name)} />)}</View>
+        ) : (
+          <Text style={styles.sub}>{ready ? "No courses have been assigned yet. Your teachers' courses will appear here automatically." : "Loading your assigned courses…"}</Text>
+        )}
+        {!!courseSyncError && <Text style={styles.sub}>{courseSyncError}</Text>}
 
         <Text style={styles.label}>DURATION</Text>
         <View style={styles.row}>{DURATIONS.map((d) => <Chip key={d} label={`${d} min`} on={minutes === d && durationInput === String(d)} onPress={() => { setMinutes(d); setDurationInput(String(d)); }} />)}</View>

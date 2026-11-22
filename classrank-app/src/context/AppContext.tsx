@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
-import { AppState as RNAppState } from "react-native";
+import { AppState as RNAppState, Alert, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { friendlyMessage } from "../lib/friendlyError";
 import { onProfileStale } from "../lib/profileSync";
 import type { Session } from "@supabase/supabase-js";
@@ -13,8 +14,9 @@ import {
 } from "../types";
 import { isValidEmail, checkPasswordStrength } from "../utils/validation";
 import { setUserContext } from "../lib/errorReporting";
-import { scheduleStreakReminder, cancelStreakReminder, clearPushToken } from "../lib/notifications";
-import { setStudyUser, wipeStudyData } from "../lib/studyStore";
+import { scheduleStreakReminder, cancelStreakReminder, clearPushToken, requestNotificationPermissions, registerPushToken } from "../lib/notifications";
+import { notificationsAvailable } from "../lib/expoNotifications";
+import { setStudyUser, wipeStudyData, loadStudy, getStudyData, setPrefs } from "../lib/studyStore";
 import { flushStudySync } from "../lib/studySync";
 import { clearStudyReminders } from "../lib/studyReminders";
 import { loginPurchases, logoutPurchases } from "../lib/purchases";
@@ -64,6 +66,7 @@ interface AppState {
   resetPassword: (email: string) => Promise<boolean>;
   clearAuthError: () => void;
   refreshProfileAfterPurchase: () => Promise<boolean>;
+  refreshMyProfile: () => Promise<boolean>;
 
   todaysQuestions: QuizQuestionPublic[];
   answeredQuestionIds: Set<string>;
@@ -81,6 +84,47 @@ interface AppState {
   leaderboardLoading: boolean;
   leaderboardError: string | null;
   refreshLeaderboards: () => Promise<void>;
+}
+
+const notificationSignupKey = (userId: string) => `steth:notification-signup:${userId}`;
+
+/** Only accounts created after this feature ships receive this one-time opt-in prompt. */
+async function offerSignupNotificationOptIn(userId: string): Promise<void> {
+  const key = notificationSignupKey(userId);
+  const pending = await AsyncStorage.getItem(key);
+  if (pending !== "pending") return;
+  // Consume the flag before showing UI so dismissing the dialog never causes repeated prompts.
+  await AsyncStorage.removeItem(key);
+  if (Platform.OS === "web") return;
+
+  Alert.alert(
+    "Stay on top of your studies",
+    "Allow Steth to send study reminders, class announcements and study-group replies to your phone? You can change this any time in Study setup.",
+    [
+      { text: "Not now", style: "cancel" },
+      {
+        text: "Allow notifications",
+        onPress: () => {
+          void (async () => {
+            if (!notificationsAvailable) {
+              Alert.alert("Install the Steth app", "Android push notifications cannot be enabled inside Expo Go. Install the Steth Android build to turn notifications on.");
+              return;
+            }
+            const granted = await requestNotificationPermissions();
+            if (!granted) {
+              Alert.alert("Notifications are off", "You can enable Steth notifications later in your phone settings.");
+              return;
+            }
+            await loadStudy();
+            const prefs = getStudyData().prefs;
+            setPrefs({ notif: { ...prefs.notif, push: true } });
+            await registerPushToken(userId);
+          })().catch((error) => console.warn("[notifications] signup opt-in failed:", error));
+        },
+      },
+    ],
+    { cancelable: true }
+  );
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -127,7 +171,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!error && data) setDepartments(data as DepartmentRow[]);
   }, []);
 
-  // ── Free or paid? (the admin's switch) ──
+  // ââ Free or paid? (the admin's switch) ââ
   const [paywallEnabled, setPaywallEnabled] = useState<boolean | null>(null);
   const refreshAppConfig = useCallback(async () => {
     const { data, error } = await supabase.rpc("get_app_config");
@@ -141,7 +185,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!error && data && data.length > 0) setYears(data.map((r: any) => r.year as number));
   }, []);
 
-  // ── Bootstrap ──
+  // ââ Bootstrap ââ
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -152,12 +196,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           .order("name");
         if (deptError) throw deptError;
         if (mounted && deptData) setDepartments(deptData as DepartmentRow[]);
-        refreshYears(); // non-critical: falls back to Years 1–5 if the study_years table isn't set up yet
+        refreshYears(); // non-critical: falls back to Years 1â5 if the study_years table isn't set up yet
 
         const { data: sessionData } = await supabase.auth.getSession();
         if (mounted) setSession(sessionData.session);
       } catch (err) {
-        // Departments failing to load at boot is serious enough to surface —
+        // Departments failing to load at boot is serious enough to surface â
         // sign-up is impossible without them.
         if (mounted) setAuthError(toUserMessage(err, "Couldn't load app data. Pull to retry."));
       } finally {
@@ -168,7 +212,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       if (event === "PASSWORD_RECOVERY") {
-        // The session Supabase just set is a special recovery session —
+        // The session Supabase just set is a special recovery session â
         // valid only for calling updateUser({ password }), not for normal
         // app use. Route to SetNewPasswordScreen instead of letting
         // RootNavigator drop the user into their account under their old
@@ -207,6 +251,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProfile({
       id: data.id,
       name: data.name,
+      username: data.username ?? null,
+      bio: data.bio ?? "",
       university: data.university,
       department_id: data.department_id,
       department: dept?.name ?? null,
@@ -217,6 +263,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       total_points: data.total_points,
       current_streak: data.current_streak,
       last_quiz_date: data.last_quiz_date,
+      login_streak: data.login_streak ?? 0,
+      last_login_date: data.last_login_date ?? null,
       is_pro: data.is_pro,
       pro_expires_at: data.pro_expires_at,
     });
@@ -226,7 +274,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (session?.user?.id) {
-      fetchProfile(session.user.id);
+      const userId = session.user.id;
+      // Count one login day per calendar day, then load the profile once.
+      // Do not fetch before the RPC: two overlapping reads can finish out of
+      // order and let the older zero value overwrite the freshly counted streak.
+      void (async () => {
+        const { error } = await supabase.rpc("record_login_streak");
+        if (error) {
+          console.warn("record_login_streak failed:", error.message);
+        }
+        // Even if the RPC fails, load the saved profile value rather than
+        // leaving the UI at its initial zero.
+        await fetchProfile(userId);
+        await offerSignupNotificationOptIn(userId);
+      })();
       setUserContext(session.user.id);
       setStudyUser(session.user.id); // study data is stored per account, so a shared phone never mixes students
       // (push registration is handled in usePushRegistration, which respects the student's opt-out)
@@ -243,13 +304,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   /**
    * The RevenueCat SDK confirms a purchase instantly (Apple/Google have
    * already charged the card), but our DB's is_pro mirror only updates once
-   * the webhook Edge Function processes the event — usually near-instant,
+   * the webhook Edge Function processes the event â usually near-instant,
    * but not guaranteed to beat this function call. A couple of short
    * retries absorbs that gap without a full polling system; if it still
    * hasn't landed after this, is_pro will catch up on the next natural
-   * profile refresh (e.g. next app open) — the purchase itself already
+   * profile refresh (e.g. next app open) â the purchase itself already
    * succeeded regardless.
    */
+  const refreshMyProfile = async (): Promise<boolean> => {
+    if (!session?.user?.id) return false;
+    return fetchProfile(session.user.id);
+  };
+
   const refreshProfileAfterPurchase = async (): Promise<boolean> => {
     if (!session?.user?.id) return false;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -261,7 +327,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  // ── Auth actions ──
+  // ââ Auth actions ââ
   const signUp = async ({ email, password, name, university, departmentId, year, referralCode }: SignUpParams) => {
     setAuthError(null);
 
@@ -289,7 +355,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
       // Routed through an RPC (not a direct client upsert) so an optional
       // referral code can be validated and resolved to a real referrer
-      // server-side — trusting a client-supplied `referred_by` value would
+      // server-side â trusting a client-supplied `referred_by` value would
       // let anyone fabricate a referral for free points once vesting-eligible.
       const { error: rpcError } = await supabase.rpc("complete_student_signup", {
         p_name: name.trim(),
@@ -304,6 +370,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
+      await AsyncStorage.setItem(notificationSignupKey(data.user.id), "pending");
       if (data.session) {
         setSession(data.session);
         await fetchProfile(data.user.id);
@@ -357,12 +424,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (rpcError) {
-        // The auth user now exists but has no profile yet — they can retry
+        // The auth user now exists but has no profile yet â they can retry
         // with a correct code and log in normally afterward.
         setAuthError(toUserMessage(rpcError, "That invite code didn't work."));
         return false;
       }
 
+      await AsyncStorage.setItem(notificationSignupKey(data.user.id), "pending");
       if (data.session) {
         setSession(data.session);
         await fetchProfile(data.user.id);
@@ -448,7 +516,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
       // The auth user no longer exists server-side, so the local session is
-      // now invalid — clear it client-side rather than waiting for the next
+      // now invalid â clear it client-side rather than waiting for the next
       // failed refresh to surface a confusing error.
       await supabase.auth.signOut();
       await cancelStreakReminder();
@@ -473,15 +541,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAuthError("Enter a valid email address first.");
       return false;
     }
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: getPasswordResetRedirectUrl(),
-    });
-    if (error) {
-      setAuthError(toUserMessage(error, "Couldn't send reset email."));
+    setAuthLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: getPasswordResetRedirectUrl(),
+      });
+      if (error) {
+        setAuthError(toUserMessage(error, "Couldn't send reset email."));
+        return false;
+      }
+      return true;
+    } catch (err) {
+      setAuthError(toUserMessage(err, "Couldn't send reset email. Check your connection and try again."));
       return false;
+    } finally {
+      setAuthLoading(false);
     }
-    setAuthError("Password reset email sent. Check your inbox.");
-    return true;
   };
 
   const completePasswordRecovery = async (newPassword: string): Promise<boolean> => {
@@ -500,7 +575,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return true;
   };
 
-  // ── Quiz actions ──
+  // ââ Quiz actions ââ
   const refreshTodaysQuestions = useCallback(async () => {
     if (!profile || profile.role !== "student" || !profile.department_id) return;
     setQuizLoading(true);
@@ -595,7 +670,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ── Leaderboard actions ──
+  // ââ Leaderboard actions ââ
   const refreshLeaderboards = useCallback(async () => {
     if (!profile || profile.role !== "student") return;
     setLeaderboardLoading(true);
@@ -709,6 +784,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
     clearAuthError,
     refreshProfileAfterPurchase,
+    refreshMyProfile,
     todaysQuestions,
     answeredQuestionIds,
     quizLoading,
