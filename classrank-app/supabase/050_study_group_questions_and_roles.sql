@@ -87,13 +87,20 @@ begin
   if not is_group_member(p_group_id) or not is_group_manager(p_group_id) then
     raise exception 'Only the group owner or an appointed admin can create questions';
   end if;
+  if (select count(*) from group_questions where group_id = p_group_id and created_at > now() - interval '1 minute') >= 10 then
+    raise exception 'Please wait a moment before creating another question';
+  end if;
   if char_length(trim(coalesce(p_question,''))) not between 1 and 1000
-     or jsonb_typeof(p_options) is distinct from 'array'
-     or jsonb_array_length(p_options) <> 4
-     or p_correct_option not between 0 and 3 then
+     or p_correct_option is null or p_correct_option not between 0 and 3 then
     raise exception 'Enter a question, four options and one correct answer';
   end if;
-  if exists (select 1 from jsonb_array_elements(p_options) x where char_length(trim(x #>> '{}')) = 0 or char_length(x #>> '{}') > 300) then
+  if jsonb_typeof(p_options) is distinct from 'array' then
+    raise exception 'A question needs exactly four options';
+  end if;
+  if jsonb_array_length(p_options) <> 4 then
+    raise exception 'A question needs exactly four options';
+  end if;
+  if exists (select 1 from jsonb_array_elements(p_options) x where jsonb_typeof(x) is distinct from 'string' or char_length(trim(x #>> '{}')) = 0 or char_length(x #>> '{}') > 300) then
     raise exception 'Each option must contain 1 to 300 characters';
   end if;
   insert into group_questions(group_id, created_by, question, options, correct_option)
