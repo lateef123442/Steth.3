@@ -11,6 +11,7 @@ interface Props {
   isCurrentUser?: boolean;
   isPro?: boolean;
   percentile?: number; // 0-1, shown as a "Top X%" chip when present
+  action?: React.ReactNode;
 }
 
 const medalColors: Record<number, string> = {
@@ -19,7 +20,7 @@ const medalColors: Record<number, string> = {
   3: colors.bronze,
 };
 
-export default function LeaderboardRow({ rank, name, subtitle, points, isCurrentUser, isPro, percentile }: Props) {
+export default function LeaderboardRow({ rank, name, subtitle, points, isCurrentUser, isPro, percentile, action }: Props) {
   return (
     <View style={[styles.row, isCurrentUser && styles.rowHighlight]}>
       <View style={[styles.rankBadge, { backgroundColor: medalColors[rank] || colors.paper }]}>
@@ -43,7 +44,10 @@ export default function LeaderboardRow({ rank, name, subtitle, points, isCurrent
           )}
         </View>
       </View>
-      <Text style={styles.points}>{points.toLocaleString()}</Text>
+      <View style={styles.rightColumn}>
+        <Text style={styles.points}>{points.toLocaleString()}</Text>
+        {action}
+      </View>
     </View>
   );
 }
@@ -86,4 +90,5 @@ const styles = StyleSheet.create({
   },
   percentileText: { fontSize: 13, fontFamily: type.label.fontFamily, color: colors.violet },
   points: { ...type.h3, color: colors.text },
+  rightColumn: { alignItems: "flex-end", marginLeft: spacing.sm },
 });

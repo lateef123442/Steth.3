@@ -138,6 +138,7 @@ export interface LeaderboardEntry {
   points: number;
   department: string;
   faculty: string;
+  university: string;
   is_pro: boolean;
   department_percentile?: number; // 0-1, only present on Faculty/Campus queries
 }

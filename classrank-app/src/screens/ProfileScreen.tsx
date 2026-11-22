@@ -19,7 +19,8 @@ import { inviteMessage } from "../lib/appLinks";
 import { runNotificationCheck } from "../lib/notifications";
 import { track, AnalyticsEvents } from "../lib/analytics";
 import { useNavigation } from "@react-navigation/native";
-import { useStudy, achievements, xpInfo, studyStreak } from "../lib/studyStore";
+import { useStudy } from "../lib/studyStore";
+import { achievements, xpInfo, studyStreak } from "../lib/studyInsights";
 
 import EmojiIcon from "../components/EmojiIcon";
 export default function ProfileScreen() {
@@ -207,7 +208,7 @@ export default function ProfileScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statBlock}>
               <Text style={styles.statValue}>{profile.total_points}</Text>
-              <Text style={styles.statLabel}>Points</Text>
+              <Text style={styles.statLabel}>Leaderboard Points</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statBlock}>
@@ -221,7 +222,7 @@ export default function ProfileScreen() {
           <>
             <Text style={styles.sectionTitle}>Study profile</Text>
             <View style={{ alignSelf: "stretch" }}>
-              <Text style={{ ...type.body, color: colors.textMuted }}>Level {xp.level} · {xp.xp} XP · {xp.toNext} to next level · {studyStreak(study)}-day study streak</Text>
+              <Text style={{ ...type.body, color: colors.textMuted }}>Level {xp.level} · {xp.xp} Study XP · {xp.toNext} XP to next level · {studyStreak(study)}-day practice streak</Text>
               {ach.map((a) => (
                 <Text key={a.id} style={{ ...type.body, color: a.earned ? colors.text : colors.textFaint, marginTop: 4 }}>
                   {a.title}{a.earned ? "" : ` (${a.have}/${a.need})`}
