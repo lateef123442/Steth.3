@@ -8,7 +8,7 @@ import {
   StudyGroup, GroupPost, GroupReply, Challenge, Standing, fetchMyGroups, fetchPosts, createPost, deletePost, fetchReplies, createReply,
   fetchChallenge, fetchStandings, startChallenge, reportChallengeProgress, leaveGroup, deleteGroup,
 } from "../../lib/groupApi";
-import { useStudy, getStudyData, focusMinutesSince, dateStr } from "../../lib/studyStore";
+import { getStudyData, focusMinutesSince, dateStr } from "../../lib/studyStore";
 import { WRAP } from "../../components/responsive";
 
 type Kind = GroupPost["kind"];
@@ -30,7 +30,6 @@ export default function GroupDetailScreen({ navigation, route }: any) {
   const [reply, setReply] = useState("");
   const [cTitle, setCTitle] = useState("Focus challenge"), [cTarget, setCTarget] = useState(300), [cDays, setCDays] = useState(7);
   const [busy, setBusy] = useState(false);
-  const { data: study } = useStudy();
   const isOwner = !!group && group.owner_id === profile?.id;
 
   const load = useCallback(async () => {
