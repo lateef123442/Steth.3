@@ -20,6 +20,7 @@ import CompanionScreen from "../screens/CompanionScreen";
 import PlannerScreen from "../screens/PlannerScreen";
 import StudyScreen from "../screens/StudyScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import AccountSettingsScreen from "../screens/AccountSettingsScreen";
 import { useProGate, ProGateExempt } from "../components/proGateCore";
 import AdminProScreen from "../screens/admin/AdminProScreen";
 import LearnScreen from "../screens/LearnScreen";
@@ -75,6 +76,7 @@ export type RootStackParamList = {
   Groups: undefined;
   Friends: undefined;
   Feedback: undefined;
+  AccountSettings: undefined;
   Chat: { userId: string; name: string; department?: string | null; year?: number | null; avatar_path?: string | null };
   GroupChat: { groupId: string; name: string };
   GroupMembers: { groupId: string; name: string };
@@ -287,7 +289,7 @@ export default function RootNavigator() {
       screenOptions={{ headerShown: false, animation: "slide_from_right", animationDuration: 280 }}
       // Safety net for routes reached without a tap (push notifications, links): without Pro, bounce back and ask.
       screenListeners={({ navigation, route }) => ({
-        focus: () => { if (gate.locked && route.name !== "Main" && route.name !== "Feedback") { if (navigation.canGoBack()) navigation.goBack(); gate.prompt(); } },
+        focus: () => { if (gate.locked && route.name !== "Main" && route.name !== "Feedback" && route.name !== "AccountSettings") { if (navigation.canGoBack()) navigation.goBack(); gate.prompt(); } },
       })}
     >
       {!isAuthenticated ? (
@@ -297,6 +299,8 @@ export default function RootNavigator() {
           <Stack.Screen name="Admin" component={AdminTabs} />
           <Stack.Screen name="TeacherCourse" component={TeacherCourseScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
+          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
         </>
       ) : profile.role === "teacher" ? (
         <>
@@ -328,6 +332,7 @@ export default function RootNavigator() {
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
           <Stack.Screen name="Friends" component={FriendsScreen} />
           <Stack.Screen name="Feedback" component={ExemptFeedback} />
+          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
           <Stack.Screen name="Chat" component={ChatScreen} />
           <Stack.Screen name="GroupQuiz" component={GroupQuizScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />
           <Stack.Screen name="Exam" component={ExamScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />

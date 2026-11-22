@@ -66,6 +66,7 @@ interface AppState {
   resetPassword: (email: string) => Promise<boolean>;
   clearAuthError: () => void;
   refreshProfileAfterPurchase: () => Promise<boolean>;
+  refreshMyProfile: () => Promise<boolean>;
 
   todaysQuestions: QuizQuestionPublic[];
   answeredQuestionIds: Set<string>;
@@ -250,6 +251,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setProfile({
       id: data.id,
       name: data.name,
+      username: data.username ?? null,
       university: data.university,
       department_id: data.department_id,
       department: dept?.name ?? null,
@@ -308,6 +310,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * profile refresh (e.g. next app open) â the purchase itself already
    * succeeded regardless.
    */
+  const refreshMyProfile = async (): Promise<boolean> => {
+    if (!session?.user?.id) return false;
+    return fetchProfile(session.user.id);
+  };
+
   const refreshProfileAfterPurchase = async (): Promise<boolean> => {
     if (!session?.user?.id) return false;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -773,6 +780,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     resetPassword,
     clearAuthError,
     refreshProfileAfterPurchase,
+    refreshMyProfile,
     todaysQuestions,
     answeredQuestionIds,
     quizLoading,
