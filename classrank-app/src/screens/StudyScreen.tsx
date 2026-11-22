@@ -106,8 +106,11 @@ export default function StudyScreen({ navigation, route }: Props) {
           uploaded.push(saved);
         } catch (error: any) { failures.push(`${asset.name || "File"}: ${error?.message ?? "Upload failed"}`); }
       }
-      await refreshMaterials();
-      if (uploaded.length) setSelectedMaterialId(uploaded[uploaded.length - 1].id);
+      if (uploaded.length) {
+        setMaterials((current) => [...uploaded, ...current.filter((item) => !uploaded.some((saved) => saved.id === item.id))]);
+        setSelectedMaterialId(uploaded[uploaded.length - 1].id);
+      }
+      await refreshMaterials().catch(() => {});
       if (failures.length) Alert.alert(`${uploaded.length} uploaded, ${failures.length} failed`, failures.slice(0, 4).join("\n"));
     } catch (error: any) { Alert.alert("Couldn't choose a file", error?.message ?? "Try again."); }
     finally { setUploadingMaterial(false); }
