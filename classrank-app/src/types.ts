@@ -9,6 +9,7 @@ export type Role = "student" | "teacher" | "admin";
 export interface Profile {
   id: string;
   name: string;
+  username?: string | null;
   university: string;
   department_id: string | null; // null only possible for admins
   department: string | null; // joined department name, for convenience
@@ -26,7 +27,7 @@ export interface Profile {
   pro_expires_at: string | null;
 }
 
-// The client only ever sees quiz_questions_public — never correct_index —
+// The client only ever sees quiz_questions_public â never correct_index â
 // until it submits an answer for grading (see submit_single_answer).
 export interface QuizQuestionPublic {
   id: string;

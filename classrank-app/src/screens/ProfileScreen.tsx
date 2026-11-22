@@ -170,6 +170,16 @@ export default function ProfileScreen() {
           {profile.department ?? "All departments"}
           {profile.year ? ` · Year ${profile.year}` : ""}
         </Text>
+        <Text style={styles.meta}>{profile.username ? `@${profile.username}` : "No username yet"}</Text>
+        <PressableScale
+          style={{ alignSelf: "stretch", marginTop: spacing.lg, backgroundColor: colors.tealTint, borderRadius: radii.md, padding: spacing.lg }}
+          onPress={() => navigation.navigate("AccountSettings")}
+          accessibilityRole="button"
+          accessibilityLabel="Account settings"
+        >
+          <Text style={{ ...type.h3, color: colors.tealDeep }}>Account settings →</Text>
+          <Text style={{ ...type.caption, color: colors.textMuted, marginTop: 3 }}>Change your name, username and password.</Text>
+        </PressableScale>
 
         <PressableScale style={[styles.signOutTop, signingOut && { opacity: 0.6 }]} onPress={handleSignOut} disabled={signingOut} haptic="medium" accessibilityRole="button" accessibilityLabel="Log out">
           {signingOut ? <ActivityIndicator color={colors.danger} size="small" /> : <Text style={styles.signOutButtonText}>Log Out</Text>}
