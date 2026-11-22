@@ -349,7 +349,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Planner" component={PlannerScreen} />
           <Stack.Screen name="Cards" component={CardsScreen} />
           <Stack.Screen name="Progress" component={ProgressScreen} />
-          <Stack.Screen name="Companion" component={CompanionScreen} options={{ animation: "slide_from_bottom" }} />
+          <Stack.Screen name="Companion" component={CompanionScreen} options={{ presentation: "transparentModal", animation: "fade", contentStyle: { backgroundColor: "transparent" } }} />
           <Stack.Screen name="PracticeSession" component={PracticeSessionScreen} options={{ animation: "fade_from_bottom", gestureEnabled: false }} />
           <Stack.Screen name="Subject" component={SubjectRoomScreen} />
           <Stack.Screen name="StudySetup" component={StudySetupScreen} />
