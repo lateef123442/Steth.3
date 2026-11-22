@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
@@ -13,6 +13,8 @@ import StreakFlame from "../components/animated/StreakFlame";
 import PressableScale from "../components/animated/PressableScale";
 import { fetchRecentAnnouncements, Announcement } from "../lib/courseApi";
 import { fetchUnansweredGroupQuestionCount } from "../lib/groupQuestions";
+import { fetchMyGroupWelcomeNotifications, markGroupWelcomeNotificationRead, subscribeGroupWelcomeNotifications } from "../lib/groupWelcome";
+import type { GroupWelcomeNotification } from "../lib/groupWelcome";
 import { useStudy, recommend, todaySessions, subjectName, focusMinutes, weakestTopic, fmtTime12 } from "../lib/studyStore";
 import ArenaBackground from "../components/ArenaBackground";
 import StartHereCard from "../components/StartHereCard";
@@ -27,6 +29,8 @@ const MILESTONE_STEP = 500;
 export default function HomeScreen({ navigation }: Props) {
   const { profile, todaysQuestions, hasCompletedTodaysQuiz, departmentLeaderboard } = useApp();
   const isFocused = useIsFocused();
+  // Tabs and stack screens are both reachable by name from here; params carry e.g. the subject to focus on.
+  const go = (t: string, params?: any) => (navigation as any).navigate(t, params);
   const { data: study } = useStudy();
   const plan = todaySessions(study);
   const rec = recommend(study);
@@ -35,6 +39,22 @@ export default function HomeScreen({ navigation }: Props) {
   // Teacher announcements from my courses. Silent on failure (offline, or the course tables aren't deployed yet).
   const [news, setNews] = useState<Announcement[]>([]);
   const [groupQuestionCount, setGroupQuestionCount] = useState(0);
+  const [groupWelcomes, setGroupWelcomes] = useState<GroupWelcomeNotification[]>([]);
+  const refreshGroupWelcomes = useCallback(async () => {
+    try { setGroupWelcomes(await fetchMyGroupWelcomeNotifications()); }
+    catch { /* keep the last known welcome badge while offline */ }
+  }, []);
+  useEffect(() => {
+    if (!profile?.id || !isFocused) return;
+    refreshGroupWelcomes();
+    const stop = subscribeGroupWelcomeNotifications(profile.id, refreshGroupWelcomes);
+    return stop;
+  }, [profile?.id, isFocused, refreshGroupWelcomes]);
+  const openGroupWelcome = async (item: GroupWelcomeNotification) => {
+    try { await markGroupWelcomeNotificationRead(item.id); } catch {}
+    setGroupWelcomes((current) => current.filter((x) => x.id !== item.id));
+    go("GroupChat", { groupId: item.group_id, name: item.group_name });
+  };
   useEffect(() => { if (isFocused) fetchUnansweredGroupQuestionCount().then((n) => setGroupQuestionCount(Number(n) || 0)).catch(() => setGroupQuestionCount(0)); }, [isFocused]);
   useEffect(() => {
     const load = () => fetchRecentAnnouncements().then(setNews).catch(() => setNews([]));
@@ -50,9 +70,6 @@ export default function HomeScreen({ navigation }: Props) {
   const nextTimed = plan.filter((x) => x.status === "planned" && x.time).sort((a, b) => a.time!.localeCompare(b.time!))[0];
   const hour = new Date().getHours();
   const hello = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  // Tabs and stack screens are both reachable by name from here; params carry e.g. the subject to focus on.
-  const go = (t: string, params?: any) => (navigation as any).navigate(t, params);
-
   const departmentRank = useMemo(() => {
     if (!profile) return null;
     const idx = departmentLeaderboard.findIndex((e) => e.id === profile.id);
@@ -72,6 +89,21 @@ export default function HomeScreen({ navigation }: Props) {
       {isFocused && <StatusBar style="light" />}
       <ScrollView contentContainerStyle={styles.container}>
         <StartHereCard onGo={go} />
+
+        {groupWelcomes.length > 0 && (
+          <Reveal>
+            <PressableScale style={[styles.planCard, { backgroundColor: colors.violetTint, flexDirection: "row", alignItems: "center", gap: spacing.md }]} onPress={() => openGroupWelcome(groupWelcomes[0])} accessibilityRole="button">
+              <View style={{ flex: 1 }}>
+                <Text style={styles.quizCardTitle}>{groupWelcomes[0].title}</Text>
+                <Text style={styles.quizCardSubtitle}>{groupWelcomes[0].body}</Text>
+                <Text style={[styles.quizCardSubtitle, { color: colors.violet, fontWeight: "800", marginTop: 6 }]}>Open group chat →{groupWelcomes.length > 1 ? " · " + (groupWelcomes.length - 1) + " more welcome" + (groupWelcomes.length > 2 ? "s" : "") : ""}</Text>
+              </View>
+              <View style={{ minWidth: 26, height: 26, paddingHorizontal: 7, borderRadius: 14, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>{groupWelcomes.length > 99 ? "99+" : groupWelcomes.length}</Text>
+              </View>
+            </PressableScale>
+          </Reveal>
+        )}
 
         <ArenaBackground>
           <View style={styles.heroInner}>
