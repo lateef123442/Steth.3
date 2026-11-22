@@ -17,7 +17,7 @@ import { useStudy, getStudyData, achievements, buildQuiz, recordAttempt, addCard
 import { WRAP } from "../components/responsive";
 
 import EmojiIcon from "../components/EmojiIcon";
-const TITLES: Record<QuizMode, string> = { quick: "Quick Quiz", topic: "Topic Quiz", subject: "Subject Quiz", mock: "Mock Exam", daily: "Daily Challenge", review: "Spaced Review" };
+const TITLES: Record<QuizMode, string> = { quick: "Quick Quiz", topic: "Topic Quiz", subject: "Course Quiz", mock: "Mock Exam", daily: "Daily Challenge", review: "Spaced Review" };
 const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
 const LETTERS = ["A", "B", "C", "D"];
 
@@ -67,7 +67,7 @@ export default function PracticeSessionScreen({ navigation, route }: any) {
       <SafeAreaView style={s.safe}><View style={{ padding: spacing.xl }}>
         <Back onPress={() => navigation.goBack()} />
         <Text style={s.h1}>No questions yet</Text>
-        <Muted style={{ marginTop: 8 }}>Add questions to this subject (or generate them) and try again.</Muted>
+        <Muted style={{ marginTop: 8 }}>No questions are available for this course yet. Ask your teacher to publish practice questions.</Muted>
       </View></SafeAreaView>
     );
   }

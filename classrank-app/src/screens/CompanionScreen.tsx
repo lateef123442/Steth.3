@@ -63,7 +63,7 @@ export default function CompanionScreen({ navigation, route }: any) {
   const planWeek = () => {
     setMsgs((m) => [...m, { role: "user", content: "Plan my week" }]);
     const plan = generateSchedule(data, 7);
-    if (!plan.length) return reply(data.subjects.length ? `Your next 7 days are already full for ${data.prefs.dailyMinutes} min/day.` : "Add a subject first and I'll build a plan around it.");
+    if (!plan.length) return reply(data.subjects.length ? `Your next 7 days are already full for ${data.prefs.dailyMinutes} min/day.` : "Your teacher-assigned courses will appear here before I build a study plan.");
     const day = (d: string) => (d === dateStr() ? "Today" : d === addDaysStr(1) ? "Tomorrow" : new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "long" }));
     const lines = plan.map((p) => `${day(p.date)} ${fmtTime12(p.time)} · ${subjectName(data, p.subjectId)}${p.topicId ? ` (${topicName(data, p.topicId)})` : ""}, ${p.minutes} min`);
     reply(`Here's a week that fits ${data.prefs.dailyMinutes} min/day, weighted toward your exams and weak spots:\n\n${lines.join("\n")}`, { label: "Add to planner", run: () => { applySchedule(plan); reply("Added. You'll get reminders before each session."); } });
@@ -133,7 +133,7 @@ export default function CompanionScreen({ navigation, route }: any) {
         {tool && (
           <View style={styles.panel}>
             <Text style={styles.panelTitle}>{tool === "quiz" ? "Generate a quiz for…" : "Make flashcards for…"}</Text>
-            {data.subjects.length === 0 ? <Text style={styles.muted}>Add a subject first.</Text> : (
+            {data.subjects.length === 0 ? <Text style={styles.muted}>No courses assigned yet. Your teachers' courses will appear here automatically.</Text> : (
               <>
                 <View style={styles.rowTight}>{data.subjects.map((x) => <PressableScale key={x.id} style={[styles.chip, pickSub === x.id && styles.chipOn]} onPress={() => { setTSub(x.id); setTTopic(undefined); }}><Text style={[styles.chipText, pickSub === x.id && { color: "#fff" }]}>{x.name}</Text></PressableScale>)}</View>
                 {data.topics.some((t) => t.subjectId === pickSub) && <View style={styles.rowTight}>{data.topics.filter((t) => t.subjectId === pickSub).map((t) => <PressableScale key={t.id} style={[styles.chip, tTopic === t.id && styles.chipOn]} onPress={() => setTTopic(tTopic === t.id ? undefined : t.id)}><Text style={[styles.chipText, tTopic === t.id && { color: "#fff" }]}>{t.name}</Text></PressableScale>)}</View>}

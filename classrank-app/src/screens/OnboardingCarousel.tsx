@@ -24,7 +24,7 @@ const SLIDES: Slide[] = [
   {
     emoji: "📚",
     title: "Learn and practise",
-    body: "Tap Courses to open your subjects and study materials. Tap Quiz to answer questions and earn points.",
+    body: "Tap Courses to open your courses and study materials. Tap Quiz to answer questions and earn points.",
   },
   {
     emoji: "🤝",

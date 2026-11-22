@@ -115,7 +115,7 @@ export default function CardsScreen({ navigation }: any) {
 
         <Text style={styles.label}>NEW CARD</Text>
         {data.subjects.length === 0 ? (
-          <Text style={styles.muted}>Add a subject in the planner first.</Text>
+          <Text style={styles.muted}>Your teacher-assigned courses will appear here. Choose a course before creating flashcards.</Text>
         ) : (
           <>
             <View style={styles.row}>
