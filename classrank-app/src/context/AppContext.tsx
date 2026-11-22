@@ -252,6 +252,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       id: data.id,
       name: data.name,
       username: data.username ?? null,
+      bio: data.bio ?? "",
       university: data.university,
       department_id: data.department_id,
       department: dept?.name ?? null,
