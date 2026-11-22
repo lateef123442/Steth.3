@@ -111,7 +111,7 @@ declare v_q group_questions; v_correct boolean;
 begin
   select * into v_q from group_questions where id = p_question_id;
   if not found or not is_group_member(v_q.group_id) then raise exception 'Question not found'; end if;
-  if p_option not between 0 and 3 then raise exception 'Choose one of the four options'; end if;
+  if p_option is null or p_option not between 0 and 3 then raise exception 'Choose one of the four options'; end if;
   v_correct := (p_option = v_q.correct_option);
   insert into group_question_answers(question_id, profile_id, selected_option, is_correct)
     values (p_question_id, auth.uid(), p_option, v_correct);
@@ -234,7 +234,7 @@ $$;
 -- Record the join so the owner/admin activity view can show it.
 create or replace function public.join_study_group(p_code text)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare v_uid uuid := auth.uid(); v_group study_groups; v_added boolean := false;
+declare v_uid uuid := auth.uid(); v_group study_groups; v_added integer := 0;
 begin
   if v_uid is null then raise exception 'Not authenticated'; end if;
   select * into v_group from study_groups where join_code=upper(trim(p_code));
@@ -242,7 +242,7 @@ begin
   if (select count(*) from group_members where group_id=v_group.id)>=200 then raise exception 'This group is full'; end if;
   insert into group_members(group_id,profile_id) values(v_group.id,v_uid) on conflict do nothing;
   get diagnostics v_added = row_count;
-  if v_added then insert into group_activity(group_id,profile_id,event_type) values(v_group.id,v_uid,'joined'); end if;
+  if v_added > 0 then insert into group_activity(group_id,profile_id,event_type) values(v_group.id,v_uid,'joined'); end if;
   return jsonb_build_object('group_id',v_group.id,'name',v_group.name);
 end;
 $$;
