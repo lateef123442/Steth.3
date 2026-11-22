@@ -42,7 +42,7 @@ export default function GroupChatScreen({ navigation, route }: any) {
   const load = useCallback((before?: string) => fetchGroupMessages(groupId, before), [groupId]);
   const send = useCallback((body: string) => sendGroupMsg(groupId, body), [groupId]);
   const subscribe = useCallback((on: (m: any) => void, onReconnect?: () => void) =>
-    subscribeGroup(groupId, (m) => { on(m); reloadQuestions(); }, () => { onReconnect?.(); reloadQuestions(); }), [groupId, reloadQuestions]);
+    subscribeGroup(groupId, (m) => { on(m); if (m.body.startsWith("[[STETH_GROUP_QUESTION:")) reloadQuestions(); }, () => { onReconnect?.(); reloadQuestions(); }), [groupId, reloadQuestions]);
   const nameOf = useCallback((id: string) => byId.current.get(id), []);
   const hideSender = useCallback((id: string) => blocked.current.has(id), []);
 
