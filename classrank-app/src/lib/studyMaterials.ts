@@ -47,7 +47,7 @@ export async function uploadStudyMaterial(file: { uri: string; name: string; siz
 }
 
 export async function studyMaterialUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 1800);
+  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 14400);
   if (error || !data?.signedUrl) throw error ?? new Error("Couldn't open this study file.");
   return data.signedUrl;
 }
