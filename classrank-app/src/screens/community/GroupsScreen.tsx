@@ -3,7 +3,8 @@ import { Text, ScrollView, TextInput, Alert, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../../theme/tokens";
 import { Back, Btn, Card, Chip, Label, Muted, s, ListSkeleton } from "../../components/study/ui";
-import { fetchMyGroups, createGroup, joinGroup, StudyGroup } from "../../lib/groupApi";
+import { fetchMyGroups, createGroup, StudyGroup } from "../../lib/groupApi";
+import { requestGroupJoin } from "../../lib/groupQuestions";
 import { fetchMyCourses, MyCourse } from "../../lib/courseApi";
 import StaggerIn from "../../components/animated/StaggerIn";
 import { WRAP } from "../../components/responsive";
@@ -29,8 +30,10 @@ export default function GroupsScreen({ navigation }: any) {
     Alert.alert("Group created", `Share this code so friends can join: ${g.join_code}`, [{ text: "Open", onPress: () => navigation.navigate("Group", { groupId: g.id }) }]);
   }, "Couldn't create group");
   const join = () => run(async () => {
-    const g = await joinGroup(code);
-    setCode(""); await load(); navigation.navigate("Group", { groupId: g.group_id });
+    const result = await requestGroupJoin(code);
+    setCode(""); await load();
+    if (result.status === "member" && result.group_id) navigation.navigate("Group", { groupId: result.group_id });
+    else Alert.alert("Request sent", "Your request to join " + result.name + " is waiting for the group owner or an appointed admin to approve it.");
   }, "Couldn't join");
 
   return (

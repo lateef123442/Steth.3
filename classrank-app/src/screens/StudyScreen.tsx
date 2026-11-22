@@ -13,10 +13,13 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 import { WRAP } from "../components/responsive";
 import { syncMyCoursesToStudy } from "../lib/courseApi";
+import * as DocumentPicker from "expo-document-picker";
+import { fetchMyStudyMaterials, uploadStudyMaterial, studyMaterialUrl, deleteStudyMaterial, MAX_STUDY_FILE_BYTES } from "../lib/studyMaterials";
+import type { StudyMaterial } from "../lib/studyMaterials";
 
 type Props = BottomTabScreenProps<MainTabParamList, "Study">;
 
-const DURATIONS = [15, 25, 45, 60];
+const DURATIONS = [30, 60, 120];
 const BREAKS = [5, 10, 15];
 const THEMES = {
   light: { name: "Light", bg: "#FFFFFF", text: "#1A1F36", muted: "#6B7280" },
@@ -58,10 +61,14 @@ export default function StudyScreen({ navigation, route }: Props) {
     navigation.setParams({ subject: undefined, notes: undefined });
   }, [route.params?.subject, route.params?.notes]);
   const startedAt = useRef(0);
-  const [minutes, setMinutes] = useState(25);
-  const [durationInput, setDurationInput] = useState("25");
+  const [minutes, setMinutes] = useState(30);
+  const [durationInput, setDurationInput] = useState("30");
   const [themeKey, setThemeKey] = useState<ThemeKey>("light");
   const [notes, setNotes] = useState("");
+  const [materials, setMaterials] = useState<StudyMaterial[]>([]);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [activeMaterial, setActiveMaterial] = useState<StudyMaterial | null>(null);
+  const [uploadingMaterial, setUploadingMaterial] = useState(false);
   const [active, setActive] = useState(false);
   const [breakMins, setBreakMins] = useState(5);
   const [breakInput, setBreakInput] = useState("5");
@@ -71,6 +78,57 @@ export default function StudyScreen({ navigation, route }: Props) {
   const [remaining, setRemaining] = useState(0);
   const endAt = useRef(0);
   const theme = THEMES[themeKey];
+  const selectedMaterial = materials.find((item) => item.id === selectedMaterialId) ?? null;
+  const refreshMaterials = useCallback(async () => {
+    const list = await fetchMyStudyMaterials();
+    setMaterials(list);
+    setSelectedMaterialId((current) => current && list.some((item) => item.id === current) ? current : list[0]?.id ?? null);
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    refreshMaterials().catch((error) => console.warn("[study materials]", error?.message ?? error));
+    const unsubscribe = navigation.addListener("focus", () => refreshMaterials().catch(() => {}));
+    return unsubscribe;
+  }, [ready, refreshMaterials, navigation]);
+
+  const pickStudyMaterial = async () => {
+    if (uploadingMaterial) return;
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: "*/*", copyToCacheDirectory: true, multiple: true });
+      if (result.canceled || !result.assets?.length) return;
+      setUploadingMaterial(true);
+      const uploaded: StudyMaterial[] = [];
+      const failures: string[] = [];
+      for (const asset of result.assets) {
+        try {
+          if (asset.size != null && asset.size > MAX_STUDY_FILE_BYTES) throw new Error("File exceeds 50 MB.");
+          const saved = await uploadStudyMaterial({ uri: asset.uri, name: asset.name || "study-material", size: asset.size, mimeType: asset.mimeType });
+          uploaded.push(saved);
+        } catch (error: any) { failures.push(`${asset.name || "File"}: ${error?.message ?? "Upload failed"}`); }
+      }
+      if (uploaded.length) {
+        setMaterials((current) => [...uploaded, ...current.filter((item) => !uploaded.some((saved) => saved.id === item.id))]);
+        setSelectedMaterialId(uploaded[uploaded.length - 1].id);
+      }
+      await refreshMaterials().catch(() => {});
+      if (failures.length) Alert.alert(`${uploaded.length} uploaded, ${failures.length} failed`, failures.slice(0, 4).join("\n"));
+    } catch (error: any) { Alert.alert("Couldn't choose a file", error?.message ?? "Try again."); }
+    finally { setUploadingMaterial(false); }
+  };
+
+  const openMaterial = async (material: StudyMaterial | null) => {
+    if (!material) return;
+    try { await Linking.openURL(await studyMaterialUrl(material.storage_path)); }
+    catch (error: any) { Alert.alert("Couldn't open this file", error?.message ?? "Try again."); }
+  };
+
+  const removeMaterial = (material: StudyMaterial) => Alert.alert("Delete study material?", `Remove ${material.file_name} from your uploads?`, [
+    { text: "Cancel", style: "cancel" },
+    { text: "Delete", style: "destructive", onPress: async () => {
+      try { await deleteStudyMaterial(material); await refreshMaterials(); }
+      catch (error: any) { Alert.alert("Couldn't delete file", error?.message ?? "Try again."); }
+    } },
+  ]);
 
   const stop = (completed = false) => {
     // Log real time spent so Home and analytics reflect actual study, not just intent.
@@ -86,6 +144,7 @@ export default function StudyScreen({ navigation, route }: Props) {
   };
 
   const start = () => {
+    if (!selectedMaterial) return Alert.alert("Upload a study material", "Choose and upload at least one file before starting your study session.");
     if (!course) return Alert.alert("No courses yet", "Your teacher-assigned courses will appear here before you start a focus session.");
     const duration = Number(durationInput);
     const breakDuration = Number(breakInput);
@@ -93,6 +152,7 @@ export default function StudyScreen({ navigation, route }: Props) {
     if (!Number.isInteger(breakDuration) || breakDuration < 1 || breakDuration > 180) return Alert.alert("Break duration", "Enter a whole number from 1 to 180 minutes.");
     setMinutes(duration);
     setBreakMins(breakDuration);
+    setActiveMaterial(selectedMaterial);
     startedAt.current = Date.now();
     endAt.current = Date.now() + duration * 60000;
     setRemaining(duration * 60);
@@ -160,14 +220,18 @@ export default function StudyScreen({ navigation, route }: Props) {
             <Text style={[styles.sessionSubject, { color: theme.text }]}>{course}</Text>
             <Breathing amount={0.05}><Text style={[styles.sessionTimer, { color: theme.muted }]}>⏱ {fmt(remaining)} left</Text></Breathing>
             <Text style={[styles.sessionTimer, { color: theme.muted }]}>Focus. Your study partner is here.</Text>
+            <Text style={[styles.sessionTimer, { color: theme.muted }]} numberOfLines={1}>Reading: {activeMaterial?.file_name ?? "Uploaded material"}</Text>
           </View>
           <PressableScale style={[styles.pill, { borderColor: theme.muted }]} onPress={confirmExit}>
             <Text style={{ color: theme.text, ...type.label }}>End</Text>
           </PressableScale>
         </View>
         <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl }}>
+          <PressableScale style={[styles.start, { marginTop: 0, marginBottom: spacing.lg }]} onPress={() => openMaterial(activeMaterial)}>
+            <Text style={styles.startText}>Open uploaded material ↗</Text>
+          </PressableScale>
           <Text style={[styles.reading, { color: theme.text }]}>
-            {notes.trim() || "No notes added. Use this time to read from your textbook. The timer and Do-Not-Disturb are running."}
+            {notes.trim() || "Your uploaded reading material is ready. Open it above in your phone's document viewer. Your focus timer will continue running while you read."}
           </Text>
         </ScrollView>
       </SafeAreaView>
@@ -206,6 +270,26 @@ export default function StudyScreen({ navigation, route }: Props) {
         )}
         {!!courseSyncError && <Text style={styles.sub}>{courseSyncError}</Text>}
 
+        <Text style={styles.label}>READING MATERIAL · REQUIRED</Text>
+        <Text style={styles.sub}>Upload the file you want to study. PDF, Word, PowerPoint, spreadsheets, images, text files and other file types are supported, up to 50 MB each.</Text>
+        <PressableScale style={[styles.dnd, { marginTop: spacing.sm, borderWidth: 1, borderColor: colors.violet }]} onPress={pickStudyMaterial} disabled={uploadingMaterial}>
+          <Text style={[styles.dndText, { color: colors.violet, fontWeight: "800" }]}>{uploadingMaterial ? "Uploading your file…" : "＋ Upload study material"}</Text>
+        </PressableScale>
+        {materials.length === 0 ? (
+          <Text style={[styles.sub, { marginTop: spacing.sm }]}>No study files uploaded yet. Upload at least one file to unlock the timer.</Text>
+        ) : materials.map((material) => {
+          const chosen = selectedMaterialId === material.id;
+          const size = material.file_size < 1024 * 1024 ? `${Math.max(1, Math.round(material.file_size / 1024))} KB` : `${(material.file_size / 1024 / 1024).toFixed(1)} MB`;
+          return <View key={material.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm, padding: spacing.md, borderRadius: radii.md, backgroundColor: chosen ? colors.violetTint : colors.card, borderWidth: 1, borderColor: chosen ? colors.violet : colors.border }}>
+            <PressableScale style={{ flex: 1 }} onPress={() => setSelectedMaterialId(material.id)}>
+              <Text style={[type.bodyMedium, { color: colors.text }]} numberOfLines={2}>{chosen ? "✓ " : "▢ "}{material.file_name}</Text>
+              <Text style={[type.caption, { color: colors.textMuted, marginTop: 3 }]}>{size} · {chosen ? "Selected for this session" : "Tap to select"}</Text>
+            </PressableScale>
+            <PressableScale onPress={() => openMaterial(material)} style={{ padding: 6 }}><Text style={{ color: colors.violet, fontWeight: "700" }}>Open</Text></PressableScale>
+            <PressableScale onPress={() => removeMaterial(material)} style={{ padding: 6 }}><Text style={{ color: colors.danger, fontWeight: "700" }}>×</Text></PressableScale>
+          </View>;
+        })}
+
         <Text style={styles.label}>DURATION</Text>
         <View style={styles.row}>{DURATIONS.map((d) => <Chip key={d} label={`${d} min`} on={minutes === d && durationInput === String(d)} onPress={() => { setMinutes(d); setDurationInput(String(d)); }} />)}</View>
         <TextInput style={[styles.notes, { minHeight: 48, textAlignVertical: "center" }]} value={durationInput} onChangeText={setDurationInput} keyboardType="number-pad" placeholder="Custom focus duration in minutes (1–1440)" placeholderTextColor={colors.textFaint} />
@@ -219,7 +303,7 @@ export default function StudyScreen({ navigation, route }: Props) {
           {(Object.keys(THEMES) as ThemeKey[]).map((k) => <Chip key={k} label={THEMES[k].name} on={themeKey === k} onPress={() => setThemeKey(k)} />)}
         </View>
 
-        <Text style={styles.label}>YOUR NOTES (OPTIONAL)</Text>
+        <Text style={styles.label}>EXTRA NOTES (OPTIONAL)</Text>
         <TextInput
           style={styles.notes}
           multiline
@@ -229,8 +313,8 @@ export default function StudyScreen({ navigation, route }: Props) {
           onChangeText={setNotes}
         />
 
-        <PressableScale style={styles.start} onPress={start} haptic="medium">
-          <Text style={styles.startText}>Start focus session</Text>
+        <PressableScale style={[styles.start, (!selectedMaterial || uploadingMaterial) && { opacity: 0.45 }]} onPress={start} disabled={!selectedMaterial || uploadingMaterial} haptic="medium">
+          <Text style={styles.startText}>{selectedMaterial ? "Start studying" : "Upload a file to start studying"}</Text>
         </PressableScale>
 
         <PressableScale style={styles.dnd} onPress={() => Linking.openSettings()}>
