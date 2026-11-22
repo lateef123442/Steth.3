@@ -12,10 +12,6 @@ export default function CommunityScreen({ navigation }: any) {
         <Back onPress={() => navigation.goBack()} />
         <Text style={s.h1}>Community</Text>
         <Muted style={{ marginTop: 4 }}>Study with your classmates and keep up with your courses.</Muted>
-        <Card style={{ marginTop: spacing.lg, backgroundColor: colors.tealTint, borderWidth: 0 }} onPress={() => navigation.navigate("Courses")}>
-          <Text style={s.h3}>My courses</Text>
-          <Muted>Your department and year's courses: topics, daily quizzes, tests and announcements.</Muted>
-        </Card>
         <Card style={{ backgroundColor: colors.violetTint, borderWidth: 0 }} onPress={() => navigation.navigate("Groups")}>
           <Text style={s.h3}>Study groups</Text>
           <Muted>Discussions, questions, shared resources, and focus-time challenges with friends.</Muted>

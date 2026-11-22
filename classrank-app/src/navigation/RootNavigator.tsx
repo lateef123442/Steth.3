@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { View, Text, Pressable } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
@@ -20,10 +21,10 @@ import CompanionScreen from "../screens/CompanionScreen";
 import PlannerScreen from "../screens/PlannerScreen";
 import StudyScreen from "../screens/StudyScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import Avatar from "../components/Avatar";
 import AccountSettingsScreen from "../screens/AccountSettingsScreen";
 import { useProGate, ProGateExempt } from "../components/proGateCore";
 import AdminProScreen from "../screens/admin/AdminProScreen";
-import LearnScreen from "../screens/LearnScreen";
 import PracticeScreen from "../screens/PracticeScreen";
 import PracticeSessionScreen from "../screens/PracticeSessionScreen";
 import PDFPracticeScreen from "../screens/PDFPracticeScreen";
@@ -122,6 +123,41 @@ export type AdminTabParamList = {
 const ExemptProfile = (props: any) => <ProGateExempt><ProfileScreen {...props} /></ProGateExempt>;
 const ExemptFeedback = (props: any) => <ProGateExempt><FeedbackScreen {...props} /></ProGateExempt>;
 
+/** Profile shortcut and compact AI/chat launcher in the native tab header. */
+function MainHeaderActions({ navigation }: { navigation: any }) {
+  const { profile } = useApp();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const openRoot = (screen: "Companion" | "Friends") => {
+    setMenuOpen(false);
+    const root = navigation.getParent?.();
+    if (root?.navigate) root.navigate(screen);
+    else navigation.navigate(screen);
+  };
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 11, marginRight: 4 }}>
+      <Pressable onPress={() => navigation.navigate("Profile")} accessibilityRole="button" accessibilityLabel="Open your profile and account settings" style={{ padding: 2, borderRadius: 24, borderWidth: 2, borderColor: colors.teal }}>
+        {profile ? <Avatar name={profile.name} path={profile.avatar_path} size={34} /> : <Ionicons name="person-circle" size={36} color={colors.teal} />}
+      </Pressable>
+      <View style={{ position: "relative" }}>
+        <Pressable onPress={() => setMenuOpen((v) => !v)} accessibilityRole="button" accessibilityLabel="Open AI and chat" style={{ width: 40, height: 40, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: colors.teal, borderWidth: 1, borderColor: "#8BE5DD" }}>
+          <Ionicons name="sparkles" size={21} color="#FFFFFF" />
+        </Pressable>
+        {menuOpen && (
+          <View style={{ position: "absolute", top: 48, right: 0, width: 142, padding: 7, borderRadius: 15, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, elevation: 12, shadowColor: "#000", shadowOpacity: 0.16, shadowRadius: 14, zIndex: 100 }}>
+            <Pressable onPress={() => openRoot("Companion")} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 10, gap: 10 }}>
+              <Ionicons name="sparkles" size={18} color={colors.teal} /><Text style={{ color: colors.ink, fontWeight: "700" }}>AI</Text>
+            </Pressable>
+            <View style={{ height: 1, backgroundColor: colors.border }} />
+            <Pressable onPress={() => openRoot("Friends")} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 10, gap: 10 }}>
+              <Ionicons name="chatbubble-ellipses" size={18} color={colors.teal} /><Text style={{ color: colors.ink, fontWeight: "700" }}>Chat</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const TeacherTab = createBottomTabNavigator<TeacherTabParamList>();
@@ -147,8 +183,13 @@ function MainTabs() {
   const chrome = useTabChrome();
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
+      screenOptions={({ route, navigation }) => ({
+        headerShown: true,
+        headerTitle: "Steth",
+        headerTitleStyle: { color: colors.ink, fontWeight: "800" },
+        headerStyle: { backgroundColor: colors.paper },
+        headerShadowVisible: false,
+        headerRight: () => <MainHeaderActions navigation={navigation} />,
         tabBarActiveTintColor: colors.teal,
         tabBarInactiveTintColor: colors.textMuted,
         ...chrome,
@@ -170,10 +211,10 @@ function MainTabs() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Learn" component={LearnScreen} options={{ title: "Courses" }} />
+      <Tab.Screen name="Learn" component={CoursesScreen} options={{ title: "Courses" }} />
       <Tab.Screen name="Quiz" component={QuizScreen} options={{ title: "Quiz" }} />
       <Tab.Screen name="CommunityTab" component={CommunityScreen} options={{ title: "Community" }} />
-      <Tab.Screen name="Profile" component={ExemptProfile} />
+      <Tab.Screen name="Profile" component={ExemptProfile} options={{ tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
 
       {/* These destinations stay available from clear Home shortcuts, keeping the main bar simple. */}
       <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ title: "Ranks", tabBarButton: () => null, tabBarItemStyle: { display: "none" } }} />
@@ -300,7 +341,6 @@ export default function RootNavigator() {
           <Stack.Screen name="TeacherCourse" component={TeacherCourseScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
           <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
-          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
         </>
       ) : profile.role === "teacher" ? (
         <>
@@ -310,6 +350,7 @@ export default function RootNavigator() {
           <Stack.Screen name="GroupChat" component={GroupChatScreen} />
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
+          <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
         </>
       ) : (
         <>

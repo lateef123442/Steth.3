@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, FlatList, TextInput, RefreshControl, Switch, Ac
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radii, spacing, type, shadow } from "../../theme/tokens";
 import { useApp } from "../../context/AppContext";
-import { fetchFeed, createPost, toggleLike, deletePost, fetchMyLikedPostIds, pickFeedImage, feedImageUrl, FeedScope } from "../../lib/feedApi";
-import { FeedPost } from "../../types";
+import { fetchFeed, createPost, toggleLike, deletePost, fetchMyLikedPostIds, pickFeedImage, feedImageUrl, fetchPostComments, createPostComment, FeedScope } from "../../lib/feedApi";
+import { FeedComment, FeedPost } from "../../types";
 import PressableScale from "../../components/animated/PressableScale";
 import StaggerIn from "../../components/animated/StaggerIn";
 import AnimatedNumber from "../../components/animated/AnimatedNumber";
@@ -26,6 +26,11 @@ export default function FeedScreen() {
   const [scope, setScope] = useState<FeedScope>("department");
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [openCommentsPostId, setOpenCommentsPostId] = useState<string | null>(null);
+  const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
+  const [commentsLoadingFor, setCommentsLoadingFor] = useState<string | null>(null);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentSending, setCommentSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,6 +105,34 @@ export default function FeedScreen() {
         prev.map((p) => (p.id === post.id ? { ...p, like_count: p.like_count + (wasLiked ? 1 : -1) } : p))
       );
     }
+  };
+
+  const handleToggleComments = async (postId: string) => {
+    if (openCommentsPostId === postId) { setOpenCommentsPostId(null); setCommentDraft(""); return; }
+    setOpenCommentsPostId(postId);
+    setCommentDraft("");
+    if (commentsByPost[postId]) return;
+    setCommentsLoadingFor(postId);
+    try {
+      const comments = await fetchPostComments(postId);
+      setCommentsByPost((prev) => ({ ...prev, [postId]: comments }));
+    } catch (err: any) {
+      Alert.alert("Couldn't load comments", err?.message ?? "Please try again.");
+    } finally { setCommentsLoadingFor(null); }
+  };
+
+  const handleSendComment = async (post: FeedPost) => {
+    const content = commentDraft.trim();
+    if (!content || commentSending) return;
+    setCommentSending(true);
+    try {
+      const comment = await createPostComment(post.id, content);
+      setCommentsByPost((prev) => ({ ...prev, [post.id]: [...(prev[post.id] ?? []), comment] }));
+      setPosts((prev) => prev.map((p) => p.id === post.id ? { ...p, comment_count: (p.comment_count ?? 0) + 1 } : p));
+      setCommentDraft("");
+    } catch (err: any) {
+      Alert.alert("Couldn't add comment", err?.message ?? "Please try again.");
+    } finally { setCommentSending(false); }
   };
 
   const handleDelete = (post: FeedPost) => {
@@ -235,16 +268,39 @@ export default function FeedScreen() {
                 {!!item.content?.trim() && <Text style={styles.postContent}>{item.content}</Text>}
                 {!!feedImageUrl(item.image_path) && <Image source={{ uri: feedImageUrl(item.image_path)! }} style={styles.postImage} resizeMode="cover" />}
                 <View style={styles.postFooter}>
-                  <PressableScale style={styles.likeButton} onPress={() => handleLike(item)} haptic="light">
-                    <EmojiIcon emoji={isLiked ? "♥" : "♡"} style={[styles.likeIcon, isLiked && styles.likeIconActive]} />
-                    <AnimatedNumber value={item.like_count} style={styles.likeCount} duration={250} />
-                  </PressableScale>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 20 }}>
+                    <PressableScale style={styles.likeButton} onPress={() => handleLike(item)} haptic="light">
+                      <EmojiIcon emoji={isLiked ? "♥" : "♡"} style={[styles.likeIcon, isLiked && styles.likeIconActive]} />
+                      <AnimatedNumber value={item.like_count} style={styles.likeCount} duration={250} />
+                    </PressableScale>
+                    <PressableScale style={styles.commentButton} onPress={() => handleToggleComments(item.id)} haptic="light">
+                      <Text style={styles.commentIcon}>💬</Text>
+                      <Text style={styles.commentCount}>{item.comment_count ?? 0} comments</Text>
+                    </PressableScale>
+                  </View>
                   {(isMine || profile.role === "admin") && (
                     <PressableScale onPress={() => handleDelete(item)} haptic="none">
                       <Text style={styles.deleteText}>Delete</Text>
                     </PressableScale>
                   )}
                 </View>
+                {openCommentsPostId === item.id && (
+                  <View style={styles.commentsPanel}>
+                    {commentsLoadingFor === item.id ? <ActivityIndicator color={colors.teal} /> : (commentsByPost[item.id] ?? []).map((comment) => (
+                      <View key={comment.id} style={styles.commentItem}>
+                        <View style={styles.commentMeta}><Text style={styles.commentAuthor}>{comment.author_name}</Text><Text style={styles.commentTime}>{timeAgo(comment.created_at)}</Text></View>
+                        <Text style={styles.commentText}>{comment.content}</Text>
+                      </View>
+                    ))}
+                    {!commentsLoadingFor && (commentsByPost[item.id] ?? []).length === 0 && <Text style={styles.noComments}>No comments yet. Start the conversation.</Text>}
+                    <View style={styles.commentComposer}>
+                      <TextInput value={commentDraft} onChangeText={setCommentDraft} placeholder="Write a comment..." placeholderTextColor={colors.textFaint} style={styles.commentInput} multiline maxLength={1000} />
+                      <PressableScale style={[styles.commentSend, (!commentDraft.trim() || commentSending) && { opacity: 0.5 }]} onPress={() => handleSendComment(item)} disabled={!commentDraft.trim() || commentSending} haptic="light">
+                        {commentSending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.commentSendText}>Send</Text>}
+                      </PressableScale>
+                    </View>
+                  </View>
+                )}
               </View>
             </StaggerIn>
           );
@@ -294,6 +350,20 @@ const styles = StyleSheet.create({
   likeIconActive: { color: colors.danger },
   likeCount: { ...type.caption, color: colors.textMuted },
   deleteText: { ...type.caption, color: colors.danger, fontFamily: type.bodySemibold.fontFamily },
+  commentButton: { flexDirection: "row", alignItems: "center", gap: 5 },
+  commentIcon: { fontSize: 15 },
+  commentCount: { ...type.caption, color: colors.textMuted },
+  commentsPanel: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md, marginTop: spacing.sm },
+  commentItem: { paddingVertical: spacing.sm },
+  commentMeta: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  commentAuthor: { ...type.caption, color: colors.text, fontWeight: "700" },
+  commentTime: { ...type.caption, color: colors.textFaint, fontSize: 10 },
+  commentText: { ...type.body, color: colors.text, marginTop: 3 },
+  noComments: { ...type.caption, color: colors.textFaint, paddingVertical: spacing.sm },
+  commentComposer: { flexDirection: "row", alignItems: "flex-end", gap: spacing.sm, marginTop: spacing.sm },
+  commentInput: { flex: 1, minHeight: 40, maxHeight: 100, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, color: colors.text, ...type.caption },
+  commentSend: { minWidth: 58, height: 40, borderRadius: radii.md, backgroundColor: colors.teal, alignItems: "center", justifyContent: "center", paddingHorizontal: spacing.md },
+  commentSendText: { color: "#fff", fontWeight: "700", ...type.caption },
   centered: { alignItems: "center", padding: spacing.xxxl },
   errorText: { ...type.caption, color: colors.textMuted, textAlign: "center", marginBottom: spacing.md },
   retryButton: { backgroundColor: colors.teal, borderRadius: radii.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.xl },

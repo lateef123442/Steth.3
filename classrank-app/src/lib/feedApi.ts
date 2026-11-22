@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "./supabase";
-import { FeedPost } from "../types";
+import { FeedComment, FeedPost } from "../types";
 
 export type FeedScope = "department" | "campus";
 
@@ -69,4 +69,24 @@ export async function fetchMyLikedPostIds(postIds: string[]): Promise<Set<string
   const { data, error } = await supabase.rpc("get_my_liked_post_ids", { p_post_ids: postIds });
   if (error) throw error;
   return new Set((data as string[]) ?? []);
+}
+
+
+export async function fetchPostComments(postId: string): Promise<FeedComment[]> {
+  const { data, error } = await supabase
+    .from("feed_post_comments")
+    .select("*")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data as FeedComment[]) ?? [];
+}
+
+export async function createPostComment(postId: string, content: string): Promise<FeedComment> {
+  const { data, error } = await supabase.rpc("create_post_comment", {
+    p_post_id: postId,
+    p_content: content.trim(),
+  });
+  if (error) throw error;
+  return data as FeedComment;
 }
