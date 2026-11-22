@@ -12,7 +12,7 @@ import { useSyncStatus } from "../hooks/useStudyCloudSync";
 import { syncNow } from "../lib/studySync";
 import { WRAP } from "../components/responsive";
 
-const GOALS = ["Pass exams", "Improve grades", "Prepare for an exam", "Master a subject", "Study consistently"];
+const GOALS = ["Pass exams", "Improve grades", "Prepare for an exam", "Master a course", "Study consistently"];
 const TIMES = ["07:00", "12:00", "17:00", "20:00", "22:00"];
 const MINS = [30, 45, 60, 90, 120];
 const TYPES: { key: "sessions" | "missed" | "dailyQuiz" | "reviews" | "push"; title: string; sub: string }[] = [

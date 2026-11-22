@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { View, Text, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../theme/tokens";
 import { useApp } from "../context/AppContext";
@@ -7,20 +7,40 @@ import { Card, Chip, Label, Muted, Tag, s } from "../components/study/ui";
 import { useStudy, questionPool, topicStats, scoreHistory, subjectName, attemptedToday, QuizMode } from "../lib/studyStore";
 import StaggerIn from "../components/animated/StaggerIn";
 import { WRAP } from "../components/responsive";
+import { syncMyCoursesToStudy } from "../lib/courseApi";
 
 import EmojiIcon from "../components/EmojiIcon";
 const MODES: { mode: QuizMode; icon: string; title: string; blurb: (n: number) => string; need: "subject" | "topic" | "any" }[] = [
   { mode: "review", icon: "🔁", title: "Spaced Review", blurb: () => "3 to 5 questions from each topic that is due or that you are struggling with", need: "any" },
   { mode: "quick", icon: "⚡", title: "Quick Quiz", blurb: () => "A short quiz focused on your weak spots", need: "any" },
   { mode: "topic", icon: "🎯", title: "Topic Quiz", blurb: () => "Drill one topic", need: "topic" },
-  { mode: "subject", icon: "📚", title: "Subject Quiz", blurb: (n) => `Up to ${Math.min(n, 100)} questions across the subject`, need: "subject" },
+  { mode: "subject", icon: "📚", title: "Course Quiz", blurb: (n) => `Up to ${Math.min(n, 100)} questions across the course`, need: "subject" },
   { mode: "mock", icon: "⏱", title: "Mock Exam", blurb: (n) => `Timed, no hints until the end · up to ${Math.min(n, 100)} questions`, need: "subject" },
-  { mode: "daily", icon: "🌅", title: "Daily Challenge", blurb: () => "5 mixed questions across your subjects", need: "any" },
+  { mode: "daily", icon: "🌅", title: "Daily Challenge", blurb: () => "5 mixed questions across your courses", need: "any" },
 ];
 
 export default function PracticeScreen({ navigation }: any) {
   const { hasCompletedTodaysQuiz, todaysQuestions } = useApp();
-  const { data } = useStudy();
+  const { data, ready } = useStudy();
+  const [syncingCourses, setSyncingCourses] = useState(false);
+  const [courseSyncError, setCourseSyncError] = useState<string | null>(null);
+  const syncCourses = useCallback(async () => {
+    setSyncingCourses(true);
+    try {
+      const result = await syncMyCoursesToStudy();
+      setCourseSyncError(result.failedCourseIds.length ? `${result.failedCourseIds.length} course(s) could not refresh. Try again.` : null);
+    } catch (error: any) {
+      setCourseSyncError(error?.message ?? "Could not load assigned courses.");
+    } finally {
+      setSyncingCourses(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (!ready) return;
+    void syncCourses();
+    const unsubscribe = navigation.addListener("focus", syncCourses);
+    return unsubscribe;
+  }, [ready, syncCourses, navigation]);
   const [subjectId, setSubjectId] = useState<string | null>(null);
   const [topicId, setTopicId] = useState<string | null>(null);
   const [questionCount, setQuestionCount] = useState(10);
@@ -31,7 +51,15 @@ export default function PracticeScreen({ navigation }: any) {
 
   const count = (m: (typeof MODES)[number]) => questionPool(data, m.mode, subjectId ?? undefined, topicId ?? undefined).length;
   const start = (m: (typeof MODES)[number]) => navigation.navigate("PracticeSession", { mode: m.mode, subjectId: subjectId ?? undefined, topicId: topicId ?? undefined, ...(["quick", "topic", "subject", "mock"].includes(m.mode) ? { questionCount } : {}) });
-  const blocked = (m: (typeof MODES)[number]) => (m.mode === "topic" && !topicId) ? "Pick a topic above" : ((m.mode === "subject" || m.mode === "mock") && !subjectId) ? "Pick a subject above" : count(m) === 0 ? (m.mode === "review" ? "Nothing due. You're on top of it" : "No questions yet") : null;
+  const blocked = (m: (typeof MODES)[number]) => {
+    if (m.mode === "topic" && !topicId) return "Choose a topic above to unlock Topic Quiz.";
+    if (count(m) === 0) {
+      if (m.mode === "review") return "No topics are due for review yet. Complete course questions first.";
+      if (m.mode === "topic") return "Your teacher has not published practice questions for this topic yet.";
+      return "No teacher-published practice questions are available yet. Ask your teacher to publish questions in a course.";
+    }
+    return null;
+  };
 
   return (
     <SafeAreaView style={s.safe}>
@@ -44,20 +72,22 @@ export default function PracticeScreen({ navigation }: any) {
           <Muted>Upload lecture notes or a textbook PDF and generate a separate multiple-choice practice test.</Muted>
         </Card>
 
-        {data.subjects.length === 0 ? (
-          <Card style={{ marginTop: spacing.lg }} onPress={() => navigation.navigate("Planner")}>
-            <Text style={s.h3}>Start by adding a subject →</Text><Muted>Practice questions live inside each subject.</Muted>
+        {!!courseSyncError && <Muted style={{ color: colors.danger, marginTop: spacing.md }}>{courseSyncError}</Muted>}
+        {(!ready || syncingCourses) && data.subjects.length === 0 && <Muted style={{ marginTop: spacing.lg }}>Loading your teacher-assigned courses…</Muted>}
+        {data.subjects.length === 0 && ready && !syncingCourses ? (
+          <Card style={{ marginTop: spacing.lg }}>
+            <Text style={s.h3}>No courses assigned yet</Text><Muted>Your teachers' courses and published practice questions will appear here automatically.</Muted>
           </Card>
-        ) : (
+        ) : data.subjects.length > 0 ? (
           <>
-            <Label>SUBJECT</Label>
+            <Label>COURSES</Label>
             <View style={s.row}>
-              <Chip label="All" on={!subjectId} onPress={() => { setSubjectId(null); setTopicId(null); }} />
+              <Chip label="All courses" on={!subjectId} onPress={() => { setSubjectId(null); setTopicId(null); }} />
               {data.subjects.map((x) => <Chip key={x.id} label={x.name} on={subjectId === x.id} onPress={() => { setSubjectId(x.id); setTopicId(null); }} />)}
             </View>
             {topics.length > 0 && (
               <>
-                <Label>TOPIC (FOR TOPIC QUIZ)</Label>
+                <Label>TOPICS (FOR TOPIC QUIZ)</Label>
                 <View style={s.row}>{topics.map((t) => <Chip key={t.id} label={t.name} on={topicId === t.id} onPress={() => setTopicId(topicId === t.id ? null : t.id)} />)}</View>
               </>
             )}
@@ -78,19 +108,21 @@ export default function PracticeScreen({ navigation }: any) {
               const detail = ["quick", "topic", "subject", "mock"].includes(m.mode)
                 ? `Up to ${Math.min(available, questionCount)} questions${m.mode === "mock" ? " · timed, no hints until the end" : m.mode === "quick" ? " · focused on weak spots" : ""}`
                 : m.blurb(available);
+              const title = m.mode === "subject" ? "Course Quiz" : m.title;
               return (
-                <StaggerIn key={m.mode} index={mi}><Card onPress={() => (why ? null : start(m))} style={why ? { opacity: 0.5 } : undefined}>
+                <StaggerIn key={m.mode} index={mi}><Card onPress={() => (why ? Alert.alert(`${title} unavailable`, why) : start(m))} style={{ borderColor: why ? colors.danger : colors.teal }}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <EmojiIcon emoji={m.icon} style={{ fontSize: 26, marginRight: spacing.md }} />
                     <View style={{ flex: 1 }}>
-                      <Text style={s.h3}>{m.title}{done ? "  · Done" : ""}</Text>
+                      <Text style={s.h3}>{title}{done ? "  · Done" : ""}</Text>
                       <Muted>{why ?? detail}</Muted>
+                      <Tag label={why ? "Not available yet · tap to learn why" : "Available · tap to start"} color={why ? colors.danger : colors.teal} />
                     </View>
                   </View>
                 </Card></StaggerIn>
               );
             })}
-            {data.questions.length === 0 && <Muted>No practice questions yet. Open a subject room to add some or generate them with the AI tutor.</Muted>}
+            {data.questions.length === 0 && <Muted>No practice questions yet. Your teachers can publish course questions for practice.</Muted>}
           </>
         )}
 
@@ -109,7 +141,7 @@ export default function PracticeScreen({ navigation }: any) {
               return (
                 <Card key={a.id} style={{ flexDirection: "row", alignItems: "center" }}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.h3}>{a.subjectId ? subjectName(data, a.subjectId) : "Mixed"} · {a.mode}</Text>
+                    <Text style={s.h3}>{a.subjectId ? subjectName(data, a.subjectId) : "Mixed courses"} · {a.mode === "subject" ? "Course Quiz" : a.mode}</Text>
                     <Muted>{a.date} · {a.correct}/{a.total}</Muted>
                   </View>
                   <Tag label={`${p}%`} color={p >= 80 ? colors.success : p >= 60 ? colors.ember : colors.danger} />

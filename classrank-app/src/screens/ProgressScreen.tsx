@@ -54,8 +54,8 @@ export default function ProgressScreen({ navigation }: any) {
           </Card>
         )}
 
-        <Label>SUBJECT PERFORMANCE</Label>
-        {subjects.length === 0 && <Muted>Add subjects, then quiz and review cards to see strengths and weak areas.</Muted>}
+        <Label>COURSE PERFORMANCE</Label>
+        {subjects.length === 0 && <Muted>Your course performance will appear here after you practise and review flashcards.</Muted>}
         {subjects.map((x) => (
           <Card key={x.id} onPress={() => navigation.navigate("Subject", { subjectId: x.id })}>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
@@ -68,7 +68,7 @@ export default function ProgressScreen({ navigation }: any) {
         ))}
 
         <Label>TOPIC PERFORMANCE</Label>
-        {topics.length === 0 && <Muted>Add topics inside a subject room to see them here.</Muted>}
+        {topics.length === 0 && <Muted>Topics from your courses will appear here as you study.</Muted>}
         {topics.map((t) => (
           <Card key={t.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <View style={{ flex: 1 }}><Text style={s.h3}>{t.name}</Text><Muted>{t.accuracy !== null ? `${t.accuracy}% · ${t.answered} answers` : `${t.answered} answers`}</Muted></View>
@@ -102,7 +102,7 @@ export default function ProgressScreen({ navigation }: any) {
             {!a.earned && <View style={{ marginTop: 6 }}><Bar value={a.have / a.need} color={colors.violet} /></View>}
           </Card>
         ))}
-        <Muted>Accuracy combines quiz answers and flashcard ratings of Good/Easy, and needs 5+ data points per subject (3+ answers per topic).</Muted>
+        <Muted>Accuracy combines quiz answers and flashcard ratings of Good/Easy, and needs 5+ data points per course (3+ answers per topic).</Muted>
       </ScrollView>
     </SafeAreaView>
   );

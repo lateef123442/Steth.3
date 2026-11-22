@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 import { markProfileStale } from "./profileSync";
 import { notifyAnnouncement } from "./pushNotify";
 import { CourseBundle, QuestionPurpose, reportableAnswers } from "./studyCourseSync";
-import { getStudyData, QuizAttempt } from "./studyStore";
+import { getStudyData, importCourseBundle, QuizAttempt } from "./studyStore";
 import { uid } from "./studyTypes";
 import { secondsLeft } from "./examTime";
 import { mimeFor, storagePath, validateFile, MAX_FILE_BYTES } from "./fileRules";
@@ -30,6 +30,18 @@ export const fetchMyCourses = async () => (await call<MyCourse[]>("my_courses"))
 export interface Announcement { id: string; title: string; body: string; created_at: string; course_id: string; course_code: string }
 export const fetchRecentAnnouncements = async () => (await call<Announcement[]>("my_recent_announcements", { p_days: 14 })) ?? [];
 export const fetchCourseContent = (courseId: string) => call<CourseBundle>("get_course_content", { p_course_id: courseId });
+
+/** Load every course assigned to this student into the shared planner/practice study model. */
+export async function syncMyCoursesToStudy(): Promise<{ courses: MyCourse[]; failedCourseIds: string[] }> {
+  const courses = await fetchMyCourses();
+  const results = await Promise.allSettled(courses.map((course) => fetchCourseContent(course.id)));
+  const failedCourseIds: string[] = [];
+  results.forEach((result, index) => {
+    if (result.status === "fulfilled" && result.value.course?.id === courses[index].id) importCourseBundle(result.value);
+    else failedCourseIds.push(courses[index].id);
+  });
+  return { courses, failedCourseIds };
+}
 
 /**
  * Fire-and-forget: tells each course's teacher how the student did on that course's questions

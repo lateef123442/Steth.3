@@ -15,15 +15,15 @@ export default function LearnScreen({ navigation }: any) {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }}>
         <Text style={s.h1}>Learn</Text>
-        <Muted style={{ marginTop: 4 }}>Each subject is a room: notes, topics, questions, and progress in one place.</Muted>
+        <Muted style={{ marginTop: 4 }}>Each course has its own room for notes, topics, questions, and progress.</Muted>
 
         <Card onPress={() => navigation.navigate("Cards")} style={{ marginTop: spacing.lg, backgroundColor: colors.violetTint, borderWidth: 0 }}>
           <Text style={s.h3}>🃏 Flashcards</Text>
           <Muted>{dueC ? `${dueC} due for review` : "Nothing due right now"}{dueT ? ` · ${dueT} topic${dueT > 1 ? "s" : ""} to revisit` : ""}</Muted>
         </Card>
 
-        <Label>YOUR SUBJECTS</Label>
-        {stats.length === 0 && <Muted>No subjects yet. Add the courses you're taking and I'll build your study plan around them.</Muted>}
+        <Label>YOUR COURSES</Label>
+        {stats.length === 0 && <Muted>No courses assigned yet. Your teachers' courses will appear here automatically.</Muted>}
         {[...stats].sort((a, b) => a.name.localeCompare(b.name)).map((x, i) => {
           const sub = data.subjects.find((y) => y.id === x.id)!;
           const exam = sub.examDate ? daysUntil(sub.examDate) : null;
@@ -38,7 +38,7 @@ export default function LearnScreen({ navigation }: any) {
             </Card></StaggerIn>
           );
         })}
-        <Btn ghost label="+ Add or manage subjects" onPress={() => navigation.navigate("Planner")} />
+        <Btn ghost label="Open study planner" onPress={() => navigation.navigate("Planner")} />
       </ScrollView>
     </SafeAreaView>
   );

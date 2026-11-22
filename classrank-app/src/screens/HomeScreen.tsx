@@ -167,7 +167,7 @@ export default function HomeScreen({ navigation }: Props) {
         <PressableScale style={styles.studyCard} onPress={() => go("Study", plan.find((x) => x.status === "planned") ? { subject: subjectName(study, plan.find((x) => x.status === "planned")!.subjectId) } : undefined)} haptic="medium" accessibilityRole="button">
           <View style={{ flex: 1 }}>
             <Text style={styles.quizCardTitle}>⏱ Study with a timer</Text>
-            <Text style={styles.quizCardSubtitle}>Set a timer and focus on one subject without distractions.</Text>
+            <Text style={styles.quizCardSubtitle}>Set a timer and focus on one course without distractions.</Text>
           </View>
         </PressableScale>
 

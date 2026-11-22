@@ -10,7 +10,7 @@ export const REVIEW_INTERVALS = [1, 3, 7, 14, 30]; // days between reviews as a 
 export type Strength = "Strong" | "Improving" | "Needs review" | "Not enough data";
 
 // ── lookups ──
-export const subjectName = (d: StudyData, id: string) => d.subjects.find((s) => s.id === id)?.name ?? "Subject";
+export const subjectName = (d: StudyData, id: string) => d.subjects.find((s) => s.id === id)?.name ?? "Course";
 export const topicName = (d: StudyData, id?: string) => (id ? d.topics.find((t) => t.id === id)?.name : undefined) ?? "General";
 export const todaySessions = (d: StudyData) => d.sessions.filter((s) => s.date === dateStr());
 export const focusMinutes = (d: StudyData, fromDaysAgo: number, toDaysAgo: number) =>
@@ -188,7 +188,7 @@ export type NavTarget = "Study" | "Planner" | "Cards" | "Progress" | "Practice" 
 export interface Recommendation { text: string; cta: string; target: NavTarget; params?: any; steps?: string[] }
 
 export function recommend(d: StudyData): Recommendation {
-  if (d.subjects.length === 0) return { text: "Add your first subject so I can plan your study time.", cta: "Set up subjects", target: "Planner" };
+  if (d.subjects.length === 0) return { text: "Your teacher-assigned courses will appear here so I can plan your study time.", cta: "View courses", target: "Planner" };
 
   // Brand-new student who hasn't told us their goals / study times yet.
   if (!d.prefs.setupDone && d.attempts.length === 0 && d.sessions.length === 0)
@@ -202,7 +202,7 @@ export function recommend(d: StudyData): Recommendation {
     return {
       text: `You scored ${weak!.accuracy}% in ${weak!.name}${examIn !== null && examIn >= 0 ? ` and have a ${weakSubject!.name} exam in ${examIn} day${examIn === 1 ? "" : "s"}` : ""}.`,
       steps: [`Review ${weak!.name}`, "Study for 15 minutes", "Take a 5-question quiz"],
-      cta: hasQ ? "Start topic quiz" : "Open subject room",
+      cta: hasQ ? "Start topic quiz" : "Open course",
       ...(hasQ ? { target: "PracticeSession" as const, params: { mode: "topic", subjectId: weak!.subjectId, topicId: weak!.id } } : { target: "Subject" as const, params: { subjectId: weak!.subjectId } }),
     };
   };
@@ -225,7 +225,7 @@ export function recommend(d: StudyData): Recommendation {
   if (exam && todaySessions(d).length === 0) return { text: `${exam.name} exam in ${daysUntil(exam.examDate!)} days. Plan a session today.`, cta: "Plan a session", target: "Planner" };
 
   if (d.questions.length >= 3 && !attemptedToday(d)) return { text: "Your daily challenge is waiting. Five questions, a few minutes.", cta: "Start daily challenge", target: "PracticeSession", params: { mode: "daily" } };
-  if (d.questions.length === 0) return { text: "Add practice questions to a subject (or generate them) so I can find your weak spots.", cta: "Open a subject", target: "Subject", params: { subjectId: d.subjects[0].id } };
+  if (d.questions.length === 0) return { text: "Your courses need practice questions before I can find your weak spots.", cta: "Open a course", target: "Subject", params: { subjectId: d.subjects[0].id } };
   return { text: todaySessions(d).length ? "Today's plan is done. Nice work. Take a break." : "Nothing planned today. Add a short session?", cta: "Open planner", target: "Planner" };
 }
 
