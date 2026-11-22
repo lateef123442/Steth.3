@@ -15,7 +15,7 @@ const day = (iso: string) => { const d = new Date(iso), t = new Date(); return d
  * `subscribe` (Supabase Realtime); your own sends are added instantly from the server's reply. Messages are de-duplicated
  * by id, and the history is re-fetched when the connection comes back so nothing is missed.
  */
-export default function ChatView({ title, subtitle, avatar, meId, load, send, subscribe, nameOf, onBack, onHeaderPress, onFocusRefresh, onMenu, onLongPressMessage, hideSender }: {
+export default function ChatView({ title, subtitle, avatar, meId, load, send, subscribe, nameOf, onBack, onHeaderPress, onFocusRefresh, onMenu, onLongPressMessage, hideSender, renderMessage, headerAction }: {
   title: string; subtitle?: string; avatar?: React.ReactNode; meId: string;
   load: (before?: string) => Promise<ChatMessage[]>;                 // newest first
   send: (body: string) => Promise<ChatMessage>;
@@ -25,6 +25,8 @@ export default function ChatView({ title, subtitle, avatar, meId, load, send, su
   onMenu?: () => void;                                   // header ⋯ button (block / report)
   onLongPressMessage?: (m: ChatMessage) => void;         // long-press SOMEONE ELSE'S message (report / block)
   hideSender?: (senderId: string) => boolean;            // e.g. people I blocked
+  renderMessage?: (message: ChatMessage, mine: boolean) => React.ReactNode | null;
+  headerAction?: React.ReactNode;
 }) {
   const [msgs, setMsgs] = useState<ChatMessage[] | null>(null); // newest first (FlatList is inverted)
   const [text, setText] = useState("");
@@ -96,7 +98,7 @@ export default function ChatView({ title, subtitle, avatar, meId, load, send, su
               {!!subtitle && <Text style={[type.caption, { color: colors.textMuted }]} numberOfLines={1}>{subtitle}</Text>}
             </View>
           </PressableScale>
-          {onMenu && <PressableScale onPress={onMenu} style={{ padding: spacing.sm }} accessibilityLabel="More options"><Text style={{ fontSize: 22, color: colors.textMuted }}>⋯</Text></PressableScale>}
+          {onMenu && <PressableScale onPress={onMenu} style={{ padding: spacing.sm }} accessibilityLabel="More options"><Text style={{ fontSize: 22, color: colors.textMuted }}>⋯</Text></PressableScale>}{headerAction}
         </View>
 
         {msgs === null ? <ActivityIndicator style={{ marginTop: 40 }} color={colors.teal} /> : (
@@ -112,19 +114,22 @@ export default function ChatView({ title, subtitle, avatar, meId, load, send, su
               const older = msgs[index + 1]; // previous message in time (list is newest-first)
               const newDay = !older || day(older.created_at) !== day(item.created_at);
               const samePrev = older && older.sender_id === item.sender_id && !newDay;
+              const custom = renderMessage?.(item, mine);
               return (
                 <View>
                   {newDay && <Text style={{ textAlign: "center", color: colors.textFaint, fontSize: 13, marginVertical: spacing.md }}>{day(item.created_at)}</Text>}
-                  <View style={{ flexDirection: mine ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, marginTop: samePrev ? 0 : spacing.sm }}>
-                    {!mine && nameOf ? <View style={{ width: 28 }}>{!samePrev && who ? <Avatar name={who.name} path={who.avatar_path} size={28} /> : null}</View> : null}
-                    <PressableScale haptic="medium" scaleTo={0.99} disabled={mine || !onLongPressMessage} onLongPress={() => onLongPressMessage?.(item)} style={{ maxWidth: "78%" }}>
-                    <View style={{ backgroundColor: mine ? colors.teal : colors.card, borderRadius: radii.md, paddingVertical: 8, paddingHorizontal: 12, borderWidth: mine ? 0 : 1, borderColor: colors.border }}>
-                      {!mine && !!who && !samePrev && <Text style={{ color: colors.violet, fontWeight: "700", fontSize: 13, marginBottom: 2 }}>{who.name}</Text>}
-                      <Text style={[type.body, { color: mine ? "#fff" : colors.text }]} selectable>{item.body}</Text>
-                      <Text style={{ color: mine ? "#D6FFF9" : colors.textFaint, fontSize: 13, alignSelf: "flex-end", marginTop: 2 }}>{time(item.created_at)}</Text>
+                  {custom ? <View style={{ width: "100%", maxWidth: 820, alignSelf: "center", marginTop: spacing.sm }}>{custom}</View> : (
+                    <View style={{ flexDirection: mine ? "row-reverse" : "row", alignItems: "flex-end", gap: 8, marginTop: samePrev ? 0 : spacing.sm }}>
+                      {!mine && nameOf ? <View style={{ width: 28 }}>{!samePrev && who ? <Avatar name={who.name} path={who.avatar_path} size={28} /> : null}</View> : null}
+                      <PressableScale haptic="medium" scaleTo={0.99} disabled={mine || !onLongPressMessage} onLongPress={() => onLongPressMessage?.(item)} style={{ maxWidth: "78%" }}>
+                        <View style={{ backgroundColor: mine ? colors.teal : colors.card, borderRadius: radii.md, paddingVertical: 8, paddingHorizontal: 12, borderWidth: mine ? 0 : 1, borderColor: colors.border }}>
+                          {!mine && !!who && !samePrev && <Text style={{ color: colors.violet, fontWeight: "700", fontSize: 13, marginBottom: 2 }}>{who.name}</Text>}
+                          <Text style={[type.body, { color: mine ? "#fff" : colors.text }]} selectable>{item.body}</Text>
+                          <Text style={{ color: mine ? "#D6FFF9" : colors.textFaint, fontSize: 13, alignSelf: "flex-end", marginTop: 2 }}>{time(item.created_at)}</Text>
+                        </View>
+                      </PressableScale>
                     </View>
-                    </PressableScale>
-                  </View>
+                  )}
                 </View>
               );
             }}
