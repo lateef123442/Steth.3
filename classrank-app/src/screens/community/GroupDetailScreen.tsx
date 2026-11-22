@@ -7,9 +7,7 @@ import { Back, Bar, Btn, Card, Chip, Label, Muted, Tag, s, ListSkeleton } from "
 import {
   StudyGroup, GroupPost, GroupReply, Challenge, Standing, fetchMyGroups, fetchPosts, createPost, deletePost, fetchReplies, createReply,
   fetchChallenge, fetchStandings, startChallenge, reportChallengeProgress, leaveGroup, deleteGroup,
-  GroupQuizSummary, fetchGroupQuizzes, createGroupQuiz, deleteGroupQuiz,
 } from "../../lib/groupApi";
-import { pickQuizQuestions, MIN_GROUP_QUIZ } from "../../lib/groupQuiz";
 import { useStudy, getStudyData, focusMinutesSince, dateStr } from "../../lib/studyStore";
 import { WRAP } from "../../components/responsive";
 
@@ -33,15 +31,11 @@ export default function GroupDetailScreen({ navigation, route }: any) {
   const [cTitle, setCTitle] = useState("Focus challenge"), [cTarget, setCTarget] = useState(300), [cDays, setCDays] = useState(7);
   const [busy, setBusy] = useState(false);
   const { data: study } = useStudy();
-  const [quizzes, setQuizzes] = useState<GroupQuizSummary[] | null>(null); // null = quizzes unavailable (migration 018 not deployed)
-  const [qzSubject, setQzSubject] = useState<string | null>(null), [qzCount, setQzCount] = useState(5), [qzTitle, setQzTitle] = useState("");
-  const quizzable = study.subjects.filter((x) => study.questions.filter((q) => q.subjectId === x.id).length >= MIN_GROUP_QUIZ);
   const isOwner = !!group && group.owner_id === profile?.id;
 
   const load = useCallback(async () => {
     try {
-      const [gs, ps, ch, qz] = await Promise.all([fetchMyGroups(), fetchPosts(groupId), fetchChallenge(groupId), fetchGroupQuizzes(groupId).catch(() => null)]);
-      setQuizzes(qz);
+      const [gs, ps, ch] = await Promise.all([fetchMyGroups(), fetchPosts(groupId), fetchChallenge(groupId)]);
       setGroup(gs.find((g) => g.id === groupId) ?? null); setPosts(ps); setChallenge(ch); setError(null);
       if (ch) {
         // Self-report my focus minutes inside the challenge window, then show everyone's standings.
@@ -69,17 +63,6 @@ export default function GroupDetailScreen({ navigation, route }: any) {
     { text: "Cancel", style: "cancel" },
     { text: isOwner ? "Delete" : "Leave", style: "destructive", onPress: () => act(async () => { await (isOwner ? deleteGroup(groupId) : leaveGroup(groupId)); navigation.goBack(); }, "Couldn't do that") },
   ]);
-  const shareQuiz = () => act(async () => {
-    const sid = qzSubject ?? quizzable[0]?.id;
-    const sub = study.subjects.find((x) => x.id === sid);
-    const items = sid ? pickQuizQuestions(study, sid, qzCount) : [];
-    if (!sub || !items.length) throw new Error(`You need at least ${MIN_GROUP_QUIZ} questions in a subject to share a quiz.`);
-    await createGroupQuiz(groupId, qzTitle.trim() || `${sub.name} quiz`, items);
-    setQzTitle("");
-    await load();
-    Alert.alert("Quiz shared", `${items.length} questions from ${sub.name} are now in the group.`);
-  }, "Couldn't share quiz");
-  const removeQuiz = (qz: GroupQuizSummary) => Alert.alert("Delete quiz?", "Results are deleted for everyone.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => act(() => deleteGroupQuiz(qz.id), "Couldn't delete") }]);
   const newChallenge = () => act(async () => { await startChallenge(groupId, cTitle, cTarget, cDays); await load(); }, "Couldn't start challenge");
 
   if (error && !group) return <SafeAreaView style={s.safe}><View style={{ padding: spacing.xl }}><Back onPress={() => navigation.goBack()} /><Text style={s.h1}>Group unavailable</Text><Muted style={{ marginTop: 8 }}>{error}</Muted></View></SafeAreaView>;
@@ -123,35 +106,6 @@ export default function GroupDetailScreen({ navigation, route }: any) {
             <Btn label="Start challenge" onPress={newChallenge} disabled={busy || !cTitle.trim()} />
           </Card>
         ) : <Muted>No active challenge. The owner can start one.</Muted>}
-
-        {quizzes && (
-          <>
-            <Label>GROUP QUIZZES</Label>
-            {quizzes.length === 0 && <Muted>No quizzes yet. Share one made from your own practice questions.</Muted>}
-            {quizzes.map((qz) => (
-              <Card key={qz.id} style={{ marginTop: spacing.sm }}>
-                <Text style={s.h3}>{qz.title}</Text>
-                <Muted>{qz.question_count} questions · by {qz.author_name} · {qz.participants} taken</Muted>
-                <View style={[s.row, { marginTop: spacing.sm }]}>
-                  <Chip label={qz.my_result ? `Your score: ${qz.my_result.correct}/${qz.my_result.total} · results` : "Take quiz"} on={!qz.my_result} onPress={() => navigation.navigate("GroupQuiz", { quizId: qz.id })} />
-                  {(qz.created_by === profile?.id || isOwner) && <Chip label="Delete" on={false} onPress={() => removeQuiz(qz)} />}
-                </View>
-              </Card>
-            ))}
-            <Card style={{ marginTop: spacing.sm }}>
-              <Text style={s.h3}>Share a quiz</Text>
-              {quizzable.length === 0 ? <Muted>Add at least {MIN_GROUP_QUIZ} practice questions to a subject first (Learn → subject → Questions).</Muted> : (
-                <>
-                  <Muted style={{ marginTop: 4 }}>Questions are picked at random from one of your subjects.</Muted>
-                  <View style={[s.row, { marginTop: spacing.sm }]}>{quizzable.map((x) => <Chip key={x.id} label={x.name} on={(qzSubject ?? quizzable[0].id) === x.id} onPress={() => setQzSubject(x.id)} />)}</View>
-                  <View style={[s.row, { marginTop: spacing.sm }]}>{[5, 10].map((n) => <Chip key={n} label={`${n} questions`} on={qzCount === n} onPress={() => setQzCount(n)} />)}</View>
-                  <TextInput style={s.input} value={qzTitle} onChangeText={setQzTitle} placeholder="Title (optional)" placeholderTextColor={colors.textFaint} />
-                  <Btn label="Share with group" onPress={shareQuiz} disabled={busy} />
-                </>
-              )}
-            </Card>
-          </>
-        )}
 
         <Label>DISCUSSIONS</Label>
         <View style={s.row}>
