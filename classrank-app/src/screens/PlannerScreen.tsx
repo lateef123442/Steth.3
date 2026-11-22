@@ -101,6 +101,7 @@ export default function PlannerScreen({ navigation }: any) {
       {x.status === "planned" ? (
         <View style={{ gap: 6 }}>
           <View style={s.row}>
+            <Chip label="Start focus" on onPress={() => navigation.navigate("Main", { screen: "Study", params: { subject: subjectName(data, x.subjectId) } })} />
             <Chip label="Done" on onPress={() => setSessionStatus(x.id, "done")} />
             <Chip label="Edit date & time" on={false} onPress={() => { setSessionDate(parseDate(x.date)); setSessionTime(parseTime(x.time ?? data.prefs.preferredTime)); setEditingSessionId(x.id); setSessionPicker("date"); }} />
           </View>

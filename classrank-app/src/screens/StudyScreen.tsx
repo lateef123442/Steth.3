@@ -189,6 +189,9 @@ export default function StudyScreen({ navigation, route }: Props) {
           <Text style={[type.bodyMedium, { color: colors.text }]}>What happens when you focus?</Text>
           <Text style={[type.caption, { color: colors.textMuted, marginTop: 4 }]}>Steth keeps this screen awake and mutes Steth notifications. When the timer finishes, your actual study time is recorded and one planned session for that course today is marked complete. If you end early, only the time you spent is recorded. Other apps' notifications are controlled by your phone's Do Not Disturb setting.</Text>
         </View>
+        <PressableScale style={[styles.dnd, { marginTop: spacing.sm }]} onPress={() => navigation.getParent()?.navigate("Planner")}>
+          <Text style={styles.dndText}>View or edit your study plan →</Text>
+        </PressableScale>
         <View style={[styles.row, { marginTop: spacing.lg }]}>
           {[[`${focusMinutes(data, 0, 0)} min`, "today"], [`${doneToday}`, "focus sessions"], [`${focusMinutes(data, 6, 0)} min`, "this week"]].map(([v, k]) => (
             <View key={k} style={styles.stat}><Text style={styles.statV}>{v}</Text><Text style={styles.statK}>{k}</Text></View>
