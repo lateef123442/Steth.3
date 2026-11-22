@@ -53,6 +53,15 @@ export function subscribeDirect(myId: string, onMessage: (m: ChatMessage) => voi
   return () => { supabase.removeChannel(ch); };
 }
 
+/** Live unread-inbox changes, including read receipts when a conversation is opened. */
+export function subscribeUnreadMessages(myId: string, onChange: () => void) {
+  const ch = supabase.channel(`dm-unread:${myId}:${uid()}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages", filter: `recipient_id=eq.${myId}` }, onChange)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "direct_messages", filter: `recipient_id=eq.${myId}` }, onChange)
+    .subscribe(watch(onChange));
+  return () => { supabase.removeChannel(ch); };
+}
+
 /** Friend requests / acceptances / removals as they happen. */
 export function subscribeFriendships(myId: string, onChange: () => void, onReconnect?: () => void) {
   const ch = supabase.channel(`friends:${myId}:${uid()}`)

@@ -32,6 +32,7 @@ import SubjectRoomScreen from "../screens/SubjectRoomScreen";
 import StudySetupScreen from "../screens/StudySetupScreen";
 import { useStudyReminderSync } from "../hooks/useStudyReminderSync";
 import { usePushRegistration, usePushTapNavigation } from "../hooks/usePushSync";
+import useSocialNotifications from "../hooks/useSocialNotifications";
 import { useStudyCloudSync } from "../hooks/useStudyCloudSync";
 import TabIcon from "../components/animated/TabIcon";
 import { LoadingScreen } from "../components/animated/Loader";
@@ -75,7 +76,7 @@ export type RootStackParamList = {
   CourseTopic: { courseId: string; topicId: string };
   CourseDaily: { courseId: string; code?: string };
   Groups: undefined;
-  Friends: undefined;
+  Friends: { initialTab?: "Chats" | "Friends" | "Requests" | "Find people" | "Blocked" } | undefined;
   Feedback: undefined;
   AccountSettings: undefined;
   Chat: { userId: string; name: string; department?: string | null; year?: number | null; avatar_path?: string | null };
@@ -176,6 +177,7 @@ function useTabChrome() {
 }
 
 function MainTabs() {
+  const socialNotifications = useSocialNotifications();
   useStudyReminderSync();
   useStudyCloudSync();
   usePushRegistration();
@@ -190,6 +192,10 @@ function MainTabs() {
         headerStyle: { backgroundColor: colors.paper },
         headerShadowVisible: false,
         headerRight: () => <MainHeaderActions navigation={navigation} />,
+        tabBarBadge: route.name === "CommunityTab" && socialNotifications.total > 0
+          ? (socialNotifications.total > 99 ? "99+" : socialNotifications.total)
+          : undefined,
+        tabBarBadgeStyle: { backgroundColor: colors.danger, color: "#FFFFFF", fontSize: 10, fontWeight: "800" },
         tabBarActiveTintColor: colors.teal,
         tabBarInactiveTintColor: colors.textMuted,
         ...chrome,

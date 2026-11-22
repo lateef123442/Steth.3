@@ -18,9 +18,9 @@ const sub = (p: { department: string | null; year: number | null }) => [p.depart
 const ago = (iso: string) => { const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000); return m < 1 ? "now" : m < 60 ? `${m}m` : m < 1440 ? `${Math.round(m / 60)}h` : `${Math.round(m / 1440)}d`; };
 
 /** Chats, friends, requests and a people search that shows each person's name, department and year before you add them. */
-export default function FriendsScreen({ navigation }: any) {
+export default function FriendsScreen({ navigation, route }: any) {
   const { profile } = useApp();
-  const [tab, setTab] = useState<Tab>("Chats");
+  const [tab, setTab] = useState<Tab>(route?.params?.initialTab ?? "Chats");
   const [friends, setFriends] = useState<Friends | null>(null);
   const [chats, setChats] = useState<Conversation[] | null>(null);
   const [blocks, setBlocks] = useState<Person[] | null>(null);
@@ -35,6 +35,10 @@ export default function FriendsScreen({ navigation }: any) {
     catch (e: any) { setError(e?.message ?? "Couldn't load your friends."); setFriends((f) => f ?? { friends: [], incoming: [], outgoing: [] }); setChats((c) => c ?? []); }
   }, []);
   useEffect(() => { load(); return navigation.addListener("focus", load); }, [load, navigation]);
+  useEffect(() => {
+    const requestedTab = route?.params?.initialTab as Tab | undefined;
+    if (requestedTab && ["Chats", "Friends", "Requests", "Find people", "Blocked"].includes(requestedTab)) setTab(requestedTab);
+  }, [route?.params?.initialTab]);
   // a new message anywhere refreshes the chat list live
   useEffect(() => (profile ? subscribeDirect(profile.id, () => { fetchConversations().then(setChats).catch(() => {}); }, () => { fetchConversations().then(setChats).catch(() => {}); }) : undefined), [profile]);
 
@@ -73,7 +77,11 @@ export default function FriendsScreen({ navigation }: any) {
       <Text style={s.h1}>Friends & chats</Text>
       <ChipRow>
         {(["Chats", "Friends", "Requests", "Find people", "Blocked"] as Tab[]).map((t) => (
-          <Chip key={t} label={t === "Chats" && unread ? `Chats (${unread})` : t === "Requests" && requests ? `Requests (${requests})` : t} on={tab === t} onPress={() => setTab(t)} />
+          <View key={t} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Chip label={t} on={tab === t} onPress={() => setTab(t)} />
+            {t === "Chats" && unread > 0 && <Tag label={unread > 99 ? "99+" : String(unread)} color={colors.danger} />}
+            {t === "Requests" && requests > 0 && <Tag label={requests > 99 ? "99+" : String(requests)} color={colors.danger} />}
+          </View>
         ))}
       </ChipRow>
       {error && <Muted style={{ color: colors.danger }}>{error}</Muted>}
@@ -83,7 +91,7 @@ export default function FriendsScreen({ navigation }: any) {
           {chats?.length === 0 && <Empty icon="💬" title="No chats yet" body="Add a friend, then tap their name to start chatting." action={{ label: "Find people", onPress: () => setTab("Find people") }} />}
           <Grid max={2}>
             {chats?.map((c) => personRow(c, (
-              <View style={{ alignItems: "flex-end", gap: 4 }}><Muted>{ago(c.last_at)}</Muted>{c.unread > 0 && <Tag label={`${c.unread} new`} color={colors.teal} />}</View>
+              <View style={{ alignItems: "flex-end", gap: 4 }}><Muted>{ago(c.last_at)}</Muted>{c.unread > 0 && <Tag label={`${c.unread} new`} color={colors.danger} />}</View>
             ), () => open(c)))}
           </Grid>
         </>
