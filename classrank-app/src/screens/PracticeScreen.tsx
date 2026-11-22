@@ -52,6 +52,7 @@ export default function PracticeScreen({ navigation }: any) {
   const count = (m: (typeof MODES)[number]) => questionPool(data, m.mode, subjectId ?? undefined, topicId ?? undefined).length;
   const start = (m: (typeof MODES)[number]) => navigation.navigate("PracticeSession", { mode: m.mode, subjectId: subjectId ?? undefined, topicId: topicId ?? undefined, ...(["quick", "topic", "subject", "mock"].includes(m.mode) ? { questionCount } : {}) });
   const blocked = (m: (typeof MODES)[number]) => {
+    if (m.mode === "daily" && attemptedToday(data, "daily")) return "You've completed today's challenge. A fresh Daily Challenge will be available tomorrow.";
     if (m.mode === "topic" && !topicId) return "Choose a topic above to unlock Topic Quiz.";
     if (count(m) === 0) {
       if (m.mode === "review") return "No topics are due for review yet. Complete course questions first.";
@@ -67,10 +68,6 @@ export default function PracticeScreen({ navigation }: any) {
         <Text style={s.h1}>Practice</Text>
         <Muted style={{ marginTop: 4 }}>Test yourself, see where you're weak, then fix it.</Muted>
 
-        <Card onPress={() => navigation.navigate("PDFPractice")} style={{ marginTop: spacing.lg, backgroundColor: colors.violetTint, borderWidth: 0 }}>
-          <Text style={s.h3}>📄 Turn a PDF into a CBT</Text>
-          <Muted>Upload lecture notes or a textbook PDF and generate a separate multiple-choice practice test.</Muted>
-        </Card>
 
         {!!courseSyncError && <Muted style={{ color: colors.danger, marginTop: spacing.md }}>{courseSyncError}</Muted>}
         {(!ready || syncingCourses) && data.subjects.length === 0 && <Muted style={{ marginTop: spacing.lg }}>Loading your teacher-assigned courses…</Muted>}
@@ -110,13 +107,13 @@ export default function PracticeScreen({ navigation }: any) {
                 : m.blurb(available);
               const title = m.mode === "subject" ? "Course Quiz" : m.title;
               return (
-                <StaggerIn key={m.mode} index={mi}><Card onPress={() => (why ? Alert.alert(`${title} unavailable`, why) : start(m))} style={{ borderColor: why ? colors.danger : colors.teal }}>
+                <StaggerIn key={m.mode} index={mi}><Card onPress={() => (why ? Alert.alert(done ? "Daily Challenge completed" : `${title} unavailable`, why) : start(m))} style={{ borderColor: done ? colors.success : why ? colors.danger : colors.teal }}>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <EmojiIcon emoji={m.icon} style={{ fontSize: 26, marginRight: spacing.md }} />
                     <View style={{ flex: 1 }}>
                       <Text style={s.h3}>{title}{done ? "  · Done" : ""}</Text>
                       <Muted>{why ?? detail}</Muted>
-                      <Tag label={why ? "Not available yet · tap to learn why" : "Available · tap to start"} color={why ? colors.danger : colors.teal} />
+                      <Tag label={done ? "Completed today · new challenge tomorrow" : why ? "Not available yet · tap to learn why" : "Available · tap to start"} color={done ? colors.success : why ? colors.danger : colors.teal} />
                     </View>
                   </View>
                 </Card></StaggerIn>

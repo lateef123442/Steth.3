@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIsFocused } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
 import { colors, radii, spacing, type, shadow } from "../theme/tokens";
 import { useApp } from "../context/AppContext";
 import PulseRing from "../components/animated/PulseRing";
@@ -37,8 +38,9 @@ export default function HomeScreen({ navigation }: Props) {
     load();
     return (navigation as any).addListener?.("focus", load);
   }, [navigation]);
-  const plannedMin = plan.reduce((a, x) => a + x.minutes, 0);
-  const doneMin = plan.filter((x) => x.status === "done").reduce((a, x) => a + x.minutes, 0);
+  const activePlan = plan.filter((x) => x.status !== "skipped");
+  const plannedMin = activePlan.reduce((a, x) => a + x.minutes, 0);
+  const doneMin = activePlan.filter((x) => x.status === "done").reduce((a, x) => a + x.minutes, 0);
   const planProgress = plannedMin ? doneMin / plannedMin : 0;
   const streak = profile?.login_streak ?? 0;
   const weak = weakestTopic(study);
@@ -130,7 +132,7 @@ export default function HomeScreen({ navigation }: Props) {
 
         <Text style={styles.quickActionsTitle}>What would you like to do?</Text>
         <View style={styles.tiles}>
-          {([["🗓", "Study plan", "Planner"], ["🎯", "Practice", "Practice"], ["📈", "My progress", "Progress"], ["🏆", "My rank", "Leaderboard"], ["🤖", "AI helper", "Companion"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
+          {([["🗓", "Study plan", "Planner"], ["🎯", "Practice", "Practice"], ["📄", "PDF to CBT", "PDFPractice"], ["📈", "My progress", "Progress"], ["🏆", "My rank", "Leaderboard"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
             <PressableScale key={target} style={styles.tile} onPress={() => go(target)} accessibilityRole="button">
               <EmojiIcon emoji={icon} style={{ fontSize: 22 }} />
               <Text style={styles.tileText}>{label}</Text>
@@ -179,12 +181,22 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
         </View>
       </ScrollView>
+      <PressableScale
+        style={styles.aiFab}
+        onPress={() => go("Companion")}
+        accessibilityRole="button"
+        accessibilityLabel="Open AI study helper"
+        haptic="medium"
+      >
+        <Ionicons name="sparkles" size={24} color="#FFFFFF" />
+      </PressableScale>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.paper },
+  aiFab: { position: "absolute", right: spacing.xl, bottom: spacing.lg, width: 58, height: 58, borderRadius: 29, backgroundColor: colors.tealDeep, alignItems: "center", justifyContent: "center", elevation: 8, shadowColor: "#000", shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 2, borderColor: "#FFFFFF" },
   container: { padding: spacing.xl, paddingBottom: spacing.xxxl * 2 },
   heroInner: { alignItems: "center", paddingVertical: spacing.xxl, paddingHorizontal: spacing.lg },
   greeting: { ...type.h1, color: colors.textOnDark, alignSelf: "flex-start" },

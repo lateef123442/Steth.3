@@ -45,8 +45,10 @@ export default function StudyScreen({ navigation, route }: Props) {
     return unsubscribe;
   }, [ready, syncCourses, navigation]);
   const courseList = data.subjects.map((item) => item.name);
-  const [course, setCourse] = useState(data.subjects[0]?.name ?? "");
-  useEffect(() => { if (!courseList.includes(course)) setCourse(courseList[0] ?? ""); }, [courseList.join("|")]);
+  const nextPlannedSession = todaySessions(data).filter((session) => session.status === "planned").sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"))[0];
+  const defaultCourse = nextPlannedSession ? subjectName(data, nextPlannedSession.subjectId) : courseList[0] ?? "";
+  const [course, setCourse] = useState(defaultCourse);
+  useEffect(() => { if (!courseList.includes(course)) setCourse(defaultCourse); }, [courseList.join("|"), defaultCourse]);
   // Arriving from a Subject Room / recommendation: preselect the subject (and load the note to read).
   useEffect(() => {
     const p = route.params;
@@ -74,7 +76,7 @@ export default function StudyScreen({ navigation, route }: Props) {
     // Log real time spent so Home and analytics reflect actual study, not just intent.
     logFocus(course, Math.round((Date.now() - startedAt.current) / 60000));
     if (completed) {
-      const planned = todaySessions(data).find((s) => s.status === "planned" && subjectName(data, s.subjectId) === course);
+      const planned = todaySessions(data).filter((s) => s.status === "planned" && subjectName(data, s.subjectId) === course).sort((a, b) => (a.time ?? "99:99").localeCompare(b.time ?? "99:99"))[0];
       if (planned) setSessionStatus(planned.id, "done");
     }
     setActive(false);
@@ -182,9 +184,16 @@ export default function StudyScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl }}>
         <Text style={styles.h1}>Focus</Text>
-        <Text style={styles.sub}>Pick what to study. Steth mutes its own notifications and keeps your screen on.</Text>
+        <Text style={styles.sub}>A quiet study timer for one course. Choose a course and duration, then read your notes or textbook while the countdown runs.</Text>
+        <View style={{ marginTop: spacing.md, padding: spacing.lg, borderRadius: radii.md, backgroundColor: colors.violetTint }}>
+          <Text style={[type.bodyMedium, { color: colors.text }]}>What happens when you focus?</Text>
+          <Text style={[type.caption, { color: colors.textMuted, marginTop: 4 }]}>Steth keeps this screen awake and mutes Steth notifications. When the timer finishes, your actual study time is recorded and one planned session for that course today is marked complete. If you end early, only the time you spent is recorded. Other apps' notifications are controlled by your phone's Do Not Disturb setting.</Text>
+        </View>
+        <PressableScale style={[styles.dnd, { marginTop: spacing.sm }]} onPress={() => navigation.getParent()?.navigate("Planner")}>
+          <Text style={styles.dndText}>View or edit your study plan →</Text>
+        </PressableScale>
         <View style={[styles.row, { marginTop: spacing.lg }]}>
-          {[[`${focusMinutes(data, 0, 0)} min`, "today"], [`${doneToday}`, "sessions today"], [`${focusMinutes(data, 6, 0)} min`, "this week"]].map(([v, k]) => (
+          {[[`${focusMinutes(data, 0, 0)} min`, "today"], [`${doneToday}`, "focus sessions"], [`${focusMinutes(data, 6, 0)} min`, "this week"]].map(([v, k]) => (
             <View key={k} style={styles.stat}><Text style={styles.statV}>{v}</Text><Text style={styles.statK}>{k}</Text></View>
           ))}
         </View>

@@ -198,6 +198,19 @@ describe("audit fixes", () => {
       if (p.date === dateStr()) expect(h * 60 + m).toBeGreaterThan(nowMin);
     });
   });
+  it("does not overlap a suggested session with an existing later-timed session", () => {
+    const d = mk({
+      prefs: { ...EMPTY_DATA.prefs, setupDone: true, dailyMinutes: 45, preferredTime: "20:00" },
+      sessions: [{ id: "late", subjectId: "bio", date: addDaysStr(1), time: "20:30", minutes: 20, status: "planned" }],
+    });
+    const plan = generateSchedule(d, 2).filter((p) => p.date === addDaysStr(1));
+    const occupied = [{ start: 20 * 60 + 30, end: 20 * 60 + 50 }, ...plan.map((p) => {
+      const [h, m] = p.time.split(":").map(Number); return { start: h * 60 + m, end: h * 60 + m + p.minutes };
+    })];
+    for (let i = 0; i < occupied.length; i++) for (let j = i + 1; j < occupied.length; j++) {
+      expect(occupied[i].end <= occupied[j].start || occupied[j].end <= occupied[i].start).toBe(true);
+    }
+  });
   it("focus recommendation carries the subject so Focus can preselect it", () => {
     const d = mk({ sessions: [{ id: "s", subjectId: "math", date: dateStr(), minutes: 20, status: "planned" }] });
     expect(recommend(d).params).toEqual({ subject: "Mathematics" });

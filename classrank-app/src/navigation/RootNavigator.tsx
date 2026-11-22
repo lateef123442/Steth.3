@@ -124,37 +124,14 @@ export type AdminTabParamList = {
 const ExemptProfile = (props: any) => <ProGateExempt><ProfileScreen {...props} /></ProGateExempt>;
 const ExemptFeedback = (props: any) => <ProGateExempt><FeedbackScreen {...props} /></ProGateExempt>;
 
-/** Profile shortcut and compact AI/chat launcher in the native tab header. */
+/** Profile shortcut stays in the header; the AI helper lives as a Home-screen floating action. */
 function MainHeaderActions({ navigation }: { navigation: any }) {
   const { profile } = useApp();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const openRoot = (screen: "Companion" | "Friends") => {
-    setMenuOpen(false);
-    const root = navigation.getParent?.();
-    if (root?.navigate) root.navigate(screen);
-    else navigation.navigate(screen);
-  };
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 11, marginRight: 4 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 4 }}>
       <Pressable onPress={() => navigation.navigate("Profile")} accessibilityRole="button" accessibilityLabel="Open your profile and account settings" style={{ padding: 2, borderRadius: 24, borderWidth: 2, borderColor: colors.teal }}>
         {profile ? <Avatar name={profile.name} path={profile.avatar_path} size={34} /> : <Ionicons name="person-circle" size={36} color={colors.teal} />}
       </Pressable>
-      <View style={{ position: "relative" }}>
-        <Pressable onPress={() => setMenuOpen((v) => !v)} accessibilityRole="button" accessibilityLabel="Open AI and chat" style={{ width: 40, height: 40, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: colors.teal, borderWidth: 1, borderColor: "#8BE5DD" }}>
-          <Ionicons name="sparkles" size={21} color="#FFFFFF" />
-        </Pressable>
-        {menuOpen && (
-          <View style={{ position: "absolute", top: 48, right: 0, width: 142, padding: 7, borderRadius: 15, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, elevation: 12, shadowColor: "#000", shadowOpacity: 0.16, shadowRadius: 14, zIndex: 100 }}>
-            <Pressable onPress={() => openRoot("Companion")} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 10, gap: 10 }}>
-              <Ionicons name="sparkles" size={18} color={colors.teal} /><Text style={{ color: colors.ink, fontWeight: "700" }}>AI</Text>
-            </Pressable>
-            <View style={{ height: 1, backgroundColor: colors.border }} />
-            <Pressable onPress={() => openRoot("Friends")} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 11, paddingHorizontal: 10, gap: 10 }}>
-              <Ionicons name="chatbubble-ellipses" size={18} color={colors.teal} /><Text style={{ color: colors.ink, fontWeight: "700" }}>Chat</Text>
-            </Pressable>
-          </View>
-        )}
-      </View>
     </View>
   );
 }
@@ -187,8 +164,12 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route, navigation }) => ({
         headerShown: true,
-        headerTitle: "Steth",
-        headerTitleStyle: { color: colors.ink, fontWeight: "800" },
+        headerTitle: () => (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+            <Ionicons name="school" size={22} color={colors.teal} />
+            <Text style={{ color: colors.ink, fontWeight: "800", fontSize: 18 }}>Steth</Text>
+          </View>
+        ),
         headerStyle: { backgroundColor: colors.paper },
         headerShadowVisible: false,
         headerRight: () => <MainHeaderActions navigation={navigation} />,

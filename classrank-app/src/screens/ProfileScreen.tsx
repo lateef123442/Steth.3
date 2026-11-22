@@ -170,7 +170,18 @@ export default function ProfileScreen() {
           {profile.department ?? "All departments"}
           {profile.year ? ` · Year ${profile.year}` : ""}
         </Text>
-        <Text style={styles.meta}>{profile.username ? `@${profile.username}` : "No username yet"}</Text>
+        {profile.username ? (
+          <Text style={[styles.meta, { color: colors.tealDeep, fontWeight: "700" }]}>@{profile.username}</Text>
+        ) : (
+          <PressableScale
+            onPress={() => navigation.navigate("AccountSettings")}
+            style={{ alignSelf: "center", marginTop: spacing.sm, paddingVertical: spacing.sm, paddingHorizontal: spacing.lg, borderRadius: radii.pill, backgroundColor: colors.tealTint, flexDirection: "row", alignItems: "center", gap: spacing.xs }}
+            accessibilityRole="button"
+            accessibilityLabel="Add your username"
+          >
+            <Text style={{ color: colors.tealDeep, fontWeight: "800" }}>＋ Add username</Text>
+          </PressableScale>
+        )}
         <PressableScale
           style={{ alignSelf: "stretch", marginTop: spacing.lg, backgroundColor: colors.tealTint, borderRadius: radii.md, padding: spacing.lg }}
           onPress={() => navigation.navigate("AccountSettings")}
