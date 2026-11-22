@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { RefreshControl, View, Text } from "react-native";
 import { colors, spacing } from "../theme/tokens";
-import { fetchMyCourses, type MyCourse } from "../lib/courseApi";
+import { fetchMyCourses, fetchDailyQuiz, type MyCourse } from "../lib/courseApi";
 import { Screen, Grid } from "../components/responsive";
 import { Card, Empty, Muted, Tag, YearTag, s, ListSkeleton } from "../components/study/ui";
 import CourseThumb from "../components/CourseThumb";
@@ -14,16 +14,31 @@ type Props = BottomTabScreenProps<MainTabParamList, "Quiz">;
 /** Shows a separate daily quiz entry for every course the student can access. */
 export default function QuizScreen({ navigation }: Props) {
   const [courses, setCourses] = useState<MyCourse[] | null>(null);
+  const [quizAvailability, setQuizAvailability] = useState<Record<string, { questions: number; pending: number }> | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setCourses(await fetchMyCourses());
+      const myCourses = await fetchMyCourses();
+      setCourses(myCourses);
+      const availability = await Promise.all(myCourses.map(async (course) => {
+        try {
+          const daily = await fetchDailyQuiz(course.id);
+          return [course.id, { questions: daily.questions.length, pending: daily.pending_total }] as const;
+        } catch {
+          return [course.id, { questions: 0, pending: 0 }] as const;
+        }
+      }));
+      setQuizAvailability(availability.reduce<Record<string, { questions: number; pending: number }>>((map, [courseId, value]) => {
+        map[courseId] = value;
+        return map;
+      }, {}));
       setError(null);
     } catch (e: any) {
       setError(e?.message ?? "Couldn't load your course quizzes.");
       setCourses((current) => current ?? []);
+      setQuizAvailability((current) => current ?? {});
     }
   }, []);
 
@@ -42,6 +57,15 @@ export default function QuizScreen({ navigation }: Props) {
   return (
     <Screen wide refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} tintColor={colors.teal} />}>
       <Muted>Choose a course to open its daily quiz. Each course has its own questions, progress and scoring.</Muted>
+      {courses !== null && quizAvailability === null && <Card style={{ marginTop: spacing.md }}><Muted>Checking today's quizzes…</Muted></Card>}
+      {courses !== null && quizAvailability !== null && (() => {
+        const readyCourses = courses.filter((course) => (quizAvailability[course.id]?.questions ?? 0) > 0).length;
+        const readyQuestions = courses.reduce((sum, course) => sum + (quizAvailability[course.id]?.questions ?? 0), 0);
+        return <Card style={{ marginTop: spacing.md, backgroundColor: colors.tealTint, borderWidth: 0 }}>
+          <Text style={[s.h3, { color: colors.teal }]}>{readyCourses} daily {readyCourses === 1 ? "quiz" : "quizzes"} ready today</Text>
+          <Muted>{readyQuestions} available {readyQuestions === 1 ? "question" : "questions"} across your courses.</Muted>
+        </Card>;
+      })()}
       {courses === null && <ListSkeleton rows={4} />}
       {!!error && <Muted style={{ color: colors.danger, marginTop: spacing.md }}>{error}</Muted>}
       {courses?.length === 0 && !error && <Empty icon="📝" title="No courses yet" body="Your department and year courses will appear here. Once a teacher publishes course questions, you can take their daily quizzes here." />}
@@ -57,7 +81,12 @@ export default function QuizScreen({ navigation }: Props) {
               <Text style={{ color: colors.text, marginTop: 3 }} numberOfLines={2}>{course.title}</Text>
               <Muted style={{ marginTop: 4 }}>{course.department} · {course.teacher_name}</Muted>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.md }}>
-                <Tag label="Daily quiz" color={colors.teal} />
+                <Tag
+                  label={quizAvailability?.[course.id]?.questions
+                    ? `${quizAvailability[course.id].questions} ready`
+                    : quizAvailability?.[course.id]?.pending ? "Read to unlock" : "Daily quiz"}
+                  color={quizAvailability?.[course.id]?.questions ? colors.teal : colors.textMuted}
+                />
                 <Text style={{ color: colors.teal, fontWeight: "700" }}>Start →</Text>
               </View>
             </Card>
