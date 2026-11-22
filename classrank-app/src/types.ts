@@ -114,6 +114,18 @@ export interface FeedPost {
   author_id: string;
   author_name: string;
   author_role: Role;
+  comment_count: number;
+}
+
+export interface FeedComment {
+  id: string;
+  post_id: string;
+  author_id: string;
+  author_name: string;
+  author_role: Role;
+  author_username?: string | null;
+  content: string;
+  created_at: string;
 }
 
 export interface LeaderboardEntry {
