@@ -12,6 +12,7 @@ import AnimatedNumber from "../components/animated/AnimatedNumber";
 import StreakFlame from "../components/animated/StreakFlame";
 import PressableScale from "../components/animated/PressableScale";
 import { fetchRecentAnnouncements, Announcement } from "../lib/courseApi";
+import { fetchUnansweredGroupQuestionCount } from "../lib/groupQuestions";
 import { useStudy, recommend, todaySessions, subjectName, focusMinutes, weakestTopic, fmtTime12 } from "../lib/studyStore";
 import ArenaBackground from "../components/ArenaBackground";
 import StartHereCard from "../components/StartHereCard";
@@ -33,6 +34,8 @@ export default function HomeScreen({ navigation }: Props) {
   const lastWeek = focusMinutes(study, 13, 7);
   // Teacher announcements from my courses. Silent on failure (offline, or the course tables aren't deployed yet).
   const [news, setNews] = useState<Announcement[]>([]);
+  const [groupQuestionCount, setGroupQuestionCount] = useState(0);
+  useEffect(() => { if (isFocused) fetchUnansweredGroupQuestionCount().then((n) => setGroupQuestionCount(Number(n) || 0)).catch(() => setGroupQuestionCount(0)); }, [isFocused]);
   useEffect(() => {
     const load = () => fetchRecentAnnouncements().then(setNews).catch(() => setNews([]));
     load();
@@ -132,10 +135,10 @@ export default function HomeScreen({ navigation }: Props) {
 
         <Text style={styles.quickActionsTitle}>What would you like to do?</Text>
         <View style={styles.tiles}>
-          {([["🗓", "Study plan", "Planner"], ["🎯", "Practice", "Practice"], ["📄", "PDF to CBT", "PDFPractice"], ["📈", "My progress", "Progress"], ["🏆", "My rank", "Leaderboard"], ["👥", "Community", "Community"]] as const).map(([icon, label, target]) => (
+          {([["🗓", "Study plan", "Planner"], ["🎯", "Practice", "Practice"], ["📄", "PDF to CBT", "PDFPractice"], ["📈", "My progress", "Progress"], ["🏆", "My rank", "Leaderboard"], ["👥", "Study Groups", "Groups"]] as const).map(([icon, label, target]) => (
             <PressableScale key={target} style={styles.tile} onPress={() => go(target)} accessibilityRole="button">
               <EmojiIcon emoji={icon} style={{ fontSize: 22 }} />
-              <Text style={styles.tileText}>{label}</Text>
+              <Text style={styles.tileText}>{label}</Text>{target === "Groups" && groupQuestionCount > 0 && <View style={{ position: "absolute", top: -6, right: -6, minWidth: 21, height: 21, paddingHorizontal: 5, borderRadius: 11, backgroundColor: colors.ember, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{groupQuestionCount > 99 ? "99+" : groupQuestionCount}</Text></View>}
             </PressableScale>
           ))}
         </View>
