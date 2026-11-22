@@ -37,8 +37,9 @@ export default function HomeScreen({ navigation }: Props) {
     load();
     return (navigation as any).addListener?.("focus", load);
   }, [navigation]);
-  const plannedMin = plan.reduce((a, x) => a + x.minutes, 0);
-  const doneMin = plan.filter((x) => x.status === "done").reduce((a, x) => a + x.minutes, 0);
+  const activePlan = plan.filter((x) => x.status !== "skipped");
+  const plannedMin = activePlan.reduce((a, x) => a + x.minutes, 0);
+  const doneMin = activePlan.filter((x) => x.status === "done").reduce((a, x) => a + x.minutes, 0);
   const planProgress = plannedMin ? doneMin / plannedMin : 0;
   const streak = profile?.login_streak ?? 0;
   const weak = weakestTopic(study);

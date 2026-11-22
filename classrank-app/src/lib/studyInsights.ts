@@ -254,7 +254,13 @@ export function generateSchedule(d: StudyData, days = 7): Proposal[] {
     const existing = d.sessions.filter((s) => s.date === date && s.status !== "skipped");
     let remaining = budget - existing.reduce((a, s) => a + s.minutes, 0);
     const used = new Set(existing.map((s) => s.subjectId));
-    let cursorMin = tm(d.prefs.preferredTime) + existing.reduce((a, s) => a + s.minutes, 0);
+    // Respect the actual times already in the planner. Adding durations to the preferred
+    // time alone can still place a suggested block on top of a later, manually scheduled one.
+    const occupied = existing.map((s) => {
+      const start = tm(s.time && /^([01]\d|2[0-3]):[0-5]\d$/.test(s.time) ? s.time : d.prefs.preferredTime);
+      return { start, end: Math.min(24 * 60, start + Math.max(1, s.minutes)) };
+    });
+    let cursorMin = tm(d.prefs.preferredTime);
     if (i === 0) { // today: start at the next quarter-hour at least 15 min from now, never in the past
       const n = new Date();
       cursorMin = Math.max(cursorMin, Math.ceil((n.getHours() * 60 + n.getMinutes() + 15) / 15) * 15);
@@ -272,9 +278,19 @@ export function generateSchedule(d: StudyData, days = 7): Proposal[] {
       if (!scored.length) break;
       const pick = scored[0];
       const block = Math.min(remaining, remaining >= 30 && pick.score > 1 ? 25 : remaining >= 20 ? 20 : remaining >= 15 ? 15 : 10);
-      out.push({ subjectId: pick.s.id, topicId: weakTopic.get(pick.s.id), date, minutes: block, time: hhmm(cursorMin) });
+      let start = cursorMin;
+      // Move the proposed block past every conflicting interval, including earlier
+      // suggestions from this same generated plan. Round to the next quarter-hour.
+      for (let attempts = 0; attempts <= occupied.length; attempts++) {
+        const conflict = occupied.filter((slot) => start < slot.end && start + block > slot.start).sort((a, b) => a.end - b.end)[0];
+        if (!conflict) break;
+        start = Math.ceil(conflict.end / 15) * 15;
+      }
+      if (start > LAST_START || start + block > 24 * 60) break;
+      out.push({ subjectId: pick.s.id, topicId: weakTopic.get(pick.s.id), date, minutes: block, time: hhmm(start) });
+      occupied.push({ start, end: start + block });
       assigned.set(pick.s.id, (assigned.get(pick.s.id) ?? 0) + 1);
-      used.add(pick.s.id); remaining -= block; cursorMin += block; count++;
+      used.add(pick.s.id); remaining -= block; cursorMin = start + block; count++;
     }
   }
   return out;

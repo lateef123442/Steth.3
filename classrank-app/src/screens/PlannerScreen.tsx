@@ -18,6 +18,39 @@ const parseDate = (value?: string) => { if (!value) return new Date(); const [y,
 const parseTime = (value: string) => { const [h, m] = value.split(":").map(Number); const d = new Date(); d.setHours(h || 0, m || 0, 0, 0); return d; };
 const formatTime = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 const dayLabel = (d: string) => (d === dateStr() ? "Today" : d === addDaysStr(1) ? "Tomorrow" : new Date(d + "T00:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }));
+const timeMinutes = (value: string) => { const [h, m] = value.split(":").map(Number); return h * 60 + m; };
+const timeFromMinutes = (value: number) => `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+
+function hasSessionConflict(data: ReturnType<typeof useStudy>["data"], date: string, time: string, minutes: number, ignoreId?: string) {
+  const start = timeMinutes(time), end = start + minutes;
+  return data.sessions.some((session) => {
+    if (session.id === ignoreId || session.date !== date || session.status !== "planned") return false;
+    const otherStart = timeMinutes(session.time ?? data.prefs.preferredTime);
+    return start < otherStart + session.minutes && end > otherStart;
+  });
+}
+
+function nextAvailableSlot(data: ReturnType<typeof useStudy>["data"], minutes: number) {
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  let date = dateStr();
+  let start = Math.max(timeMinutes(data.prefs.preferredTime), Math.ceil((nowMinutes + 15) / 15) * 15);
+  for (let day = 0; day < 7; day++) {
+    const sessions = data.sessions.filter((session) => session.date === date && session.status === "planned");
+    for (let attempt = 0; attempt <= sessions.length; attempt++) {
+      if (start + minutes > 24 * 60) break;
+      const conflict = sessions.map((session) => {
+        const from = timeMinutes(session.time ?? data.prefs.preferredTime);
+        return { from, to: Math.min(24 * 60, from + session.minutes) };
+      }).filter((slot) => start < slot.to && start + minutes > slot.from).sort((a, b) => a.to - b.to)[0];
+      if (!conflict) return { date, time: timeFromMinutes(start) };
+      start = Math.ceil(conflict.to / 15) * 15;
+    }
+    date = addDaysStr(1, parseDate(date));
+    start = timeMinutes(data.prefs.preferredTime);
+  }
+  return null;
+}
 
 export default function PlannerScreen({ navigation }: any) {
   const { data, ready } = useStudy();
@@ -87,6 +120,7 @@ export default function PlannerScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }} keyboardShouldPersistTaps="handled">
         <Back onPress={() => navigation.goBack()} />
         <Text style={s.h1}>Study planner</Text>
+        <Muted style={{ marginTop: spacing.xs }}>Plan when you will study each course. Add your own sessions or ask Steth to suggest a week based on your exam dates and areas to improve. Mark sessions done, skip them, or change their date and time here.</Muted>
         <Btn ghost label="Suggest my week" onPress={suggest} disabled={!data.subjects.length} />
         {!!syncError && <Muted style={{ color: colors.danger, marginTop: spacing.sm }}>{syncError}</Muted>}
 
@@ -109,7 +143,11 @@ export default function PlannerScreen({ navigation }: any) {
             {missed.map((x) => (
               <Card key={x.id} style={{ flexDirection: "row", alignItems: "center", backgroundColor: colors.emberTint }}>
                 <View style={{ flex: 1 }}><Text style={s.h3}>{subjectName(data, x.subjectId)} · {x.minutes} min</Text><Muted>{dayLabel(x.date)}</Muted></View>
-                <Chip label="Move to today" on onPress={() => rescheduleSession(x.id, dateStr(), data.prefs.preferredTime)} />
+                <Chip label="Find next free time" on onPress={() => {
+                  const slot = nextAvailableSlot(data, x.minutes);
+                  if (!slot) return Alert.alert("No free time found", "There is no open slot in the next 7 days. Edit or skip another session first.");
+                  rescheduleSession(x.id, slot.date, slot.time);
+                }} />
               </Card>
             ))}
           </>
@@ -140,7 +178,16 @@ export default function PlannerScreen({ navigation }: any) {
             </View>
             {editingSessionId ? (
               <View style={s.row}>
-                <Btn label="Save date & time" onPress={() => { rescheduleSession(editingSessionId, localDateString(sessionDate), formatTime(sessionTime)); setEditingSessionId(null); setSessionPicker(null); }} />
+                <Btn label="Save date & time" onPress={() => {
+                const date = localDateString(sessionDate), time = formatTime(sessionTime);
+                const start = timeMinutes(time);
+                const session = data.sessions.find((item) => item.id === editingSessionId);
+                if (!session) return Alert.alert("Session not found", "Refresh the planner and try again.");
+                if (date < dateStr() || (date === dateStr() && start <= new Date().getHours() * 60 + new Date().getMinutes())) return Alert.alert("Choose a future time", "A planned session must be scheduled for a future time.");
+                if (start + session.minutes > 24 * 60) return Alert.alert("Time range", "This session would run past midnight. Choose an earlier start time.");
+                if (hasSessionConflict(data, date, time, session.minutes, editingSessionId)) return Alert.alert("Time conflict", "Another planned session already overlaps this time. Choose a different time.");
+                rescheduleSession(editingSessionId, date, time); setEditingSessionId(null); setSessionPicker(null);
+              }} />
                 <Btn ghost label="Cancel edit" onPress={() => { setEditingSessionId(null); setSessionPicker(null); }} />
               </View>
             ) : (
@@ -148,11 +195,15 @@ export default function PlannerScreen({ navigation }: any) {
                 const duration = Number(customMins);
                 if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return Alert.alert("Session length", "Enter a whole number from 1 to 1440 minutes.");
                 if (!chosen) return;
-                addSession(chosen, duration, localDateString(sessionDate), formatTime(sessionTime));
+                const date = localDateString(sessionDate), time = formatTime(sessionTime), start = timeMinutes(time);
+                if (date < dateStr() || (date === dateStr() && start <= new Date().getHours() * 60 + new Date().getMinutes())) return Alert.alert("Choose a future time", "A planned session must be scheduled for a future time.");
+                if (start + duration > 24 * 60) return Alert.alert("Time range", "This session would run past midnight. Choose an earlier start time.");
+                if (hasSessionConflict(data, date, time, duration)) return Alert.alert("Time conflict", "Another planned session already overlaps this time. Choose a different time.");
+                addSession(chosen, duration, date, time);
               }} />
             )}
             {sessionPicker && <>
-              <DateTimePicker value={sessionPicker === "date" ? sessionDate : sessionTime} mode={sessionPicker} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
+              <DateTimePicker value={sessionPicker === "date" ? sessionDate : sessionTime} mode={sessionPicker} minimumDate={sessionPicker === "date" ? new Date() : undefined} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
                 if (event.type === "dismissed") { setSessionPicker(null); return; }
                 if (value) { if (sessionPicker === "date") setSessionDate(value); else setSessionTime(value); }
                 if (Platform.OS !== "ios") setSessionPicker(null);
