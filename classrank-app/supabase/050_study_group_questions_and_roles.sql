@@ -142,12 +142,13 @@ begin
         (select count(*) from group_question_answers a where a.question_id = q.id) as answered_count,
         (select count(*) from group_question_answers a where a.question_id = q.id and a.is_correct) as correct_count,
         (select count(*) from group_question_answers a where a.question_id = q.id and not a.is_correct) as incorrect_count,
-        (select coalesce(jsonb_agg(jsonb_build_object(
-          'profile_id', a.profile_id, 'name', p.name, 'selected_option', a.selected_option,
-          'is_correct', a.is_correct, 'answered_at', a.answered_at
-        ) order by a.answered_at), '[]'::jsonb)
+        case when mine.profile_id is not null then (
+          select coalesce(jsonb_agg(jsonb_build_object(
+            'profile_id', a.profile_id, 'name', p.name, 'selected_option', a.selected_option,
+            'is_correct', a.is_correct, 'answered_at', a.answered_at
+          ) order by a.answered_at), '[]'::jsonb)
           from group_question_answers a join profiles p on p.id = a.profile_id where a.question_id = q.id
-        ) as answers
+        ) else '[]'::jsonb end as answers
       from group_questions q
       join profiles pr on pr.id = q.created_by
       left join group_question_answers mine on mine.question_id = q.id and mine.profile_id = auth.uid()
