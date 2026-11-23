@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Text, ScrollView, TextInput, Alert, View, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../../theme/tokens";
-import { Back, Card, Chip, Muted, s, ListSkeleton } from "../../components/study/ui";
+import { Back, Card, Chip, Label, Muted, s, ListSkeleton } from "../../components/study/ui";
 import { fetchMyGroups, StudyGroup } from "../../lib/groupApi";
 import { requestGroupJoin } from "../../lib/groupQuestions";
 import StaggerIn from "../../components/animated/StaggerIn";
