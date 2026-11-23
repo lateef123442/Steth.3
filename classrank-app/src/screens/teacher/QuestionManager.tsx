@@ -4,6 +4,7 @@ import { colors, spacing, type } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Btn, Card, Chip, Empty, Field, Label, Muted, Tag, s } from "../../components/study/ui";
 import { ChipRow } from "../../components/responsive";
+import Dropdown from "../../components/Dropdown";
 import { saveQuestion, saveQuestionsBulk, deleteCourseContent } from "../../lib/courseApi";
 import { CourseBundle, CourseTopic, QuestionPurpose } from "../../lib/studyCourseSync";
 import { generateQuestions, FileInfo } from "../../lib/studyAi";
@@ -120,10 +121,14 @@ export default function QuestionManager({ courseId, bundle, purpose, topics, fix
       {!pinned && (
         <>
           <Muted style={{ fontWeight: "600" }}>Topic{purpose === "daily" ? " (students unlock it by reading this topic)" : ""}</Muted>
-          <ChipRow>
-            <Chip label="No topic" on={topicId === null} onPress={() => setTopicId(null)} />
-            {topics.map((t) => <Chip key={t.id} label={t.title} on={topicId === t.id} onPress={() => setTopicId(t.id)} />)}
-          </ChipRow>
+          <Dropdown
+            value={topicId}
+            options={[{ value: "", label: "No topic" }, ...topics.map((t) => ({ value: t.id, label: t.title }))]}
+            onSelect={(value) => setTopicId(value || null)}
+            placeholder="Choose a topic"
+            title="Choose a topic"
+            searchable
+          />
         </>
       )}
       <Field value={text} onChangeText={setText} placeholder="Question" multiline />
@@ -195,10 +200,14 @@ function QuestionEditCard({ q, topics, pinned, busy, onSave, onCancel }: {
       {!pinned && topics.length > 0 && (
         <>
           <Muted style={{ fontWeight: "600", marginTop: spacing.sm }}>Topic</Muted>
-          <ChipRow>
-            <Chip label="No topic" on={topicId === null} onPress={() => setTopicId(null)} />
-            {topics.map((t) => <Chip key={t.id} label={t.title} on={topicId === t.id} onPress={() => setTopicId(t.id)} />)}
-          </ChipRow>
+          <Dropdown
+            value={topicId}
+            options={[{ value: "", label: "No topic" }, ...topics.map((t) => ({ value: t.id, label: t.title }))]}
+            onSelect={(value) => setTopicId(value || null)}
+            placeholder="Choose a topic"
+            title="Choose a topic"
+            searchable
+          />
         </>
       )}
       <Field value={text} onChangeText={setText} placeholder="Question" multiline />

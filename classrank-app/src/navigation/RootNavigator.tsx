@@ -44,6 +44,7 @@ import CourseTopicScreen from "../screens/community/CourseTopicScreen";
 import CourseDailyScreen from "../screens/community/CourseDailyScreen";
 import { useLayout } from "../components/responsive";
 import GroupsScreen from "../screens/community/GroupsScreen";
+import GroupCreateScreen from "../screens/community/GroupCreateScreen";
 import GroupDetailScreen from "../screens/community/GroupDetailScreen";
 import GroupQuizScreen from "../screens/community/GroupQuizScreen";
 import ExamScreen from "../screens/community/ExamScreen";
@@ -77,6 +78,7 @@ export type RootStackParamList = {
   CourseTopic: { courseId: string; topicId: string };
   CourseDaily: { courseId: string; code?: string };
   Groups: undefined;
+  GroupCreate: undefined;
   Friends: { initialTab?: "Chats" | "Friends" | "Requests" | "Find people" | "Blocked" } | undefined;
   Feedback: undefined;
   AccountSettings: undefined;
@@ -361,6 +363,7 @@ export default function RootNavigator() {
           <Stack.Screen name="CourseTopic" component={CourseTopicScreen} />
           <Stack.Screen name="CourseDaily" component={CourseDailyScreen} />
           <Stack.Screen name="Groups" component={GroupsScreen} />
+          <Stack.Screen name="GroupCreate" component={GroupCreateScreen} />
           <Stack.Screen name="Group" component={GroupDetailScreen} />
           <Stack.Screen name="GroupChat" component={GroupChatScreen} />
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
