@@ -5,6 +5,7 @@ import { colors, spacing } from "../../theme/tokens";
 import { Back, Card, Chip, Label, Muted, s, ListSkeleton } from "../../components/study/ui";
 import { fetchMyGroups, StudyGroup } from "../../lib/groupApi";
 import { requestGroupJoin } from "../../lib/groupQuestions";
+import { fetchUnreadJoinedMemberCounts } from "../../lib/groupQuestions";
 import StaggerIn from "../../components/animated/StaggerIn";
 import { WRAP } from "../../components/responsive";
 
@@ -13,9 +14,14 @@ export default function GroupsScreen({ navigation }: any) {
   const [error, setError] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [joinedCounts, setJoinedCounts] = useState<Record<string, number>>({});
 
   const load = useCallback(async () => {
-    try { setGroups(await fetchMyGroups()); setError(null); } catch (e: any) { setError(e?.message ?? "Couldn't load your groups."); setGroups((g) => g ?? []); }
+    try {
+      const nextGroups = await fetchMyGroups(); setGroups(nextGroups); setError(null);
+      const counts = await fetchUnreadJoinedMemberCounts().catch(() => ({}));
+      setJoinedCounts(counts);
+    } catch (e: any) { setError(e?.message ?? "Couldn't load your groups."); setGroups((g) => g ?? []); }
   }, []);
   useEffect(() => { load(); return navigation.addListener("focus", load); }, [load, navigation]);
 
@@ -43,7 +49,10 @@ export default function GroupsScreen({ navigation }: any) {
         {groups?.length === 0 && !error && <Muted style={{ marginTop: spacing.sm }}>No groups yet. Start one or join with a friend's code.</Muted>}
         {groups?.map((g, i) => (
           <StaggerIn key={g.id} index={i}><Card style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("Group", { groupId: g.id })}>
-            <Text style={s.h3}>{g.official ? "Official · " : ""}{g.name}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              <Text style={[s.h3, { flex: 1 }]}>{g.official ? "Official · " : ""}{g.name}</Text>
+              {!!joinedCounts[g.id] && <View style={{ minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{joinedCounts[g.id] > 99 ? "99+" : joinedCounts[g.id]}</Text></View>}
+            </View>
             <Muted>{g.official ? `Class group${g.year ? ` · Year ${g.year}` : ""}${g.owner_name ? ` · ${g.owner_name}` : ""} · ` : ""}{g.member_count} member{g.member_count === 1 ? "" : "s"}{g.active_challenge ? ` · ${g.active_challenge}` : ""}</Muted>
           </Card></StaggerIn>
         ))}

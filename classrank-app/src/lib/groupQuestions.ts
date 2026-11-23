@@ -66,3 +66,10 @@ export const fetchGroupActivity = async (groupId: string) =>
   (await call<GroupActivity[]>("list_group_activity", { p_group_id: groupId })) ?? [];
 export const requestGroupJoin = (code: string) =>
   call<{ status: "member" | "pending"; request_id?: string; group_id?: string; name: string }>("request_group_join", { p_code: code });
+
+export const fetchUnreadJoinedMemberCounts = async (): Promise<Record<string, number>> => {
+  const rows = await call<Array<{ group_id: string; unread_count: number }>>("my_unread_group_join_counts");
+  return Object.fromEntries((rows ?? []).map((r) => [r.group_id, Number(r.unread_count) || 0]));
+};
+export const markGroupJoinActivityRead = (groupId: string) =>
+  call<void>("mark_group_join_activity_read", { p_group_id: groupId });

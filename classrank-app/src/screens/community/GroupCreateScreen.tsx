@@ -25,9 +25,8 @@ export default function GroupCreateScreen({ navigation }: any) {
     setBusy(true);
     try {
       const group = await createGroup(name.trim(), description.trim(), courseId);
-      Alert.alert("Group created", `Share this code so friends can join: ${group.join_code}`, [
-        { text: "Open group", onPress: () => navigation.replace("Group", { groupId: group.id }) },
-        { text: "Done", onPress: () => navigation.goBack() },
+      Alert.alert("Group created", `Your group is ready. Share this invite code with classmates: ${group.join_code}`, [
+        { text: "Open group chat", onPress: () => navigation.replace("GroupChat", { groupId: group.id, name: group.name ?? name.trim() }) },
       ]);
     } catch (error: any) {
       Alert.alert("Couldn't create group", error?.message ?? "Please try again.");
