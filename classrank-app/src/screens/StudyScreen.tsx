@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { colors, radii, spacing, type } from "../theme/tokens";
 import PressableScale from "../components/animated/PressableScale";
+import Dropdown from "../components/Dropdown";
 import { setNotificationsMuted } from "../lib/notifications";
 import Breathing from "../components/animated/Breathing";
 import Reveal from "../components/animated/Reveal";
@@ -264,7 +265,14 @@ export default function StudyScreen({ navigation, route }: Props) {
 
         <Text style={styles.label}>COURSE</Text>
         {courseList.length ? (
-          <View style={styles.row}>{courseList.map((name) => <Chip key={name} label={name} on={course === name} onPress={() => setCourse(name)} />)}</View>
+          <Dropdown
+            value={course || null}
+            options={courseList.map((name) => ({ value: name, label: name }))}
+            onSelect={setCourse}
+            placeholder="Choose a course for this focus session"
+            title="Choose a course"
+            searchable
+          />
         ) : (
           <Text style={styles.sub}>{ready ? "No courses have been assigned yet. Your teachers' courses will appear here automatically." : "Loading your assigned courses…"}</Text>
         )}

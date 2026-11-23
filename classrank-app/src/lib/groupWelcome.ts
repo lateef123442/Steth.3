@@ -20,9 +20,15 @@ export async function markGroupWelcomeNotificationRead(id: string): Promise<void
   if (error) throw error;
 }
 
+let groupWelcomeSubscriptionSequence = 0;
+
 export function subscribeGroupWelcomeNotifications(profileId: string, onChange: () => void, scope = "badge") {
-  const channel = supabase.channel("group-welcome:" + profileId + ":" + scope)
+  // Supabase channel names are shared by the client. A duplicate name can return an
+  // already-subscribed channel; calling .on() on it throws. Give every live listener
+  // its own channel while still registering handlers before subscribe().
+  const channelName = `group-welcome:${profileId}:${scope}:${++groupWelcomeSubscriptionSequence}`;
+  const channel = supabase.channel(channelName)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_welcome_notifications", filter: `profile_id=eq.${profileId}` }, onChange)
     .subscribe();
-  return () => { supabase.removeChannel(channel); };
+  return () => { void supabase.removeChannel(channel); };
 }
