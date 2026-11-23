@@ -10,6 +10,7 @@ import {
   generateSchedule, missedSessions, subjectName, topicName, daysUntil, dateStr, addDaysStr, fmtTime12, PlannedSession,
 } from "../lib/studyStore";
 import { WRAP } from "../components/responsive";
+import Dropdown from "../components/Dropdown";
 import { syncMyCoursesToStudy } from "../lib/courseApi";
 
 const MINUTES = [10, 20, 30, 45];
@@ -170,7 +171,16 @@ export default function PlannerScreen({ navigation }: any) {
           <>
             <Label>ADD A SESSION</Label>
             <View style={s.row}>{days.slice(0, 4).map((d, i) => <Chip key={d} label={i === 0 ? "Today" : i === 1 ? "Tomorrow" : dayLabel(d).split(",")[0]} on={offset === i} onPress={() => { setOffset(i); setSessionDate(parseDate(d)); }} />)}</View>
-            <View style={[s.row, { marginTop: spacing.sm }]}>{data.subjects.map((x) => <Chip key={x.id} label={x.name} on={chosen === x.id} onPress={() => setPickId(x.id)} />)}</View>
+            <View style={{ marginTop: spacing.sm }}>
+              <Dropdown
+                value={chosen ?? null}
+                options={data.subjects.map((x) => ({ value: x.id, label: x.name }))}
+                onSelect={setPickId}
+                placeholder="Choose a course for this session"
+                title="Choose a course"
+                searchable
+              />
+            </View>
             <View style={[s.row, { marginTop: spacing.sm }]}>{MINUTES.map((m) => <Chip key={m} label={`${m} min`} on={mins === m} onPress={() => { setMins(m); setCustomMins(String(m)); }} />)}</View>
             <TextInput style={s.input} value={customMins} onChangeText={setCustomMins} placeholder="Session length in minutes" placeholderTextColor={colors.textFaint} keyboardType="number-pad" />
             <View style={s.row}>
