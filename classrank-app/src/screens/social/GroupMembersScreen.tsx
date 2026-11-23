@@ -7,7 +7,7 @@ import Avatar from "../../components/Avatar";
 import { useApp } from "../../context/AppContext";
 import { fetchGroupMembers, addGroupMember, searchPeople, GroupMember, PersonResult } from "../../lib/socialApi";
 import { fetchMyGroups } from "../../lib/groupApi";
-import { fetchGroupJoinRequests, reviewGroupJoinRequest, fetchGroupActivity, setGroupAdmin, GroupJoinRequest, GroupActivity } from "../../lib/groupQuestions";
+import { fetchGroupJoinRequests, reviewGroupJoinRequest, fetchGroupActivity, setGroupAdmin, markGroupJoinActivityRead, GroupJoinRequest, GroupActivity } from "../../lib/groupQuestions";
 
 export default function GroupMembersScreen({ navigation, route }: any) {
   const { groupId, name } = route.params as { groupId: string; name: string };
@@ -32,6 +32,7 @@ export default function GroupMembersScreen({ navigation, route }: any) {
       if (manager) {
         const [r, a] = await Promise.all([fetchGroupJoinRequests(groupId), fetchGroupActivity(groupId)]);
         setRequests(r); setActivity(a);
+        await markGroupJoinActivityRead(groupId).catch(() => {});
       } else { setRequests([]); setActivity([]); }
     } catch (e: any) {
       Alert.alert("Couldn't load group members", e?.message ?? "Try again.");
