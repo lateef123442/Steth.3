@@ -20,6 +20,8 @@ interface Props {
 /** Tap-to-open dropdown: a field that opens a full-screen, scrollable (and optionally searchable) list. */
 export default function Dropdown({ value, options, onSelect, placeholder = "Select", title, searchable, emptyText = "No results" }: Props) {
   const [open, setOpen] = useState(false);
+  // Long lists are searchable by default; callers can still explicitly disable it with searchable={false}.
+  const showSearch = searchable ?? options.length >= 8;
   const [query, setQuery] = useState("");
   const selected = options.find((o) => o.value === value);
 
@@ -46,7 +48,7 @@ export default function Dropdown({ value, options, onSelect, placeholder = "Sele
               <Text style={styles.title}>{title ?? placeholder}</Text>
               <Pressable onPress={close} hitSlop={12}><Text style={styles.close}>Close</Text></Pressable>
             </View>
-            {searchable && (
+            {showSearch && (
               <TextInput
                 style={styles.search}
                 value={query}

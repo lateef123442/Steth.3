@@ -1,34 +1,25 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Text, ScrollView, TextInput, Alert, View } from "react-native";
+import { Text, ScrollView, TextInput, Alert, View, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../../theme/tokens";
-import { Back, Btn, Card, Chip, Label, Muted, s, ListSkeleton } from "../../components/study/ui";
-import { fetchMyGroups, createGroup, StudyGroup } from "../../lib/groupApi";
+import { Back, Card, Chip, Muted, s, ListSkeleton } from "../../components/study/ui";
+import { fetchMyGroups, StudyGroup } from "../../lib/groupApi";
 import { requestGroupJoin } from "../../lib/groupQuestions";
-import { fetchMyCourses, MyCourse } from "../../lib/courseApi";
 import StaggerIn from "../../components/animated/StaggerIn";
 import { WRAP } from "../../components/responsive";
 
 export default function GroupsScreen({ navigation }: any) {
   const [groups, setGroups] = useState<StudyGroup[] | null>(null);
-  const [courses, setCourses] = useState<MyCourse[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState(""), [desc, setDesc] = useState(""), [courseId, setCourseId] = useState<string | null>(null);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try { setGroups(await fetchMyGroups()); setError(null); } catch (e: any) { setError(e?.message ?? "Couldn't load your groups."); setGroups((g) => g ?? []); }
-    fetchMyCourses().then(setCourses).catch(() => {});
   }, []);
   useEffect(() => { load(); return navigation.addListener("focus", load); }, [load, navigation]);
 
   const run = async (fn: () => Promise<void>, fail: string) => { if (busy) return; setBusy(true); try { await fn(); } catch (e: any) { Alert.alert(fail, e?.message ?? "Try again."); } finally { setBusy(false); } };
-  const create = () => run(async () => {
-    const g = await createGroup(name, desc, courseId);
-    setName(""); setDesc(""); setCourseId(null); await load();
-    Alert.alert("Group created", `Share this code so friends can join: ${g.join_code}`, [{ text: "Open", onPress: () => navigation.navigate("Group", { groupId: g.id }) }]);
-  }, "Couldn't create group");
   const join = () => run(async () => {
     const result = await requestGroupJoin(code);
     setCode(""); await load();
@@ -40,7 +31,13 @@ export default function GroupsScreen({ navigation }: any) {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }} keyboardShouldPersistTaps="handled">
         <Back onPress={() => navigation.goBack()} />
-        <Text style={s.h1}>Study groups</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md }}>
+          <Text style={[s.h1, { flex: 1 }]}>Study groups</Text>
+          <Pressable onPress={() => navigation.navigate("GroupCreate")} accessibilityRole="button" accessibilityLabel="Create a new study group" style={{ flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: colors.teal, borderRadius: 24, paddingHorizontal: 14, paddingVertical: 10 }}>
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "800", lineHeight: 22 }}>＋</Text>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Create</Text>
+          </Pressable>
+        </View>
         {groups === null && <ListSkeleton />}
         {error && <Muted style={{ color: colors.danger, marginTop: spacing.sm }}>{error}</Muted>}
         {groups?.length === 0 && !error && <Muted style={{ marginTop: spacing.sm }}>No groups yet. Start one or join with a friend's code.</Muted>}
@@ -57,14 +54,6 @@ export default function GroupsScreen({ navigation }: any) {
           <Chip label="Join" on onPress={join} />
         </View>
 
-        <Label>START A GROUP</Label>
-        <TextInput style={s.input} value={name} onChangeText={setName} placeholder="Name (e.g. CSC 201 exam crew)" placeholderTextColor={colors.textFaint} />
-        <TextInput style={s.input} value={desc} onChangeText={setDesc} placeholder="What's it for? (optional)" placeholderTextColor={colors.textFaint} />
-        {courses.length > 0 && (<>
-          <Muted style={{ marginTop: spacing.sm }}>Link to one of your courses (optional)</Muted>
-          <View style={[s.row, { marginTop: 6 }]}>{courses.map((c) => <Chip key={c.id} label={c.code} on={courseId === c.id} onPress={() => setCourseId(courseId === c.id ? null : c.id)} />)}</View>
-        </>)}
-        <Btn label={busy ? "Working…" : "Create group"} onPress={create} disabled={busy || name.trim().length < 2} />
       </ScrollView>
     </SafeAreaView>
   );

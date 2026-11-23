@@ -8,6 +8,7 @@ import { useStudy, questionPool, topicStats, scoreHistory, subjectName, attempte
 import StaggerIn from "../components/animated/StaggerIn";
 import { WRAP } from "../components/responsive";
 import { syncMyCoursesToStudy } from "../lib/courseApi";
+import Dropdown from "../components/Dropdown";
 
 import EmojiIcon from "../components/EmojiIcon";
 const MODES: { mode: QuizMode; icon: string; title: string; blurb: (n: number) => string; need: "subject" | "topic" | "any" }[] = [
@@ -78,14 +79,25 @@ export default function PracticeScreen({ navigation }: any) {
         ) : data.subjects.length > 0 ? (
           <>
             <Label>COURSES</Label>
-            <View style={s.row}>
-              <Chip label="All courses" on={!subjectId} onPress={() => { setSubjectId(null); setTopicId(null); }} />
-              {data.subjects.map((x) => <Chip key={x.id} label={x.name} on={subjectId === x.id} onPress={() => { setSubjectId(x.id); setTopicId(null); }} />)}
-            </View>
+            <Dropdown
+              value={subjectId}
+              options={[{ value: "", label: "All courses" }, ...data.subjects.map((x) => ({ value: x.id, label: x.name }))]}
+              onSelect={(value) => { setSubjectId(value || null); setTopicId(null); }}
+              placeholder="Choose a course"
+              title="Choose a course"
+              searchable
+            />
             {topics.length > 0 && (
               <>
                 <Label>TOPICS (FOR TOPIC QUIZ)</Label>
-                <View style={s.row}>{topics.map((t) => <Chip key={t.id} label={t.name} on={topicId === t.id} onPress={() => setTopicId(topicId === t.id ? null : t.id)} />)}</View>
+                <Dropdown
+                  value={topicId}
+                  options={[{ value: "", label: "All topics" }, ...topics.map((t) => ({ value: t.id, label: t.name }))]}
+                  onSelect={(value) => setTopicId(value || null)}
+                  placeholder="Choose a topic"
+                  title="Choose a topic"
+                  searchable
+                />
               </>
             )}
 

@@ -4,6 +4,7 @@ import { colors, spacing } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Btn, Card, Chip, Empty, Field, Label, Muted, Tag, s } from "../../components/study/ui";
 import { ChipRow } from "../../components/responsive";
+import Dropdown from "../../components/Dropdown";
 import { saveTopic, deleteTopic, moveTopic, saveResource, editFileResource, deleteCourseContent, removeMaterialFile } from "../../lib/courseApi";
 import { CourseBundle, CourseTopic } from "../../lib/studyCourseSync";
 import { fmtSize } from "../../lib/fileRules";
@@ -111,10 +112,14 @@ function ResourceRow({ m, courseId, topics, busy, act }: { m: CourseBundle["mate
         {topics.length > 0 && (
           <>
             <Muted style={{ marginTop: spacing.sm, fontWeight: "600" }}>Topic</Muted>
-            <ChipRow>
-              <Chip label="No topic" on={topicId === null} onPress={() => setTopicId(null)} />
-              {topics.map((t) => <Chip key={t.id} label={t.title} on={topicId === t.id} onPress={() => setTopicId(t.id)} />)}
-            </ChipRow>
+            <Dropdown
+              value={topicId}
+              options={[{ value: "", label: "No topic" }, ...topics.map((t) => ({ value: t.id, label: t.title }))]}
+              onSelect={(value) => setTopicId(value || null)}
+              placeholder="Choose a topic"
+              title="Move resource to topic"
+              searchable
+            />
           </>
         )}
         <View style={[s.row, { marginTop: spacing.sm }]}>
