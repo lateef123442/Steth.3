@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, ScrollView, TextInput, Alert, Platform } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -78,10 +78,28 @@ export default function PlannerScreen({ navigation }: any) {
   const [sessionTime, setSessionTime] = useState<Date>(() => parseTime(data.prefs.preferredTime));
   const [sessionPicker, setSessionPicker] = useState<"date" | "time" | null>(null);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setClockNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const chosen = pickId ?? data.subjects[0]?.id;
   const missed = missedSessions(data);
   const days = Array.from({ length: 7 }, (_, i) => addDaysStr(i));
   const upcoming = (d: string) => data.sessions.filter((x) => x.date === d).sort((a, b) => (a.time ?? "99").localeCompare(b.time ?? "99"));
+  const nextSession = useMemo(() => data.sessions
+    .filter((x) => x.status === "planned")
+    .map((x) => ({ ...x, startsAt: new Date(`${x.date}T${x.time ?? data.prefs.preferredTime}:00`).getTime() }))
+    .filter((x) => x.startsAt > clockNow)
+    .sort((a, b) => a.startsAt - b.startsAt)[0] ?? null, [data.sessions, data.prefs.preferredTime, clockNow]);
+  const countdown = nextSession ? (() => {
+    const totalSeconds = Math.max(0, Math.floor((nextSession.startsAt - clockNow) / 1000));
+    const daysLeft = Math.floor(totalSeconds / 86400);
+    const hoursLeft = Math.floor((totalSeconds % 86400) / 3600);
+    const minutesLeft = Math.floor((totalSeconds % 3600) / 60);
+    const secondsLeft = totalSeconds % 60;
+    return daysLeft > 0 ? `${daysLeft}d ${hoursLeft}h ${minutesLeft}m` : `${hoursLeft}h ${minutesLeft}m ${secondsLeft}s`;
+  })() : null;
 
   const suggest = () => {
     const plan = generateSchedule(data, 7);
@@ -122,7 +140,25 @@ export default function PlannerScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }} keyboardShouldPersistTaps="handled">
         <Back onPress={() => navigation.goBack()} />
         <Text style={s.h1}>Study planner</Text>
-        <Muted style={{ marginTop: spacing.xs }}>Plan when you will study each course. Add your own sessions or ask Steth to suggest a week based on your exam dates and areas to improve. Mark sessions done, skip them, or change their date and time here.</Muted>
+        <Muted style={{ marginTop: spacing.xs }}>Your personal timetable for studying. Choose a course, decide what day and time you will study, then follow your sessions and track what you complete. It helps you spread revision across the week instead of cramming before an exam.</Muted>
+        <Card style={{ marginTop: spacing.md, backgroundColor: colors.card }}>
+          <Label>NEXT STUDY SESSION</Label>
+          {nextSession ? <>
+            <Text style={[s.h2, { color: colors.text, marginTop: spacing.xs }]}>{subjectName(data, nextSession.subjectId)}</Text>
+            <Text style={[s.h1, { color: colors.teal, marginTop: spacing.xs }]}>{countdown}</Text>
+            <Muted>Time until your session · {dayLabel(nextSession.date)} at {fmtTime12(nextSession.time ?? data.prefs.preferredTime)} · {nextSession.minutes} minutes</Muted>
+            <View style={[s.row, { marginTop: spacing.sm }]}>
+              <Chip label="Start focus" on onPress={() => navigation.navigate("Main", { screen: "Study", params: { subject: subjectName(data, nextSession.subjectId) } })} />
+            </View>
+          </> : <>
+            <Text style={[s.h3, { marginTop: spacing.xs }]}>No upcoming session yet</Text>
+            <Muted>Add a study session below or use “Suggest my week” to build a timetable from your courses.</Muted>
+          </>}
+        </Card>
+        <Card style={{ marginTop: spacing.sm }}>
+          <Label>HOW TO USE YOUR PLANNER</Label>
+          <Muted>1. Add a session for a course and choose its date, start time and duration. 2. When it is time, tap Start focus and study your notes. 3. Mark it Done when you finish, or reschedule it if plans change. Your timetable and countdown update automatically.</Muted>
+        </Card>
         <Btn ghost label="Suggest my week" onPress={suggest} disabled={!data.subjects.length} />
         {!!syncError && <Muted style={{ color: colors.danger, marginTop: spacing.sm }}>{syncError}</Muted>}
 
