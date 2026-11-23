@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { View, Text, StyleSheet, FlatList, TextInput, RefreshControl, Switch, ActivityIndicator, Alert, Image, Share, ScrollView, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, radii, spacing, type, shadow } from "../../theme/tokens";
 import { useApp } from "../../context/AppContext";
-import { fetchFeed, createPost, toggleLike, deletePost, fetchMyLikedPostIds, pickFeedImage, feedImageUrl, fetchPostComments, createPostComment, subscribeFeedChanges, FeedScope } from "../../lib/feedApi";
+import { fetchFeed, createPost, toggleLike, deletePost, fetchMyLikedPostIds, pickFeedImage, feedImageUrl, fetchPostComments, createPostComment, subscribeFeedChanges, markFeedPostsRead, FeedScope } from "../../lib/feedApi";
 import { FeedComment, FeedPost } from "../../types";
 import PressableScale from "../../components/animated/PressableScale";
 import StaggerIn from "../../components/animated/StaggerIn";
@@ -117,6 +118,10 @@ export default function FeedScreen({ navigation }: any) {
       setRefreshing(false);
     }
   }, [profile?.department_id, scope]);
+
+  useFocusEffect(useCallback(() => {
+    markFeedPostsRead().catch(() => {});
+  }, []));
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => subscribeFeedChanges(() => { void load(true); }), [load]);

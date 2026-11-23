@@ -177,7 +177,9 @@ function MainTabs() {
         headerRight: () => <MainHeaderActions navigation={navigation} />,
         tabBarBadge: route.name === "CommunityTab" && socialNotifications.total > 0
           ? (socialNotifications.total > 99 ? "99+" : socialNotifications.total)
-          : undefined,
+          : route.name === "Feed" && socialNotifications.feedUnreadCount > 0
+            ? (socialNotifications.feedUnreadCount > 99 ? "99+" : socialNotifications.feedUnreadCount)
+            : undefined,
         tabBarBadgeStyle: { backgroundColor: colors.danger, color: "#FFFFFF", fontSize: 10, fontWeight: "800" },
         tabBarActiveTintColor: colors.teal,
         tabBarInactiveTintColor: colors.textMuted,

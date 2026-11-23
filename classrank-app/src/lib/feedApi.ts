@@ -1,8 +1,31 @@
 import * as ImagePicker from "expo-image-picker";
+import { DeviceEventEmitter } from "react-native";
 import { supabase } from "./supabase";
 import { FeedComment, FeedPost, PublicProfile } from "../types";
 
 export type FeedScope = "for_you" | "department" | "campus" | "trending";
+
+
+/** Number of feed posts the signed-in user has not seen yet. The read cursor is stored per profile in Supabase. */
+export async function fetchMyUnreadFeedPostCount(): Promise<number> {
+  const { data, error } = await supabase.rpc("my_unread_feed_post_count");
+  if (error) throw error;
+  return Number(data) || 0;
+}
+
+/** Mark the current feed as seen and notify the tab badge in this app session. */
+export async function markFeedPostsRead(): Promise<void> {
+  const { error } = await supabase.rpc("mark_feed_posts_read");
+  if (error) throw error;
+  DeviceEventEmitter.emit("steth:feed-read");
+}
+
+export function subscribeFeedUnreadChanges(onChange: () => void) {
+  const channel = supabase.channel(`feed-unread:${Math.random().toString(36).slice(2, 10)}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, onChange)
+    .subscribe();
+  return () => { void supabase.removeChannel(channel); };
+}
 
 /** A blended, chronological feed: department posts plus posts shared campus-wide. */
 export async function fetchFeed(scope: FeedScope, departmentId: string, limit = 25, offset = 0): Promise<FeedPost[]> {
