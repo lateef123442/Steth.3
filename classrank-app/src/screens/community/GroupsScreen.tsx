@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../../theme/tokens";
 import { Back, Card, Chip, Label, Muted, s, ListSkeleton } from "../../components/study/ui";
 import { fetchMyGroups, StudyGroup } from "../../lib/groupApi";
+import Avatar from "../../components/Avatar";
 import { requestGroupJoin } from "../../lib/groupQuestions";
 import { fetchUnreadJoinedMemberCounts } from "../../lib/groupQuestions";
 import StaggerIn from "../../components/animated/StaggerIn";
@@ -29,7 +30,7 @@ export default function GroupsScreen({ navigation }: any) {
   const join = () => run(async () => {
     const result = await requestGroupJoin(code);
     setCode(""); await load();
-    if (result.status === "member" && result.group_id) navigation.navigate("Group", { groupId: result.group_id });
+    if (result.status === "member" && result.group_id) navigation.navigate("GroupChat", { groupId: result.group_id, name: result.name ?? "Study group" });
     else Alert.alert("Request sent", "Your request to join " + result.name + " is waiting for the group owner or an appointed admin to approve it.");
   }, "Couldn't join");
 
@@ -48,12 +49,13 @@ export default function GroupsScreen({ navigation }: any) {
         {error && <Muted style={{ color: colors.danger, marginTop: spacing.sm }}>{error}</Muted>}
         {groups?.length === 0 && !error && <Muted style={{ marginTop: spacing.sm }}>No groups yet. Start one or join with a friend's code.</Muted>}
         {groups?.map((g, i) => (
-          <StaggerIn key={g.id} index={i}><Card style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("Group", { groupId: g.id })}>
+          <StaggerIn key={g.id} index={i}><Card style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("GroupChat", { groupId: g.id, name: g.name })}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+              <Avatar name={g.name} path={g.group_avatar_path} size={48} bucket="group-avatars" />
               <Text style={[s.h3, { flex: 1 }]}>{g.official ? "Official · " : ""}{g.name}</Text>
               {!!joinedCounts[g.id] && <View style={{ minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{joinedCounts[g.id] > 99 ? "99+" : joinedCounts[g.id]}</Text></View>}
             </View>
-            <Muted>{g.official ? `Class group${g.year ? ` · Year ${g.year}` : ""}${g.owner_name ? ` · ${g.owner_name}` : ""} · ` : ""}{g.member_count} member{g.member_count === 1 ? "" : "s"}{g.active_challenge ? ` · ${g.active_challenge}` : ""}</Muted>
+            <Muted>{g.official ? `Class group${g.year ? ` · Year ${g.year}` : ""}${g.owner_name ? ` · ${g.owner_name}` : ""} · ` : ""}{g.member_count} member{g.member_count === 1 ? "" : "s"} · Open group chat →</Muted>
           </Card></StaggerIn>
         ))}
 

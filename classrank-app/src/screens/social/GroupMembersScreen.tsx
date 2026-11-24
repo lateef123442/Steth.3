@@ -6,13 +6,17 @@ import { Grid, Screen } from "../../components/responsive";
 import Avatar from "../../components/Avatar";
 import { useApp } from "../../context/AppContext";
 import { fetchGroupMembers, addGroupMember, searchPeople, GroupMember, PersonResult } from "../../lib/socialApi";
-import { fetchMyGroups } from "../../lib/groupApi";
+import { fetchMyGroups, fetchGroupProfile } from "../../lib/groupApi";
+import { chooseGroupAvatar, uploadGroupAvatar, groupAvatarUrl } from "../../lib/socialApi";
 import { fetchGroupJoinRequests, reviewGroupJoinRequest, fetchGroupActivity, setGroupAdmin, markGroupJoinActivityRead, GroupJoinRequest, GroupActivity } from "../../lib/groupQuestions";
 
 export default function GroupMembersScreen({ navigation, route }: any) {
   const { groupId, name } = route.params as { groupId: string; name: string };
   const { profile } = useApp();
   const [members, setMembers] = useState<GroupMember[] | null>(null);
+  const [groupPhotoPath, setGroupPhotoPath] = useState<string | null>(null);
+  const [groupDescription, setGroupDescription] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<PersonResult[] | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
@@ -24,9 +28,11 @@ export default function GroupMembersScreen({ navigation, route }: any) {
 
   const load = useCallback(async () => {
     try {
-      const [m, groups] = await Promise.all([fetchGroupMembers(groupId), fetchMyGroups()]);
+      const [m, groups, groupProfile] = await Promise.all([fetchGroupMembers(groupId), fetchMyGroups(), fetchGroupProfile(groupId)]);
       setMembers(m);
-      const owner = groups.find((g) => g.id === groupId)?.owner_id ?? null;
+      setGroupPhotoPath(groupProfile.group_avatar_path ?? null);
+      setGroupDescription(groupProfile.description ?? "");
+      const owner = groups.find((g) => g.id === groupId)?.owner_id ?? groupProfile.owner_id;
       setOwnerId(owner);
       const manager = owner === profile?.id || m.some((x) => x.id === profile?.id && x.group_role === "admin");
       if (manager) {
@@ -67,12 +73,26 @@ export default function GroupMembersScreen({ navigation, route }: any) {
   };
   const isOwner = ownerId === profile?.id;
   const canManage = isOwner || !!members?.some((m) => m.id === profile?.id && m.group_role === "admin");
+  const changePhoto = async () => {
+    if (photoBusy || !canManage) return;
+    setPhotoBusy(true);
+    try { const asset = await chooseGroupAvatar(); if (!asset) return; const path = await uploadGroupAvatar(groupId, groupPhotoPath, asset); setGroupPhotoPath(path); }
+    catch (e: any) { Alert.alert("Couldn't update group photo", e?.message ?? "Try again."); }
+    finally { setPhotoBusy(false); }
+  };
 
   return (
     <Screen wide>
       <Back onPress={() => navigation.goBack()} />
-      <Text style={s.h1}>{name}</Text>
-      <Muted>{members ? members.length + " members" : ""}</Muted>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.sm }}>
+        <Avatar name={name} path={groupPhotoPath} size={76} bucket="group-avatars" />
+        <View style={{ flex: 1 }}>
+          <Text style={s.h1}>{name}</Text>
+          <Muted>{members ? members.length + " members" : ""}</Muted>
+          {!!groupDescription && <Muted numberOfLines={2}>{groupDescription}</Muted>}
+          {canManage && <Chip label={photoBusy ? "Updating photo…" : groupPhotoPath ? "Change group photo" : "Add group photo"} on={false} onPress={changePhoto} />}
+        </View>
+      </View>
       <Label>ADD A FELLOW STUDENT</Label>
       <View style={{ maxWidth: 560 }}>
         <Field value={q} onChangeText={setQ} placeholder="Search by name" autoCapitalize="none" autoCorrect={false} />

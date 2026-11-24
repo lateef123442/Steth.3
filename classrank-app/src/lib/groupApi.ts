@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { notifyReply } from "./pushNotify";
 
-export interface StudyGroup { id: string; name: string; description: string; owner_id: string; course_id: string | null; year?: number | null; official?: boolean; owner_name?: string | null; join_code: string | null; member_count: number; active_challenge: string | null }
+export interface StudyGroup { id: string; name: string; description: string; owner_id: string; group_avatar_path?: string | null; course_id: string | null; year?: number | null; official?: boolean; owner_name?: string | null; join_code: string | null; member_count: number; active_challenge: string | null }
 export interface GroupPost { id: string; kind: "discussion" | "question" | "resource"; title: string; body: string; reply_count: number; created_at: string; author_id: string; author_name: string }
 export interface GroupReply { id: string; body: string; created_at: string; author_id: string; author_name: string }
 export interface Challenge { id: string; title: string; target_minutes: number; starts_on: string; ends_on: string }
@@ -14,6 +14,12 @@ const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> =
 };
 
 export const fetchMyGroups = async () => (await call<StudyGroup[]>("my_study_groups")) ?? [];
+export const fetchGroupProfile = async (groupId: string) => {
+  const { data, error } = await supabase.from("study_groups").select("id,name,description,owner_id,group_avatar_path").eq("id", groupId).single();
+  if (error) throw error;
+  return data as Pick<StudyGroup, "id" | "name" | "description" | "owner_id" | "group_avatar_path">;
+};
+
 export const fetchMyUnreadGroupMessageCount = async () => Number(await call<number>("my_unread_group_message_count")) || 0;
 export interface GroupUnreadMessageCount { group_id: string; unread_count: number }
 export const fetchMyUnreadGroupMessageCounts = async () => (await call<GroupUnreadMessageCount[]>("my_unread_group_message_counts")) ?? [];

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, ScrollView, TextInput, Alert, Platform } from "react-native";
+import { View, Text, ScrollView, TextInput, Alert, Platform, Modal } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { colors, spacing } from "../theme/tokens";
@@ -78,6 +78,7 @@ export default function PlannerScreen({ navigation }: any) {
   const [sessionTime, setSessionTime] = useState<Date>(() => parseTime(data.prefs.preferredTime));
   const [sessionPicker, setSessionPicker] = useState<"date" | "time" | null>(null);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editPicker, setEditPicker] = useState<"date" | "time" | null>(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setClockNow(Date.now()), 1000);
@@ -122,7 +123,7 @@ export default function PlannerScreen({ navigation }: any) {
           <View style={s.row}>
             <Chip label="Start focus" on onPress={() => navigation.navigate("Main", { screen: "Study", params: { subject: subjectName(data, x.subjectId) } })} />
             <Chip label="Done" on onPress={() => setSessionStatus(x.id, "done")} />
-            <Chip label="Edit date & time" on={false} onPress={() => { setSessionDate(parseDate(x.date)); setSessionTime(parseTime(x.time ?? data.prefs.preferredTime)); setEditingSessionId(x.id); setSessionPicker("date"); }} />
+            <Chip label="Edit date & time" on={false} onPress={() => { setSessionDate(parseDate(x.date)); setSessionTime(parseTime(x.time ?? data.prefs.preferredTime)); setEditingSessionId(x.id); setEditPicker("date"); }} />
           </View>
           <View style={s.row}>
             <Chip label="Skip" on={false} onPress={() => setSessionStatus(x.id, "skipped")} />
@@ -223,22 +224,7 @@ export default function PlannerScreen({ navigation }: any) {
               <Chip label={`Date · ${localDateString(sessionDate)}`} on={false} onPress={() => setSessionPicker("date")} />
               <Chip label={`Time · ${fmtTime12(formatTime(sessionTime))}`} on={false} onPress={() => setSessionPicker("time")} />
             </View>
-            {editingSessionId ? (
-              <View style={s.row}>
-                <Btn label="Save date & time" onPress={() => {
-                const date = localDateString(sessionDate), time = formatTime(sessionTime);
-                const start = timeMinutes(time);
-                const session = data.sessions.find((item) => item.id === editingSessionId);
-                if (!session) return Alert.alert("Session not found", "Refresh the planner and try again.");
-                if (date < dateStr() || (date === dateStr() && start <= new Date().getHours() * 60 + new Date().getMinutes())) return Alert.alert("Choose a future time", "A planned session must be scheduled for a future time.");
-                if (start + session.minutes > 24 * 60) return Alert.alert("Time range", "This session would run past midnight. Choose an earlier start time.");
-                if (hasSessionConflict(data, date, time, session.minutes, editingSessionId)) return Alert.alert("Time conflict", "Another planned session already overlaps this time. Choose a different time.");
-                rescheduleSession(editingSessionId, date, time); setEditingSessionId(null); setSessionPicker(null);
-              }} />
-                <Btn ghost label="Cancel edit" onPress={() => { setEditingSessionId(null); setSessionPicker(null); }} />
-              </View>
-            ) : (
-              <Btn label="Add session" onPress={() => {
+            <Btn label="Add session" onPress={() => {
                 const duration = Number(customMins);
                 if (!Number.isInteger(duration) || duration < 1 || duration > 1440) return Alert.alert("Session length", "Enter a whole number from 1 to 1440 minutes.");
                 if (!chosen) return;
@@ -248,7 +234,6 @@ export default function PlannerScreen({ navigation }: any) {
                 if (hasSessionConflict(data, date, time, duration)) return Alert.alert("Time conflict", "Another planned session already overlaps this time. Choose a different time.");
                 addSession(chosen, duration, date, time);
               }} />
-            )}
             {sessionPicker && <>
               <DateTimePicker value={sessionPicker === "date" ? sessionDate : sessionTime} mode={sessionPicker} minimumDate={sessionPicker === "date" ? new Date() : undefined} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
                 if (event.type === "dismissed") { setSessionPicker(null); return; }
@@ -262,6 +247,37 @@ export default function PlannerScreen({ navigation }: any) {
         )}
 
       </ScrollView>
+      <Modal visible={!!editingSessionId} transparent animationType="slide" onRequestClose={() => { setEditingSessionId(null); setEditPicker(null); }}>
+        <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg, backgroundColor: "rgba(0,0,0,0.45)" }}>
+          <Card style={{ padding: spacing.lg }}>
+            <Text style={s.h2}>Reschedule study session</Text>
+            <Muted style={{ marginTop: 4 }}>Choose a new date and start time. Your session duration and course will stay the same.</Muted>
+            <View style={[s.row, { marginTop: spacing.md }]}>
+              <Chip label={`Date · ${localDateString(sessionDate)}`} on={editPicker === "date"} onPress={() => setEditPicker("date")} />
+              <Chip label={`Time · ${fmtTime12(formatTime(sessionTime))}`} on={editPicker === "time"} onPress={() => setEditPicker("time")} />
+            </View>
+            {editPicker && <DateTimePicker value={editPicker === "date" ? sessionDate : sessionTime} mode={editPicker} minimumDate={editPicker === "date" ? new Date() : undefined} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(event, value) => {
+              if (event.type === "dismissed") { setEditPicker(null); return; }
+              if (value) { if (editPicker === "date") setSessionDate(value); else setSessionTime(value); }
+              if (Platform.OS !== "ios") setEditPicker(null);
+            }} />}
+            {Platform.OS === "ios" && editPicker && <Chip label="Done" on={false} onPress={() => setEditPicker(null)} />}
+            <View style={[s.row, { marginTop: spacing.md }]}>
+              <View style={{ flex: 1 }}><Btn label="Save changes" onPress={() => {
+                if (!editingSessionId) return;
+                const date = localDateString(sessionDate), time = formatTime(sessionTime), start = timeMinutes(time);
+                const session = data.sessions.find((item) => item.id === editingSessionId);
+                if (!session) return Alert.alert("Session not found", "Refresh the planner and try again.");
+                if (date < dateStr() || (date === dateStr() && start <= new Date().getHours() * 60 + new Date().getMinutes())) return Alert.alert("Choose a future time", "A planned session must be scheduled for a future time.");
+                if (start + session.minutes > 24 * 60) return Alert.alert("Time range", "This session would run past midnight. Choose an earlier start time.");
+                if (hasSessionConflict(data, date, time, session.minutes, editingSessionId)) return Alert.alert("Time conflict", "Another planned session already overlaps this time. Choose a different time.");
+                rescheduleSession(editingSessionId, date, time); setEditingSessionId(null); setEditPicker(null);
+              }} /></View>
+              <View style={{ flex: 1 }}><Btn ghost label="Cancel" onPress={() => { setEditingSessionId(null); setEditPicker(null); }} /></View>
+            </View>
+          </Card>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

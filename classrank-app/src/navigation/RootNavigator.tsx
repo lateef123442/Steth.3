@@ -45,7 +45,6 @@ import CourseDailyScreen from "../screens/community/CourseDailyScreen";
 import { useLayout } from "../components/responsive";
 import GroupsScreen from "../screens/community/GroupsScreen";
 import GroupCreateScreen from "../screens/community/GroupCreateScreen";
-import GroupDetailScreen from "../screens/community/GroupDetailScreen";
 import GroupQuizScreen from "../screens/community/GroupQuizScreen";
 import ExamScreen from "../screens/community/ExamScreen";
 import TeacherCoursesScreen from "../screens/teacher/TeacherCoursesScreen";
@@ -86,7 +85,6 @@ export type RootStackParamList = {
   Chat: { userId: string; name: string; department?: string | null; year?: number | null; avatar_path?: string | null };
   GroupChat: { groupId: string; name: string };
   GroupMembers: { groupId: string; name: string };
-  Group: { groupId: string };
   GroupQuiz: { quizId: string };
   Exam: { examId: string; mode?: "take" | "review" };
   TeacherCourse: { courseId: string };
@@ -342,7 +340,6 @@ export default function RootNavigator() {
         <>
           <Stack.Screen name="Teacher" component={TeacherTabs} />
           <Stack.Screen name="TeacherCourse" component={TeacherCourseScreen} />
-          <Stack.Screen name="Group" component={GroupDetailScreen} />
           <Stack.Screen name="GroupChat" component={GroupChatScreen} />
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
@@ -366,7 +363,6 @@ export default function RootNavigator() {
           <Stack.Screen name="CourseDaily" component={CourseDailyScreen} />
           <Stack.Screen name="Groups" component={GroupsScreen} />
           <Stack.Screen name="GroupCreate" component={GroupCreateScreen} />
-          <Stack.Screen name="Group" component={GroupDetailScreen} />
           <Stack.Screen name="GroupChat" component={GroupChatScreen} />
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
           <Stack.Screen name="Friends" component={FriendsScreen} />
