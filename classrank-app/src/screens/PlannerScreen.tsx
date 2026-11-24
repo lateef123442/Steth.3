@@ -194,7 +194,7 @@ export default function PlannerScreen({ navigation }: any) {
 
         {days.map((d) => {
           const list = upcoming(d);
-          if (d !== dateStr() && !list.length) return null;
+          if (!list.length) return null;
           return (
             <View key={d}>
               <Label>{dayLabel(d).toUpperCase()}</Label>
