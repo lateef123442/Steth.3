@@ -11,7 +11,7 @@ import Reveal from "../components/animated/Reveal";
 import AnimatedNumber from "../components/animated/AnimatedNumber";
 import StreakFlame from "../components/animated/StreakFlame";
 import PressableScale from "../components/animated/PressableScale";
-import { fetchRecentAnnouncements, Announcement, fetchMyCourses, fetchDailyQuiz } from "../lib/courseApi";
+import { fetchRecentAnnouncements, Announcement } from "../lib/courseApi";
 import { fetchUnansweredGroupQuestionCount } from "../lib/groupQuestions";
 import { fetchMyUnreadGroupMessageCount } from "../lib/groupApi";
 import { fetchMyGroupWelcomeNotifications, markGroupWelcomeNotificationRead, subscribeGroupWelcomeNotifications } from "../lib/groupWelcome";
@@ -41,7 +41,6 @@ export default function HomeScreen({ navigation }: Props) {
   const [news, setNews] = useState<Announcement[]>([]);
   const [groupQuestionCount, setGroupQuestionCount] = useState(0);
   const [unreadGroupMessageCount, setUnreadGroupMessageCount] = useState(0);
-  const [availableCourseQuizCount, setAvailableCourseQuizCount] = useState(0);
   const [groupWelcomes, setGroupWelcomes] = useState<GroupWelcomeNotification[]>([]);
   const refreshGroupWelcomes = useCallback(async () => {
     try { setGroupWelcomes(await fetchMyGroupWelcomeNotifications()); }
@@ -61,18 +60,6 @@ export default function HomeScreen({ navigation }: Props) {
   useEffect(() => { if (isFocused) {
     fetchUnansweredGroupQuestionCount().then((n) => setGroupQuestionCount(Number(n) || 0)).catch(() => setGroupQuestionCount(0));
     fetchMyUnreadGroupMessageCount().then(setUnreadGroupMessageCount).catch(() => {});
-    // Count available course quizzes, not the number of questions inside them.
-    // A course contributes one badge count while it still has questions to answer today.
-    (async () => {
-      try {
-        const courses = await fetchMyCourses();
-        const availability = await Promise.all(courses.map(async (course) => {
-          try { return (await fetchDailyQuiz(course.id)).questions.length > 0; }
-          catch { return false; }
-        }));
-        setAvailableCourseQuizCount(availability.filter(Boolean).length);
-      } catch { setAvailableCourseQuizCount(0); }
-    })();
   } }, [isFocused]);
   useEffect(() => {
     const load = () => fetchRecentAnnouncements().then(setNews).catch(() => setNews([]));
@@ -194,24 +181,15 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
 
         <PressableScale
-          style={[styles.quizCard, availableCourseQuizCount === 0 && styles.quizCardDone]}
+          style={styles.quizCard}
           onPress={() => navigation.navigate("Quiz")}
           haptic="medium"
           accessibilityRole="button"
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.quizCardTitle}>Daily course quizzes</Text>
-            <Text style={styles.quizCardSubtitle}>
-              {availableCourseQuizCount > 0
-                ? `${availableCourseQuizCount} ${availableCourseQuizCount === 1 ? "course quiz is" : "course quizzes are"} available today. Tap to choose a course.`
-                : "No course quizzes are available right now. Check again when your teachers publish today's questions."}
-            </Text>
+            <Text style={styles.quizCardSubtitle}>Tap to choose a course and see which daily quizzes are available.</Text>
           </View>
-          {availableCourseQuizCount > 0 ? (
-            <View style={{ minWidth: 27, height: 27, paddingHorizontal: 7, borderRadius: 14, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: "#fff", fontWeight: "800", fontSize: 12 }}>{availableCourseQuizCount > 99 ? "99+" : availableCourseQuizCount}</Text>
-            </View>
-          ) : null}
         </PressableScale>
 
         <PressableScale style={styles.studyCard} onPress={() => go("Study", plan.find((x) => x.status === "planned") ? { subject: subjectName(study, plan.find((x) => x.status === "planned")!.subjectId) } : undefined)} haptic="medium" accessibilityRole="button">
