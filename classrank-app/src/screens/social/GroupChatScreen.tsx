@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Modal, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Modal, ScrollView, Text, TextInput, View, DeviceEventEmitter } from "react-native";
 import { colors, spacing, type } from "../../theme/tokens";
 import { useApp } from "../../context/AppContext";
 import ChatView from "../../components/ChatView";
@@ -80,7 +80,7 @@ export default function GroupChatScreen({ navigation, route }: any) {
         subtitle={members.length ? members.length + " members · tap for members" : "Group chat"}
         meId={profile.id} load={load} send={send} subscribe={subscribe} nameOf={nameOf} hideSender={hideSender}
         onBack={() => navigation.goBack()}
-        onFocusRefresh={() => { markGroupMessagesRead(groupId).catch(() => {}); }}
+        onFocusRefresh={async () => { await markGroupMessagesRead(groupId).catch(() => {}); DeviceEventEmitter.emit("steth:group-messages-read"); }}
         onHeaderPress={() => navigation.navigate("GroupMembers", { groupId, name })}
         renderMessage={renderMessage}
         headerAction={isManager ? <PressableScale onPress={() => setComposer(true)} style={{ paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.violetTint }}><Text style={{ color: colors.violet, fontWeight: "700", fontSize: 12 }}>Create question</Text></PressableScale> : null}

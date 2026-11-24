@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { RefreshControl, View, Text } from "react-native";
+import { RefreshControl, View, Text, DeviceEventEmitter } from "react-native";
 import { colors, spacing } from "../theme/tokens";
 import { fetchMyCourses, fetchDailyQuiz, type MyCourse } from "../lib/courseApi";
 import { Screen, Grid } from "../components/responsive";
@@ -45,7 +45,9 @@ export default function QuizScreen({ navigation }: Props) {
 
   useEffect(() => {
     load();
-    const unsubscribe = navigation.addListener("focus", load);
+    const unsubscribe = navigation.addListener("focus", () => {
+      void load().then(() => DeviceEventEmitter.emit("steth:quiz-count-refresh"));
+    });
     return unsubscribe;
   }, [load, navigation]);
 

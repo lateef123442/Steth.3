@@ -15,6 +15,14 @@ const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> =
 
 export const fetchMyGroups = async () => (await call<StudyGroup[]>("my_study_groups")) ?? [];
 export const fetchMyUnreadGroupMessageCount = async () => Number(await call<number>("my_unread_group_message_count")) || 0;
+export interface GroupUnreadMessageCount { group_id: string; unread_count: number }
+export const fetchMyUnreadGroupMessageCounts = async () => (await call<GroupUnreadMessageCount[]>("my_unread_group_message_counts")) ?? [];
+export const subscribeGroupMessageChanges = (callback: () => void) => {
+  const channel = supabase.channel("steth-unread-group-messages")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages" }, callback)
+    .subscribe();
+  return () => { void supabase.removeChannel(channel); };
+};
 export const markGroupMessagesRead = (groupId: string) => call<void>("mark_group_messages_read", { p_group_id: groupId });
 export const createGroup = (name: string, description: string, courseId?: string | null) =>
   call<{ id: string; join_code: string }>("create_study_group", { p_name: name, p_description: description, p_course_id: courseId ?? null });

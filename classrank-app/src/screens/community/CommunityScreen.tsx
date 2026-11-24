@@ -5,17 +5,22 @@ import { spacing, colors } from "../../theme/tokens";
 import { Back, Card, Muted, Tag, s } from "../../components/study/ui";
 import { WRAP } from "../../components/responsive";
 import useSocialNotifications from "../../hooks/useSocialNotifications";
-import { fetchMyGroups, StudyGroup } from "../../lib/groupApi";
+import { fetchMyGroups, fetchMyUnreadGroupMessageCounts, StudyGroup } from "../../lib/groupApi";
 
 export default function CommunityScreen({ navigation }: any) {
   const { requestCount, unreadMessageCount, groupWelcomeCount } = useSocialNotifications();
   const [groups, setGroups] = useState<StudyGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const [groupUnreadCounts, setGroupUnreadCounts] = useState<Record<string, number>>({});
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const loadGroups = useCallback(async () => {
     setGroupsLoading(true);
-    try { setGroups(await fetchMyGroups()); setGroupsError(null); }
-    catch (e: any) { setGroupsError(e?.message ?? "Couldn't load your group chats."); }
+    try {
+      const [myGroups, unreadRows] = await Promise.all([fetchMyGroups(), fetchMyUnreadGroupMessageCounts().catch(() => [])]);
+      setGroups(myGroups);
+      setGroupUnreadCounts(Object.fromEntries(unreadRows.map((row) => [row.group_id, Number(row.unread_count) || 0])));
+      setGroupsError(null);
+    } catch (e: any) { setGroupsError(e?.message ?? "Couldn't load your group chats."); }
     finally { setGroupsLoading(false); }
   }, []);
   useEffect(() => {
@@ -64,9 +69,14 @@ export default function CommunityScreen({ navigation }: any) {
                 <Text style={s.h3}>{group.name}</Text>
                 <Muted>{group.official ? "Official class group" + (group.year ? " · Year " + group.year : "") : "Study group"} · {group.member_count} members</Muted>
               </View>
-              {group.official && <Tag label="Official" color={colors.violet} />}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+                {groupUnreadCounts[group.id] > 0 && <Tag label={`${groupUnreadCounts[group.id] > 99 ? "99+" : groupUnreadCounts[group.id]} new`} color={colors.danger} />}
+                {group.official && <Tag label="Official" color={colors.violet} />}
+              </View>
             </View>
-            <Muted style={{ color: colors.tealDeep, marginTop: 8, fontWeight: "700" }}>Open group chat →</Muted>
+            <Muted style={{ color: groupUnreadCounts[group.id] > 0 ? colors.danger : colors.tealDeep, marginTop: 8, fontWeight: "700" }}>
+              {groupUnreadCounts[group.id] > 0 ? `Open group chat · ${groupUnreadCounts[group.id]} unread message${groupUnreadCounts[group.id] === 1 ? "" : "s"} →` : "Open group chat →"}
+            </Muted>
           </Card>
         ))}
         <Card onPress={() => navigation.navigate("Groups")} style={{ marginTop: spacing.md, backgroundColor: colors.violetTint, borderWidth: 0 }}>
