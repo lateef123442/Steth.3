@@ -6,7 +6,7 @@ import { Grid, Screen } from "../../components/responsive";
 import Avatar from "../../components/Avatar";
 import { useApp } from "../../context/AppContext";
 import { fetchGroupMembers, addGroupMember, searchPeople, GroupMember, PersonResult } from "../../lib/socialApi";
-import { fetchMyGroups, fetchGroupProfile } from "../../lib/groupApi";
+import { fetchMyGroups, fetchGroupProfile, leaveGroup, deleteGroup } from "../../lib/groupApi";
 import { chooseGroupAvatar, uploadGroupAvatar, groupAvatarUrl } from "../../lib/socialApi";
 import { fetchGroupJoinRequests, reviewGroupJoinRequest, fetchGroupActivity, setGroupAdmin, markGroupJoinActivityRead, GroupJoinRequest, GroupActivity } from "../../lib/groupQuestions";
 
@@ -80,6 +80,19 @@ export default function GroupMembersScreen({ navigation, route }: any) {
     catch (e: any) { Alert.alert("Couldn't update group photo", e?.message ?? "Try again."); }
     finally { setPhotoBusy(false); }
   };
+  const exitGroup = () => Alert.alert(
+    isOwner ? "Delete this group?" : "Leave this group?",
+    isOwner ? "This will permanently delete the group for all members." : "You will leave this study group and stop receiving its messages.",
+    [
+      { text: "Cancel", style: "cancel" },
+      { text: isOwner ? "Delete group" : "Leave group", style: "destructive", onPress: async () => {
+        try {
+          if (isOwner) await deleteGroup(groupId); else await leaveGroup(groupId);
+          navigation.navigate("Groups");
+        } catch (e: any) { Alert.alert(isOwner ? "Couldn't delete group" : "Couldn't leave group", e?.message ?? "Try again."); }
+      } },
+    ],
+  );
 
   return (
     <Screen wide>
@@ -119,6 +132,9 @@ export default function GroupMembersScreen({ navigation, route }: any) {
           {isOwner && !m.is_owner && <View style={{ marginTop: 8 }}><Chip label={m.group_role === "admin" ? "Remove admin" : "Make admin"} on onPress={() => toggleAdmin(m)} /></View>}
         </Card>)}
       </Grid>
+      <View style={{ marginTop: spacing.xl, marginBottom: spacing.xl }}>
+        <Chip label={isOwner ? "Delete group" : "Leave group"} on={false} onPress={exitGroup} />
+      </View>
       {canManage && <>
         <Label>JOIN REQUESTS</Label>
         {requests.length === 0 ? <Muted>No pending join requests.</Muted> : requests.map((r) => <Card key={r.id} style={{ marginTop: spacing.xs }}>
