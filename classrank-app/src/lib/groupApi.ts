@@ -23,8 +23,13 @@ export const fetchGroupProfile = async (groupId: string) => {
 export const fetchMyUnreadGroupMessageCount = async () => Number(await call<number>("my_unread_group_message_count")) || 0;
 export interface GroupUnreadMessageCount { group_id: string; unread_count: number }
 export const fetchMyUnreadGroupMessageCounts = async () => (await call<GroupUnreadMessageCount[]>("my_unread_group_message_counts")) ?? [];
+let groupMessageSubscriptionSequence = 0;
+
 export const subscribeGroupMessageChanges = (callback: () => void) => {
-  const channel = supabase.channel("steth-unread-group-messages")
+  // Each mounted listener needs its own channel. Reusing a fixed name can return
+  // an already-subscribed channel, and Supabase then rejects a new .on() handler.
+  const channelName = `steth-unread-group-messages:${++groupMessageSubscriptionSequence}`;
+  const channel = supabase.channel(channelName)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "group_messages" }, callback)
     .subscribe();
   return () => { void supabase.removeChannel(channel); };
