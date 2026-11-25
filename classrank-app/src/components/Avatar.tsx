@@ -1,11 +1,11 @@
 import React from "react";
 import { View, Text, Image } from "react-native";
 import { colors } from "../theme/tokens";
-import { avatarUrl } from "../lib/socialApi";
+import { avatarUrl, groupAvatarUrl } from "../lib/socialApi";
 
 /** Profile picture, or a coloured initial when the person hasn't set one. */
-export default function Avatar({ name, path, size = 44 }: { name: string; path?: string | null; size?: number }) {
-  const uri = avatarUrl(path);
+export default function Avatar({ name, path, size = 44, bucket = "avatars" }: { name: string; path?: string | null; size?: number; bucket?: "avatars" | "group-avatars" }) {
+  const uri = bucket === "group-avatars" ? groupAvatarUrl(path) : avatarUrl(path);
   const palette = [colors.teal, colors.violet, colors.ember, "#3B82F6", "#EC4899", "#10B981"];
   const bg = palette[(name.charCodeAt(0) || 0) % palette.length];
   if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.border }} accessibilityLabel={`${name}'s picture`} />;

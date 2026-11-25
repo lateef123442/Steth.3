@@ -137,3 +137,29 @@ export const removeAvatar = async (oldPath?: string | null) => {
   await call<string | null>("set_my_avatar", { p_path: null });
   if (oldPath) supabase.storage.from("avatars").remove([oldPath]).catch(() => {});
 };
+
+/** Choose a square group picture. The selected asset can be held until a new group has been created. */
+export async function chooseGroupAvatar() {
+  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!permission.granted) throw new Error("Steth needs permission to access your photos. Allow photo access in your phone settings, then try again.");
+  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+  return result.canceled ? null : result.assets?.[0] ?? null;
+}
+
+/** Upload a group photo and register it through the membership-checked RPC. */
+export async function uploadGroupAvatar(groupId: string, oldPath: string | null, asset: ImagePicker.ImagePickerAsset) {
+  const mime = asset.mimeType && EXT[asset.mimeType] ? asset.mimeType : "image/jpeg";
+  const buffer = await (await fetch(asset.uri)).arrayBuffer();
+  if (!buffer.byteLength) throw new Error("That picture is empty.");
+  if (buffer.byteLength > 2 * 1024 * 1024) throw new Error("That picture is too large (2 MB limit). Pick a smaller one.");
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Please sign in again and retry.");
+  const path = `${groupId}/${user.id}/group-${Date.now()}.${EXT[mime]}`;
+  const uploaded = await supabase.storage.from("group-avatars").upload(path, buffer, { contentType: mime, upsert: false });
+  if (uploaded.error) throw uploaded.error;
+  try { await call<string>("set_group_avatar", { p_group_id: groupId, p_path: path }); }
+  catch (error) { await supabase.storage.from("group-avatars").remove([path]).catch(() => {}); throw error; }
+  if (oldPath) supabase.storage.from("group-avatars").remove([oldPath]).catch(() => {});
+  return path;
+}
+export const groupAvatarUrl = (path?: string | null) => path ? supabase.storage.from("group-avatars").getPublicUrl(path).data.publicUrl : null;

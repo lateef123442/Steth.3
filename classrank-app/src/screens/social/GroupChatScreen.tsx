@@ -6,7 +6,8 @@ import ChatView from "../../components/ChatView";
 import ReportModal, { ReportTarget } from "../../components/ReportModal";
 import PressableScale from "../../components/animated/PressableScale";
 import { fetchGroupMessages, sendGroupMsg, subscribeGroup, fetchGroupMembers, fetchBlocks, blockUser, GroupMember } from "../../lib/socialApi";
-import { fetchMyGroups, markGroupMessagesRead } from "../../lib/groupApi";
+import { fetchMyGroups, fetchGroupProfile, markGroupMessagesRead } from "../../lib/groupApi";
+import Avatar from "../../components/Avatar";
 import { createGroupQuestion, fetchGroupQuestions, submitGroupQuestionAnswer, GroupQuestion } from "../../lib/groupQuestions";
 
 export default function GroupChatScreen({ navigation, route }: any) {
@@ -15,6 +16,7 @@ export default function GroupChatScreen({ navigation, route }: any) {
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [questions, setQuestions] = useState<GroupQuestion[]>([]);
   const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [groupPhotoPath, setGroupPhotoPath] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [report, setReport] = useState<ReportTarget | null>(null);
   const [composer, setComposer] = useState(false);
@@ -34,6 +36,7 @@ export default function GroupChatScreen({ navigation, route }: any) {
       fetchGroupMembers(groupId).then((m) => { byId.current = new Map(m.map((x) => [x.id, x])); setMembers(m); }).catch(() => {}),
       fetchBlocks().then((b) => { blocked.current = new Set(b.map((x) => x.id)); }).catch(() => {}),
       fetchMyGroups().then((g) => setOwnerId(g.find((x) => x.id === groupId)?.owner_id ?? null)).catch(() => {}),
+      fetchGroupProfile(groupId).then((g) => setGroupPhotoPath(g.group_avatar_path ?? null)).catch(() => {}),
       reloadQuestions(),
     ]).finally(() => setReady(true));
   }, [groupId, reloadQuestions]);
@@ -77,7 +80,8 @@ export default function GroupChatScreen({ navigation, route }: any) {
     <View style={{ flex: 1 }}>
       <ChatView
         title={name}
-        subtitle={members.length ? members.length + " members · tap for members" : "Group chat"}
+        avatar={<Avatar name={name} path={groupPhotoPath} size={42} bucket="group-avatars" />}
+        subtitle={members.length ? members.length + " members · tap for group info" : "Tap for group info and members"}
         meId={profile.id} load={load} send={send} subscribe={subscribe} nameOf={nameOf} hideSender={hideSender}
         onBack={() => navigation.goBack()}
         onFocusRefresh={async () => { await markGroupMessagesRead(groupId).catch(() => {}); DeviceEventEmitter.emit("steth:group-messages-read"); }}
