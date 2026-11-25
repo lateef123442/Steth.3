@@ -34,7 +34,7 @@ export default function TeacherTopicsPanel({ courseId, bundle, onChanged }: { co
   return (
     <View>
       <Text style={s.h2}>Topics</Text>
-      <Muted style={{ marginTop: 2 }}>Break the course into topics, in the order students should study them. Students must finish every topic before the test and exam unlock.</Muted>
+      <Muted style={{ marginTop: 2 }}>Break the course into topics in study order. Students must open every resource and pass a 10-question check (at least 7/10) to finish each topic. Add at least 10 practice questions to every topic. Tests and exams unlock when all topics are complete.</Muted>
 
       {topics.length === 0 && <Empty icon="🧩" title="No topics yet" body="Create the first topic below, then upload its resources." />}
 

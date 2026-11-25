@@ -12,7 +12,7 @@ import { parseQuestionBlocks, ParsedQuestion } from "../../lib/bulkImport";
 
 const LETTERS = ["A", "B", "C", "D"];
 export const PURPOSE_COPY: Record<QuestionPurpose, { title: string; blurb: string }> = {
-  practice: { title: "Practice questions", blurb: "Students unlock these for a topic once they finish it, and can retake them any time." },
+  practice: { title: "Practice questions", blurb: "Add at least 10 per topic. Students must pass a 10-question check (7/10) to finish that topic; after that, they can practise these any time." },
   daily: { title: "Daily quiz questions", blurb: "Served a few at a time, at random, from topics a student has started reading. Only a student's first answer counts and earns points." },
   assessment: { title: "Test / exam question bank", blurb: "Never shown to students on their own. Pick from this bank when you schedule a practical, test or exam." },
 };

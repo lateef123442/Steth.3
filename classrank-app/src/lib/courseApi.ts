@@ -189,10 +189,30 @@ export const markMaterialRead = async (materialId: string) => {
   markProfileStale(); // opening a resource counts as a study day
   return r;
 };
-export const completeTopic = async (topicId: string) => {
-  const r = await call<{ course_complete: boolean }>("complete_topic", { p_topic_id: topicId });
-  markProfileStale(); // +10 points and a study day
-  return r;
+export interface TopicCompletionQuiz {
+  attempt_id: string;
+  topic_title: string;
+  questions: { id: string; question: string; options: string[] }[];
+}
+export interface TopicCompletionResult {
+  score: number;
+  total: 10;
+  pass_mark: 7;
+  passed: boolean;
+  course_complete: boolean;
+}
+export const startTopicCompletionQuiz = (topicId: string) =>
+  call<TopicCompletionQuiz>("start_topic_completion_quiz", { p_topic_id: topicId });
+export const submitTopicCompletionQuiz = async (
+  attemptId: string,
+  answers: { question_id: string; picked: number }[],
+) => {
+  const result = await call<TopicCompletionResult>("submit_topic_completion_quiz", {
+    p_attempt_id: attemptId,
+    p_answers: answers,
+  });
+  if (result.passed) markProfileStale();
+  return result;
 };
 
 export interface DailyQuestion { id: string; topic: string; question: string; options: string[] }

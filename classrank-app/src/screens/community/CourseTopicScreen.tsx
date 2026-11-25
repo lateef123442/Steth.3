@@ -4,7 +4,7 @@ import { colors, spacing, type } from "../../theme/tokens";
 import PressableScale from "../../components/animated/PressableScale";
 import { Back, Bar, Btn, Card, Empty, Label, Muted, Tag, s, ListSkeleton } from "../../components/study/ui";
 import { Screen } from "../../components/responsive";
-import { fetchCourseContent, markMaterialRead, completeTopic, materialFileUrl } from "../../lib/courseApi";
+import { fetchCourseContent, markMaterialRead, startTopicCompletionQuiz, submitTopicCompletionQuiz, materialFileUrl, TopicCompletionQuiz, TopicCompletionResult } from "../../lib/courseApi";
 import { fmtSize } from "../../lib/fileRules";
 import { CourseBundle } from "../../lib/studyCourseSync";
 import { importCourseBundle, useStudy } from "../../lib/studyStore";
@@ -23,6 +23,11 @@ export default function CourseTopicScreen({ navigation, route }: any) {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [completionQuiz, setCompletionQuiz] = useState<TopicCompletionQuiz | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizIndex, setQuizIndex] = useState(0);
+  const [quizResult, setQuizResult] = useState<TopicCompletionResult | null>(null);
+  const [quizBusy, setQuizBusy] = useState(false);
 
   const load = useCallback(async () => {
     try { const b = await fetchCourseContent(courseId); setBundle(b); importCourseBundle(b); setError(null); }
@@ -63,12 +68,58 @@ export default function CourseTopicScreen({ navigation, route }: any) {
     } catch (e: any) { Alert.alert("Couldn't open it", e?.message ?? "Check your connection and try again."); }
   };
   const finish = async () => {
-    if (busy) return; setBusy(true);
+    if (busy || finished) return;
+    setBusy(true);
     try {
-      const r = await completeTopic(topic.id);
-      await load();
-      Alert.alert(r.course_complete ? "Course finished" : "Topic finished", r.course_complete ? "Your tests and exams are now unlocked, and every topic's practice is open." : "Practice questions for this topic are unlocked.");
-    } catch (e: any) { Alert.alert("Not yet", e?.message ?? "Try again."); } finally { setBusy(false); }
+      const attempt = await startTopicCompletionQuiz(topic.id);
+      if (attempt.questions.length !== 10) {
+        throw new Error("Your teacher needs to publish 10 practice questions for this topic before you can complete it.");
+      }
+      setCompletionQuiz(attempt);
+      setQuizAnswers({});
+      setQuizIndex(0);
+      setQuizResult(null);
+    } catch (e: any) {
+      Alert.alert("Topic check isn't ready", e?.message ?? "Your teacher needs to add 10 practice questions for this topic.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitCompletion = async () => {
+    if (!completionQuiz || quizBusy) return;
+    if (completionQuiz.questions.some((q) => quizAnswers[q.id] === undefined)) {
+      return Alert.alert("Answer every question", "Please answer all 10 questions before submitting.");
+    }
+    setQuizBusy(true);
+    try {
+      const result = await submitTopicCompletionQuiz(
+        completionQuiz.attempt_id,
+        completionQuiz.questions.map((q) => ({ question_id: q.id, picked: quizAnswers[q.id] })),
+      );
+      setQuizResult(result);
+      if (result.passed) {
+        setCompletionQuiz(null);
+        setQuizResult(null);
+        await load();
+        Alert.alert(
+          result.course_complete ? "Course completed" : "Topic completed",
+          result.course_complete
+            ? "You scored " + result.score + "/10. All topics are now complete, so your course tests and exams are unlocked."
+            : "You scored " + result.score + "/10. Practice questions for this topic are now unlocked.",
+        );
+      }
+    } catch (e: any) {
+      Alert.alert("Couldn't submit the topic check", e?.message ?? "Please try again.");
+    } finally {
+      setQuizBusy(false);
+    }
+  };
+
+  const retryCompletionQuiz = async () => {
+    setQuizResult(null);
+    setCompletionQuiz(null);
+    await finish();
   };
   const askAi = (extra?: string) => navigation.navigate("Companion", { prompt: `I'm studying "${topic.title}" in ${bundle.course.code} ${bundle.course.title}. ${extra ?? "Explain the key ideas simply, then ask me a question to check I understand."}` });
 
@@ -106,11 +157,69 @@ export default function CourseTopicScreen({ navigation, route }: any) {
         );
       })}
 
-      {!finished && (
+      {!finished && !completionQuiz && (
         <>
-          <Btn label={busy ? "Saving…" : "I've finished this topic"} onPress={finish} disabled={busy || !allOpened} />
-          {!allOpened && <Muted style={{ textAlign: "center" }}>Open every resource above first ({mats.length - opened} left).</Muted>}
+          <Btn label={busy ? "Preparing questions…" : "I've finished this topic"} onPress={finish} disabled={busy || !allOpened} />
+          {!allOpened
+            ? <Muted style={{ textAlign: "center" }}>Open every resource above first ({mats.length - opened} left).</Muted>
+            : <Muted style={{ textAlign: "center" }}>Next, answer 10 questions from this topic. You need at least 7/10 to complete it. You can retry if needed.</Muted>}
         </>
+      )}
+
+      {completionQuiz && (
+        <Card style={{ marginTop: spacing.md }}>
+          <Label>10-QUESTION TOPIC CHECK</Label>
+          {quizResult ? (
+            <>
+              <Text style={s.h1}>{quizResult.score}/10</Text>
+              <Text style={s.h3}>{quizResult.passed ? "You passed" : "Not quite yet"}</Text>
+              <Muted>{quizResult.passed ? "This topic is complete." : "You need at least 7 correct answers. Review the topic and try a fresh set of questions."}</Muted>
+              <Btn label="Try again" disabled={quizBusy} onPress={retryCompletionQuiz} />
+              <Btn ghost label="Close" onPress={() => { setCompletionQuiz(null); setQuizResult(null); }} />
+            </>
+          ) : (() => {
+            const question = completionQuiz.questions[quizIndex];
+            const selected = quizAnswers[question.id];
+            return (
+              <>
+                <View style={[s.row, { justifyContent: "space-between", alignItems: "center" }]}>
+                  <Muted>Question {quizIndex + 1} of 10</Muted>
+                  <Tag label="Pass: 7/10" color={colors.teal} />
+                </View>
+                <View style={{ marginTop: spacing.sm }}>
+                  <Bar value={(quizIndex + 1) / 10} color={colors.teal} />
+                </View>
+                <Text style={[s.h3, { marginTop: spacing.md }]}>{question.question}</Text>
+                {question.options.map((option, optionIndex) => (
+                  <Card
+                    key={question.id + "-" + optionIndex}
+                    onPress={() => setQuizAnswers((current) => ({ ...current, [question.id]: optionIndex }))}
+                    style={{
+                      marginTop: spacing.sm,
+                      backgroundColor: selected === optionIndex ? colors.tealTint : undefined,
+                      borderWidth: selected === optionIndex ? 1 : 0,
+                      borderColor: colors.teal,
+                    }}
+                  >
+                    <View style={s.row}>
+                      <Text style={[s.h3, { color: selected === optionIndex ? colors.teal : colors.textMuted }]}>{String.fromCharCode(65 + optionIndex)}.</Text>
+                      <Text style={[type.body, { color: colors.text, flex: 1 }]}>{option}</Text>
+                    </View>
+                  </Card>
+                ))}
+                <View style={[s.row, { marginTop: spacing.md }]}>
+                  {quizIndex > 0 && <View style={{ flex: 1 }}><Btn ghost label="Previous" onPress={() => setQuizIndex((i) => i - 1)} /></View>}
+                  <View style={{ flex: 1 }}>
+                    {quizIndex < 9
+                      ? <Btn label="Next question" disabled={selected === undefined} onPress={() => setQuizIndex((i) => i + 1)} />
+                      : <Btn label={quizBusy ? "Checking answers…" : "Submit 10 answers"} disabled={quizBusy || Object.keys(quizAnswers).length !== 10} onPress={submitCompletion} />}
+                  </View>
+                </View>
+                <Btn ghost label="Cancel check" disabled={quizBusy} onPress={() => { setCompletionQuiz(null); setQuizAnswers({}); setQuizResult(null); }} />
+              </>
+            );
+          })()}
+        </Card>
       )}
 
       <Label>AI GUIDE</Label>
