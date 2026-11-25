@@ -187,7 +187,7 @@ export default function PlannerScreen({ navigation }: any) {
               <Text style={s.h3}>Daily study check-in</Text>
               <Muted>At 8:00 PM, get a gentle reminder if you have not logged study time today.</Muted>
             </View>
-            <Chip label={data.prefs.notif.missed ? "On" : "Off"} on={data.prefs.notif.missed} onPress={() => setPrefs({ notif: { ...data.prefs.notif, missed: !data.prefs.notif.missed } })} />
+            <Chip label={data.prefs.notif.dailyCheckIn ? "On" : "Off"} on={data.prefs.notif.dailyCheckIn} onPress={() => setPrefs({ notif: { ...data.prefs.notif, dailyCheckIn: !data.prefs.notif.dailyCheckIn } })} />
           </View>
         </Card>
 

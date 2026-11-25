@@ -43,13 +43,13 @@ function StudyReminderSync() {
   const { data, ready } = useStudy();
   useEffect(() => {
     if (!ready) return;
-    const sync = () => syncStudySessionReminders(data.sessions, data.subjects, data.focus, data.prefs.notif.sessions, data.prefs.notif.missed);
+    const sync = () => syncStudySessionReminders(data.sessions, data.subjects, data.focus, data.prefs.notif.sessions, data.prefs.notif.dailyCheckIn);
     void sync();
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active") void sync();
     });
     return () => subscription.remove();
-  }, [ready, data.sessions, data.subjects, data.focus, data.prefs.notif.sessions, data.prefs.notif.missed]);
+  }, [ready, data.sessions, data.subjects, data.focus, data.prefs.notif.sessions, data.prefs.notif.dailyCheckIn]);
   return null;
 }
 

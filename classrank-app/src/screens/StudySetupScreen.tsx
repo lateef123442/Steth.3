@@ -15,10 +15,11 @@ import { WRAP } from "../components/responsive";
 const GOALS = ["Pass exams", "Improve grades", "Prepare for an exam", "Master a course", "Study consistently"];
 const TIMES = ["07:00", "12:00", "17:00", "20:00", "22:00"];
 const MINS = [30, 45, 60, 90, 120];
-const TYPES: { key: "sessions" | "missed" | "dailyQuiz" | "reviews" | "push"; title: string; sub: string }[] = [
+const TYPES: { key: "sessions" | "missed" | "dailyQuiz" | "dailyCheckIn" | "reviews" | "push"; title: string; sub: string }[] = [
   { key: "sessions", title: "Session reminders", sub: "10 minutes before a planned session" },
   { key: "missed", title: "Missed-session nudges", sub: "Offer to reschedule if you skipped one" },
   { key: "dailyQuiz", title: "Daily challenge", sub: "A gentle prompt before your study time" },
+  { key: "dailyCheckIn", title: "Daily study check-in", sub: "At 8:00 PM if you haven't logged study time today" },
   { key: "reviews", title: "Review prompts", sub: "When a topic or flashcards are due" },
   { key: "push", title: "Class announcements & replies", sub: "Alerts from your courses and study groups. Can't be silenced by quiet hours." },
 ];

@@ -31,7 +31,7 @@ export interface FocusLog { subject: string; minutes: number; date: string }
 export interface Card { id: string; subjectId: string; topicId?: string; front: string; back: string; due: string; interval: number; ease: number; reps: number }
 export interface Review { subjectId: string; topicId?: string; rating: 0 | 1 | 2 | 3; date: string } // 0 again, 1 hard, 2 good, 3 easy
 
-export interface NotifPrefs { sessions: boolean; missed: boolean; dailyQuiz: boolean; reviews: boolean; /** push alerts for course announcements and group replies */ push: boolean }
+export interface NotifPrefs { sessions: boolean; missed: boolean; dailyQuiz: boolean; dailyCheckIn: boolean; reviews: boolean; /** push alerts for course announcements and group replies */ push: boolean }
 export interface Prefs {
   goals: string[];
   preferredTime: string;   // "HH:MM" — when the student likes to study
@@ -43,7 +43,7 @@ export interface Prefs {
 }
 export const DEFAULT_PREFS: Prefs = {
   goals: [], preferredTime: "20:00", dailyMinutes: 45, quietStart: "22:00", quietEnd: "07:00",
-  notif: { sessions: true, missed: true, dailyQuiz: true, reviews: true, push: true }, setupDone: false,
+  notif: { sessions: true, missed: true, dailyQuiz: true, dailyCheckIn: true, reviews: true, push: true }, setupDone: false,
 };
 
 export interface StudyData {
