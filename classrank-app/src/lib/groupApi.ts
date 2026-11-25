@@ -15,9 +15,17 @@ const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> =
 
 export const fetchMyGroups = async () => (await call<StudyGroup[]>("my_study_groups")) ?? [];
 export const fetchGroupProfile = async (groupId: string) => {
-  const { data, error } = await supabase.from("study_groups").select("id,name,description,owner_id,group_avatar_path").eq("id", groupId).single();
-  if (error) throw error;
-  return data as Pick<StudyGroup, "id" | "name" | "description" | "owner_id" | "group_avatar_path">;
+  const withPhoto = await supabase.from("study_groups")
+    .select("id,name,description,owner_id,group_avatar_path")
+    .eq("id", groupId).single();
+  if (!withPhoto.error) return withPhoto.data as Pick<StudyGroup, "id" | "name" | "description" | "owner_id" | "group_avatar_path">;
+
+  // Keep Group Info usable if the group-photo migration has not reached this database yet.
+  const withoutPhoto = await supabase.from("study_groups")
+    .select("id,name,description,owner_id")
+    .eq("id", groupId).single();
+  if (withoutPhoto.error) throw withoutPhoto.error;
+  return { ...withoutPhoto.data, group_avatar_path: null } as Pick<StudyGroup, "id" | "name" | "description" | "owner_id" | "group_avatar_path">;
 };
 
 export const fetchMyUnreadGroupMessageCount = async () => Number(await call<number>("my_unread_group_message_count")) || 0;
