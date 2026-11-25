@@ -155,7 +155,7 @@ export default function TeacherCourseScreen({ navigation, route }: any) {
 
         {tab === "Updates" && (
           <>
-            <Muted>Post announcements and exam dates. Students see announcements on the course page and receive a phone alert when Class announcements & replies are enabled. Exam dates feed into their planners.</Muted>
+            <Muted>Post announcements and exam dates. Students see announcements on the course page. Phone alerts go to students with Class announcements & replies enabled once push delivery is configured. Exam dates feed into their planners.</Muted>
             {bundle.events.map((e) => (
               <Card key={e.id} style={{ flexDirection: "row", alignItems: "center", marginTop: spacing.sm }}>
                 <View style={{ flex: 1 }}><Text style={s.h3}>{e.title}</Text><Muted>{e.event_date ?? ""}{e.body ? ` ${e.body}` : ""}</Muted></View>
