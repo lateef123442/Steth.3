@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Platform, View } from "react-native";
+import { AppState, Platform, View } from "react-native";
 import { useNavigationContainerRef, NavigationContainer, DefaultTheme, DarkTheme } from "@react-navigation/native";
 import AppSplash from "./components/animated/AppSplash";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -16,6 +16,8 @@ import { initDeepLinking } from "./lib/deepLinking";
 import { initAnalytics } from "./lib/analytics";
 import { useAppFonts } from "./theme/useAppFonts";
 import { colors, isDarkTheme } from "./theme/tokens";
+import { useStudy } from "./lib/studyStore";
+import { syncStudySessionReminders } from "./lib/notifications";
 
 initErrorReporting();
 configurePurchases();
@@ -35,6 +37,21 @@ const navTheme = {
     notification: colors.ember,
   },
 };
+
+
+function StudyReminderSync() {
+  const { data, ready } = useStudy();
+  useEffect(() => {
+    if (!ready) return;
+    const sync = () => syncStudySessionReminders(data.sessions, data.subjects, data.focus, data.prefs.notif.sessions, data.prefs.notif.missed);
+    void sync();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void sync();
+    });
+    return () => subscription.remove();
+  }, [ready, data.sessions, data.subjects, data.focus, data.prefs.notif.sessions, data.prefs.notif.missed]);
+  return null;
+}
 
 /** The real app. App.tsx loads this only after the saved light/dark choice has been applied. */
 export default function AppRoot() {
@@ -78,6 +95,7 @@ export default function AppRoot() {
         <ErrorBoundary>
           <SafeAreaProvider>
             <AppProvider>
+              <StudyReminderSync />
               <ProGateProvider>
                 <NavigationContainer
                   ref={navigationRef}
