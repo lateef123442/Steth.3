@@ -101,6 +101,82 @@ export async function cancelStreakReminder(): Promise<void> {
   }
 }
 
+
+/**
+ * Keeps local notifications aligned with upcoming planned study sessions.
+ * This is separate from the daily quiz reminder and does not require a push token.
+ */
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (!notificationsAvailable) return false;
+  try {
+    const permission = await Notifications.getPermissionsAsync();
+    return !!(permission.granted || permission.status === "granted");
+  } catch {
+    return false;
+  }
+}
+
+export async function syncStudySessionReminders(
+  sessions: import("./studyTypes").PlannedSession[],
+  subjects: import("./studyTypes").Subject[],
+  focus: import("./studyTypes").FocusLog[],
+  sessionsEnabled: boolean,
+  dailyNudgeEnabled: boolean,
+): Promise<void> {
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    const existing = scheduled.filter((item) =>
+      item.content.data?.kind === "study-session" || item.content.data?.kind === "study-day-nudge"
+    );
+    await Promise.all(existing.map((item) => Notifications.cancelScheduledNotificationAsync(item.identifier)));
+
+    if ((!sessionsEnabled && !dailyNudgeEnabled) || !notificationsAvailable) return;
+    if (!(await hasNotificationPermission())) return;
+
+    const now = Date.now();
+    const names = new Map(subjects.map((subject) => [subject.id, subject.name]));
+    const upcoming = sessions
+      .filter((session) => session.status === "planned" && !!session.time)
+      .map((session) => ({ session, startsAt: new Date(session.date + "T" + session.time + ":00").getTime() }))
+      .filter((item) => Number.isFinite(item.startsAt) && item.startsAt > now)
+      .sort((a, b) => a.startsAt - b.startsAt)
+      .slice(0, 30);
+
+    if (sessionsEnabled) {
+      for (const item of upcoming) {
+        const name = names.get(item.session.subjectId) ?? "your course";
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "Time to study",
+            body: "Your " + name + " study session starts now. You planned " + item.session.minutes + " minutes.",
+            data: { kind: "study-session", sessionId: item.session.id },
+          },
+          trigger: new Date(item.startsAt),
+        });
+      }
+    }
+
+    const today = new Date();
+    const todayKey = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+    const studiedToday = focus.some((entry) => entry.date === todayKey) || sessions.some((session) => session.date === todayKey && session.status === "done");
+    if (dailyNudgeEnabled && !studiedToday) {
+      const nudgeAt = new Date();
+      nudgeAt.setHours(20, 0, 0, 0);
+      if (nudgeAt.getTime() <= now) nudgeAt.setDate(nudgeAt.getDate() + 1);
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "A little study goes a long way",
+          body: "You haven't logged any study time today. Even 20 minutes of revision is a useful start.",
+          data: { kind: "study-day-nudge" },
+        },
+        trigger: nudgeAt,
+      });
+    }
+  } catch (error) {
+    console.log("[notifications] study session reminder sync skipped:", error);
+  }
+}
+
 /**
  * Registers this device for push notifications and stores the token on the
  * user's profile. This is groundwork for a *future* feature (e.g. a teacher
