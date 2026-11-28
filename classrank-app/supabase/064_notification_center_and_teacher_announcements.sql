@@ -73,7 +73,7 @@ $$;
 create or replace function public.mark_group_notifications_read(p_group_id uuid)
 returns void language plpgsql security definer set search_path = public as $$
 begin
-  if auth.uid() is null or not public.is_group_member(p_group_id) then raise exception 'Not a group member'; end if;
+  if auth.uid() is null or not exists (select 1 from public.group_members gm where gm.group_id = p_group_id and gm.profile_id = auth.uid()) then raise exception 'Not a group member'; end if;
   update public.user_notifications set read_at = coalesce(read_at, now())
   where recipient_id = auth.uid() and kind = 'group_message' and data->>'group_id' = p_group_id::text and read_at is null;
 end;
