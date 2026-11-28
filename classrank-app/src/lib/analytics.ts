@@ -28,7 +28,9 @@ export function identifyUser(userId: string, traits: { role: string; university?
   client?.identify(userId, traits);
 }
 
-export function track(event: string, properties?: Record<string, unknown>) {
+type AnalyticsJson = string | number | boolean | null | AnalyticsJson[] | { [key: string]: AnalyticsJson };
+
+export function track(event: string, properties?: Record<string, AnalyticsJson>) {
   client?.capture(event, properties);
 }
 

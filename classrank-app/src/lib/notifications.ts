@@ -1,4 +1,5 @@
 import Notifications, { notificationsAvailable } from "./expoNotifications";
+export { notificationsAvailable } from "./expoNotifications";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
@@ -88,7 +89,7 @@ export async function scheduleStreakReminder(departmentName: string): Promise<vo
       title: "Protect your streak",
       body: `You haven't taken today's ${departmentName} quiz yet. A couple of minutes keeps it alive.`,
     },
-    trigger: target,
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: target },
   });
 }
 
@@ -151,7 +152,7 @@ export async function syncStudySessionReminders(
             body: "Your " + name + " study session starts now. You planned " + item.session.minutes + " minutes.",
             data: { kind: "study-session", sessionId: item.session.id },
           },
-          trigger: new Date(item.startsAt),
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: new Date(item.startsAt) },
         });
       }
     }
@@ -169,7 +170,7 @@ export async function syncStudySessionReminders(
           body: "You haven't logged any study time today. Even 20 minutes of revision is a useful start.",
           data: { kind: "study-day-nudge" },
         },
-        trigger: nudgeAt,
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: nudgeAt },
       });
     }
   } catch (error) {
