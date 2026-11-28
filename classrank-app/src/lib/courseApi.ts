@@ -216,9 +216,20 @@ export const submitTopicCompletionQuiz = async (
 };
 
 export interface DailyQuestion { id: string; topic: string; question: string; options: string[] }
-export interface DailyQuiz { answered_today: number; daily_limit: number; pending_total: number; questions: DailyQuestion[] }
+export interface DailyQuizStatus {
+  answered_today: number;
+  daily_limit: number;
+  pending_total: number;
+  available_questions: number;
+  started_today: boolean;
+  completed_today: boolean;
+}
+export interface DailyQuizAttempt { already_started: boolean; questions: DailyQuestion[] }
 export interface DailyAnswerResult { already_answered: boolean; is_correct: boolean; correct_index: number; explanation: string; points_earned: number; total_points?: number }
-export const fetchDailyQuiz = (courseId: string) => call<DailyQuiz>("course_daily_quiz", { p_course_id: courseId });
+// This RPC returns counts/status only; it never returns question text or answer options.
+export const fetchDailyQuiz = (courseId: string) => call<DailyQuizStatus>("course_daily_quiz", { p_course_id: courseId });
+// Questions are released only after the student confirms. The server permanently reserves today's attempt.
+export const startDailyQuiz = (courseId: string) => call<DailyQuizAttempt>("start_course_daily_quiz", { p_course_id: courseId });
 export const answerDaily = async (questionId: string, picked: number) => {
   const r = await call<DailyAnswerResult>("submit_course_daily_answer", { p_question_id: questionId, p_picked: picked });
   markProfileStale(); // points and streak changed

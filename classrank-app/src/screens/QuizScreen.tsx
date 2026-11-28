@@ -16,7 +16,7 @@ type Props = BottomTabScreenProps<MainTabParamList, "Quiz">;
 /** Shows a separate daily quiz entry for every course the student can access. */
 export default function QuizScreen({ navigation }: Props) {
   const [courses, setCourses] = useState<MyCourse[] | null>(null);
-  const [quizAvailability, setQuizAvailability] = useState<Record<string, { questions: number; pending: number }> | null>(null);
+  const [quizAvailability, setQuizAvailability] = useState<Record<string, { questions: number; pending: number; started: boolean; completed: boolean }> | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,12 +28,12 @@ export default function QuizScreen({ navigation }: Props) {
       const availability = await Promise.all(myCourses.map(async (course) => {
         try {
           const daily = await fetchDailyQuiz(course.id);
-          return [course.id, { questions: daily.questions.length, pending: daily.pending_total }] as const;
+          return [course.id, { questions: daily.available_questions, pending: daily.pending_total, started: daily.started_today, completed: daily.completed_today }] as const;
         } catch {
-          return [course.id, { questions: 0, pending: 0 }] as const;
+          return [course.id, { questions: 0, pending: 0, started: false, completed: false }] as const;
         }
       }));
-      setQuizAvailability(availability.reduce<Record<string, { questions: number; pending: number }>>((map, [courseId, value]) => {
+      setQuizAvailability(availability.reduce<Record<string, { questions: number; pending: number; started: boolean; completed: boolean }>>((map, [courseId, value]) => {
         map[courseId] = value;
         return map;
       }, {}));
@@ -63,21 +63,23 @@ export default function QuizScreen({ navigation }: Props) {
       <Muted>Choose a course to open its daily quiz. Each course has its own questions, progress and scoring.</Muted>
       {courses !== null && quizAvailability === null && <Card style={{ marginTop: spacing.md }}><Muted>Checking today's quizzes…</Muted></Card>}
       {courses !== null && quizAvailability !== null && (() => {
-        const quizCourses = courses.filter((course) => (quizAvailability[course.id]?.questions ?? 0) > 0);
-        const readyCourses = quizCourses.length;
+        const quizCourses = courses.filter((course) => (quizAvailability[course.id]?.questions ?? 0) > 0 || quizAvailability[course.id]?.started);
+        const readyCourses = quizCourses.filter((course) => !quizAvailability[course.id]?.started).length;
+        const startedCourses = quizCourses.length - readyCourses;
         return <Card style={{ marginTop: spacing.md, backgroundColor: colors.tealTint, borderWidth: 0 }}>
-          <Text style={[s.h3, { color: colors.teal }]}>{readyCourses} {readyCourses === 1 ? "quiz" : "quizzes"} available today</Text>
-          <Muted>One daily quiz for each course shown below.</Muted>
+          <Text style={[s.h3, { color: colors.teal }]}>{readyCourses} {readyCourses === 1 ? "quiz" : "quizzes"} ready to start</Text>
+          <Muted>Each course has one daily attempt. Once started, it cannot be reopened that day.</Muted>
+          {startedCourses > 0 && <Muted style={{ marginTop: 4 }}>{startedCourses} course quiz(es) already started or completed today.</Muted>}
         </Card>;
       })()}
       {courses === null && <ListSkeleton rows={4} />}
       {!!error && <Muted style={{ color: colors.danger, marginTop: spacing.md }}>{error}</Muted>}
       {courses?.length === 0 && !error && <Empty icon="📝" title="No courses yet" body="Your department and year courses will appear here. Once a teacher publishes course questions, you can take their daily quizzes here." />}
-      {courses !== null && quizAvailability !== null && courses.length > 0 && !courses.some((course) => (quizAvailability[course.id]?.questions ?? 0) > 0) && !error && (
+      {courses !== null && quizAvailability !== null && courses.length > 0 && !courses.some((course) => (quizAvailability[course.id]?.questions ?? 0) > 0 || quizAvailability[course.id]?.started) && !error && (
         <Empty icon="📝" title="No quizzes available yet" body="Courses will appear here when a teacher publishes quiz questions for them." />
       )}
       <Grid>
-        {courses?.filter((course) => (quizAvailability?.[course.id]?.questions ?? 0) > 0).map((course, index) => (
+        {courses?.filter((course) => (quizAvailability?.[course.id]?.questions ?? 0) > 0 || quizAvailability?.[course.id]?.started).map((course, index) => (
           <StaggerIn key={course.id} index={index}>
             <Card onPress={() => openQuiz(course)} style={{ marginTop: spacing.md }}>
               <CourseThumb path={course.thumbnail_path} height={104} />
@@ -89,10 +91,10 @@ export default function QuizScreen({ navigation }: Props) {
               <Muted style={{ marginTop: 4 }}>{course.department} · {course.teacher_name}</Muted>
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: spacing.md }}>
                 <Tag
-                  label="1 quiz"
-                  color={colors.teal}
+                  label={quizAvailability?.[course.id]?.completed ? "Completed today" : quizAvailability?.[course.id]?.started ? "Attempt already started" : "1 quiz"}
+                  color={quizAvailability?.[course.id]?.started ? colors.textFaint : colors.teal}
                 />
-                <Text style={{ color: colors.teal, fontWeight: "700" }}>Start →</Text>
+                <Text style={{ color: quizAvailability?.[course.id]?.started ? colors.textMuted : colors.teal, fontWeight: "700" }}>{quizAvailability?.[course.id]?.started ? "View status →" : "Start →"}</Text>
               </View>
             </Card>
           </StaggerIn>
