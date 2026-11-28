@@ -182,19 +182,23 @@ export default function PlannerScreen({ navigation }: any) {
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           <View style={{ flex: 1, paddingRight: spacing.sm }}>
             <Text style={s.h3}>{subjectName(data, item.subjectId)}</Text>
-            <Muted>{fmtTime12(time)} · {item.minutes} minutes</Muted>
+            <Muted>{dayLabel(item.date)} · {fmtTime12(time)} · {item.minutes} minutes</Muted>
           </View>
           <Text style={{ color: done ? colors.success : skipped ? colors.textFaint : colors.teal, fontWeight: "700" }}>
             {done ? "Completed" : skipped ? "Skipped" : "Planned"}
           </Text>
         </View>
         {!done && !skipped ? (
-          <View style={[s.row, { marginTop: spacing.md }]}>
-            <Chip label="Start study" on onPress={() => startFocus(item)} />
-            <Chip label="Done" on onPress={() => setSessionStatus(item.id, "done")} />
-            <Chip label="Edit" on={false} onPress={() => { setEditing(item); setEditDate(parseDate(item.date)); setEditTime(parseTime(time)); }} />
-            <Chip label="Remove" on={false} onPress={() => Alert.alert("Remove session?", "This will remove it from your timetable.", [{ text: "Keep", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeSession(item.id) }])} />
-          </View>
+          <>
+            <View style={[s.row, { marginTop: spacing.md }]}>
+              <Chip label="Start study" on onPress={() => startFocus(item)} />
+              <Chip label="Done" on onPress={() => setSessionStatus(item.id, "done")} />
+              <Chip label="Remove" on={false} onPress={() => Alert.alert("Remove session?", "This will remove it from your timetable.", [{ text: "Keep", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeSession(item.id) }])} />
+            </View>
+            <View style={{ marginTop: spacing.sm }}>
+              <Btn ghost label="Edit date & time" onPress={() => { setEditing(item); setEditDate(parseDate(item.date)); setEditTime(parseTime(time)); }} />
+            </View>
+          </>
         ) : (
           <View style={[s.row, { marginTop: spacing.md }]}>
             <Chip label="Undo" on={false} onPress={() => setSessionStatus(item.id, "planned")} />
@@ -345,8 +349,8 @@ export default function PlannerScreen({ navigation }: any) {
       <Modal visible={!!editing} transparent animationType="slide" onRequestClose={() => { setEditing(null); setEditPicker(null); }}>
         <View style={{ flex: 1, justifyContent: "center", padding: spacing.lg, backgroundColor: "rgba(0,0,0,0.45)" }}>
           <Card style={{ padding: spacing.lg }}>
-            <Text style={s.h2}>Reschedule session</Text>
-            <Muted style={{ marginTop: spacing.xs }}>The course and duration will stay the same.</Muted>
+            <Text style={s.h2}>Edit study date & time</Text>
+            <Muted style={{ marginTop: spacing.xs }}>The course and duration stay the same. The new time must be in the future and must not overlap another planned session.</Muted>
             <View style={[s.row, { marginTop: spacing.md }]}>
               <Chip label={"Date · " + localDateString(editDate)} on={editPicker === "date"} onPress={() => setEditPicker("date")} />
               <Chip label={"Time · " + fmtTime12(formatTime(editTime))} on={editPicker === "time"} onPress={() => setEditPicker("time")} />
