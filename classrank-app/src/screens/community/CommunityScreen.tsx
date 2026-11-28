@@ -5,20 +5,20 @@ import { spacing, colors } from "../../theme/tokens";
 import { Back, Card, Muted, Tag, s } from "../../components/study/ui";
 import { WRAP } from "../../components/responsive";
 import useSocialNotifications from "../../hooks/useSocialNotifications";
-import { fetchMyGroups, fetchMyUnreadGroupMessageCounts, StudyGroup } from "../../lib/groupApi";
+import { fetchMyGroups, StudyGroup } from "../../lib/groupApi";
+import useGroupUnreadCounts from "../../hooks/useGroupUnreadCounts";
 
 export default function CommunityScreen({ navigation }: any) {
   const { requestCount, unreadMessageCount, groupWelcomeCount } = useSocialNotifications();
   const [groups, setGroups] = useState<StudyGroup[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(true);
-  const [groupUnreadCounts, setGroupUnreadCounts] = useState<Record<string, number>>({});
+  const groupUnreadCounts = useGroupUnreadCounts();
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const loadGroups = useCallback(async () => {
     setGroupsLoading(true);
     try {
-      const [myGroups, unreadRows] = await Promise.all([fetchMyGroups(), fetchMyUnreadGroupMessageCounts().catch(() => [])]);
+      const myGroups = await fetchMyGroups();
       setGroups(myGroups);
-      setGroupUnreadCounts(Object.fromEntries(unreadRows.map((row) => [row.group_id, Number(row.unread_count) || 0])));
       setGroupsError(null);
     } catch (e: any) { setGroupsError(e?.message ?? "Couldn't load your group chats."); }
     finally { setGroupsLoading(false); }
@@ -66,7 +66,10 @@ export default function CommunityScreen({ navigation }: any) {
           <Card key={group.id} onPress={() => navigation.navigate("GroupChat", { groupId: group.id, name: group.name })} style={{ marginTop: spacing.md }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
               <View style={{ flex: 1 }}>
-                <Text style={s.h3}>{group.name}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {groupUnreadCounts[group.id] > 0 && <View accessibilityLabel={`${groupUnreadCounts[group.id]} unread messages in ${group.name}`} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.danger }} />}
+                  <Text style={s.h3}>{group.name}</Text>
+                </View>
                 <Muted>{group.official ? "Official class group" + (group.year ? " · Year " + group.year : "") : "Study group"} · {group.member_count} members</Muted>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>

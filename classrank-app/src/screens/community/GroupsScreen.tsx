@@ -9,6 +9,7 @@ import { requestGroupJoin } from "../../lib/groupQuestions";
 import { fetchUnreadJoinedMemberCounts } from "../../lib/groupQuestions";
 import StaggerIn from "../../components/animated/StaggerIn";
 import { WRAP } from "../../components/responsive";
+import useGroupUnreadCounts from "../../hooks/useGroupUnreadCounts";
 
 export default function GroupsScreen({ navigation }: any) {
   const [groups, setGroups] = useState<StudyGroup[] | null>(null);
@@ -16,6 +17,7 @@ export default function GroupsScreen({ navigation }: any) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [joinedCounts, setJoinedCounts] = useState<Record<string, number>>({});
+  const groupUnreadCounts = useGroupUnreadCounts();
 
   const load = useCallback(async () => {
     try {
@@ -52,7 +54,11 @@ export default function GroupsScreen({ navigation }: any) {
           <StaggerIn key={g.id} index={i}><Card style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("GroupChat", { groupId: g.id, name: g.name })}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
               <Avatar name={g.name} path={g.group_avatar_path} size={48} bucket="group-avatars" />
-              <Text style={[s.h3, { flex: 1 }]}>{g.official ? "Official · " : ""}{g.name}</Text>
+              <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {groupUnreadCounts[g.id] > 0 && <View accessibilityLabel={`${groupUnreadCounts[g.id]} unread messages in ${g.name}`} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.danger }} />}
+                <Text style={[s.h3, { flex: 1 }]}>{g.official ? "Official · " : ""}{g.name}</Text>
+              </View>
+              {groupUnreadCounts[g.id] > 0 && <View style={{ minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{groupUnreadCounts[g.id] > 99 ? "99+" : groupUnreadCounts[g.id]}</Text></View>}
               {!!joinedCounts[g.id] && <View style={{ minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "800" }}>{joinedCounts[g.id] > 99 ? "99+" : joinedCounts[g.id]}</Text></View>}
             </View>
             <Muted>{g.official ? `Class group${g.year ? ` · Year ${g.year}` : ""}${g.owner_name ? ` · ${g.owner_name}` : ""} · ` : ""}{g.member_count} member{g.member_count === 1 ? "" : "s"} · Open group chat →</Muted>
