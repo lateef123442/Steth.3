@@ -23,6 +23,8 @@ jobs:
           cache-dependency-path: classrank-app/package-lock.json
       - name: Install dependencies
         run: npm ci
+      - name: Install the React Native Jest preset required by jest-expo
+        run: npm install --no-save --package-lock=false @react-native/jest-preset@0.86.3
       - name: Type check
         run: npm run typecheck
       - name: Run tests
