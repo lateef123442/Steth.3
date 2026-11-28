@@ -10,7 +10,7 @@ create table if not exists public.course_daily_quiz_attempts (
   started_at timestamptz not null default now(),
   completed_at timestamptz,
   constraint course_daily_quiz_attempts_once unique (profile_id, course_id, quiz_date),
-  constraint course_daily_quiz_attempts_questions_check check (cardinality(question_ids) between 1 and 5)
+  constraint course_daily_quiz_attempts_questions_check check (cardinality(question_ids) >= 1)
 );
 
 create index if not exists idx_course_daily_quiz_attempts_course_date
