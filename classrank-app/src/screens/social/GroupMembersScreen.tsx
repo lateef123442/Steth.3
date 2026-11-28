@@ -14,6 +14,7 @@ export default function GroupMembersScreen({ navigation, route }: any) {
   const { groupId, name } = route.params as { groupId: string; name: string };
   const { profile } = useApp();
   const [members, setMembers] = useState<GroupMember[] | null>(null);
+  const [membersError, setMembersError] = useState<string | null>(null);
   const [groupPhotoPath, setGroupPhotoPath] = useState<string | null>(null);
   const [groupDescription, setGroupDescription] = useState("");
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -27,22 +28,44 @@ export default function GroupMembersScreen({ navigation, route }: any) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
-    try {
-      const [m, groups, groupProfile] = await Promise.all([fetchGroupMembers(groupId), fetchMyGroups(), fetchGroupProfile(groupId)]);
-      setMembers(m);
+    setMembersError(null);
+    setMembers(null);
+    const [membersResult, groupsResult, profileResult] = await Promise.allSettled([
+      fetchGroupMembers(groupId),
+      fetchMyGroups(),
+      fetchGroupProfile(groupId),
+    ]);
+
+    const m = membersResult.status === "fulfilled" ? membersResult.value : [];
+    setMembers(m);
+    const groups = groupsResult.status === "fulfilled" ? groupsResult.value : [];
+    const groupProfile = profileResult.status === "fulfilled" ? profileResult.value : null;
+    const owner = groups.find((g) => g.id === groupId)?.owner_id ?? groupProfile?.owner_id ?? null;
+    setOwnerId(owner);
+    if (groupProfile) {
       setGroupPhotoPath(groupProfile.group_avatar_path ?? null);
       setGroupDescription(groupProfile.description ?? "");
-      const owner = groups.find((g) => g.id === groupId)?.owner_id ?? groupProfile.owner_id;
-      setOwnerId(owner);
-      const manager = owner === profile?.id || m.some((x) => x.id === profile?.id && x.group_role === "admin");
-      if (manager) {
-        const [r, a] = await Promise.all([fetchGroupJoinRequests(groupId), fetchGroupActivity(groupId)]);
-        setRequests(r); setActivity(a);
-        await markGroupJoinActivityRead(groupId).catch(() => {});
-      } else { setRequests([]); setActivity([]); }
-    } catch (e: any) {
-      Alert.alert("Couldn't load group members", e?.message ?? "Try again.");
+    }
+
+    if (membersResult.status === "rejected") {
+      const reason = membersResult.reason as any;
+      setMembersError(reason?.message ?? "The group member list could not be loaded.");
       setMembers([]);
+      return;
+    }
+
+    const manager = owner === profile?.id || m.some((x) => x.id === profile?.id && x.group_role === "admin");
+    if (manager) {
+      const [requestsResult, activityResult] = await Promise.allSettled([
+        fetchGroupJoinRequests(groupId),
+        fetchGroupActivity(groupId),
+      ]);
+      setRequests(requestsResult.status === "fulfilled" ? requestsResult.value : []);
+      setActivity(activityResult.status === "fulfilled" ? activityResult.value : []);
+      if (activityResult.status === "fulfilled") await markGroupJoinActivityRead(groupId).catch(() => {});
+    } else {
+      setRequests([]);
+      setActivity([]);
     }
   }, [groupId, profile?.id]);
 
@@ -122,6 +145,10 @@ export default function GroupMembersScreen({ navigation, route }: any) {
       </Grid>
       <Label>MEMBERS · TAP A PERSON TO OPEN THEIR PROFILE</Label>
       {members === null && <ListSkeleton />}
+      {!!membersError && <Card style={{ marginTop: spacing.xs }}>
+        <Muted>{membersError}</Muted>
+        <Chip label="Retry" on onPress={load} />
+      </Card>}
       <Grid max={2}>
         {members?.map((m) => <Card key={m.id} style={{ marginTop: spacing.xs }} onPress={() => navigation.navigate("PublicProfile", { userId: m.id })}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
