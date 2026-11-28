@@ -31,8 +31,12 @@ export default function PDFPracticeScreen({ navigation }: any) {
       if (authError || !auth.user) throw new Error("Please sign in again and retry.");
       const safeName = name.replace(/[^A-Za-z0-9._-]/g, "_").slice(-120);
       uploadedPath = `${auth.user.id}/${uid()}-${safeName}`;
-      const bytes = await (await fetch(file.uri)).arrayBuffer();
+      const fileResponse = await fetch(file.uri);
+      if (!fileResponse.ok) throw new Error("Steth couldn't read the selected file. Please choose the PDF again.");
+      const bytes = await fileResponse.arrayBuffer();
       if (!bytes.byteLength || bytes.byteLength > MAX_PDF_BYTES) throw new Error("The PDF must be smaller than 10 MB.");
+      const header = new TextDecoder().decode(new Uint8Array(bytes.slice(0, 1024)));
+      if (!header.includes("%PDF-")) throw new Error("This file doesn't look like a valid PDF. Please choose a different PDF.");
       const { error: uploadError } = await supabase.storage.from("pdf-practice").upload(uploadedPath, bytes, { contentType: "application/pdf", upsert: false });
       if (uploadError) throw uploadError;
       setFileName(name);

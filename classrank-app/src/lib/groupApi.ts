@@ -58,7 +58,13 @@ export const reportChallengeProgress = (challengeId: string, minutes: number) =>
 
 // ── group quizzes (supabase/018_group_quizzes.sql) ──
 export interface GroupQuizSummary { id: string; title: string; created_at: string; created_by: string; author_name: string; question_count: number; participants: number; my_result: { correct: number; total: number } | null }
-export interface GroupQuizPlay { id: string; title: string; taken: boolean; questions: { q: string; options: string[] }[] }
+export interface GroupQuizPlay {
+  id: string; title: string; taken: boolean;
+  questions: { q: string; options: string[] }[];
+  my_answers?: (number | null)[];
+  result?: { correct: number; total: number } | null;
+}
+export interface GroupQuizStart { attempt_started_at: string; questions: { q: string; options: string[] }[] }
 export interface GroupQuizReviewItem { q: string; options: string[]; correct: number; explanation: string }
 export interface QuizStanding { profile_id: string; name: string; correct: number; total: number; seconds: number }
 
@@ -66,6 +72,11 @@ export const fetchGroupQuizzes = async (groupId: string) => (await call<GroupQui
 export const createGroupQuiz = (groupId: string, title: string, questions: { q: string; options: string[]; correct: number; explanation: string }[]) =>
   call<string>("create_group_quiz", { p_group_id: groupId, p_title: title, p_questions: questions });
 export const fetchGroupQuiz = (quizId: string) => call<GroupQuizPlay>("get_group_quiz", { p_quiz_id: quizId });
+export const startGroupQuiz = (quizId: string) => call<GroupQuizStart>("start_group_quiz", { p_quiz_id: quizId });
+export const saveGroupQuizAnswer = (quizId: string, questionIndex: number, picked: number) =>
+  call<void>("save_group_quiz_answer", { p_quiz_id: quizId, p_question_index: questionIndex, p_picked: picked });
+export const finalizeGroupQuiz = (quizId: string) =>
+  call<{ correct: number; total: number }>("finalize_group_quiz", { p_quiz_id: quizId });
 export const submitGroupQuiz = (quizId: string, answers: (number | null)[], seconds: number) =>
   call<{ correct: number; total: number }>("submit_group_quiz", { p_quiz_id: quizId, p_answers: answers, p_seconds: seconds });
 export const fetchQuizReview = async (quizId: string) => (await call<GroupQuizReviewItem[]>("review_group_quiz", { p_quiz_id: quizId })) ?? [];

@@ -73,7 +73,7 @@ export async function syncStudyReminders(d: StudyData): Promise<void> {
       }
       if (when.getTime() <= now + 30000) continue;
       if (scheduled++ >= 40) break; // iOS caps pending local notifications at 64
-      await Notifications.scheduleNotificationAsync({ identifier: j.id, content: { title: j.title, body: j.body }, trigger: when });
+      await Notifications.scheduleNotificationAsync({ identifier: j.id, content: { title: j.title, body: j.body }, trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: when } });
     }
   } catch (e) {
     console.log("[studyReminders] sync skipped:", e);

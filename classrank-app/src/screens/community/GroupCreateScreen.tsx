@@ -33,7 +33,7 @@ export default function GroupCreateScreen({ navigation }: any) {
         catch (photoError: any) { Alert.alert("Group created, photo not uploaded", photoError?.message ?? "You can add the photo from group info."); }
       }
       Alert.alert("Group created", `Your group is ready. Share this invite code with classmates: ${group.join_code}`, [
-        { text: "Open group chat", onPress: () => navigation.replace("GroupChat", { groupId: group.id, name: group.name ?? name.trim() }) },
+        { text: "Open group chat", onPress: () => navigation.replace("GroupChat", { groupId: group.id, name: name.trim() }) },
       ]);
     } catch (error: any) {
       Alert.alert("Couldn't create group", error?.message ?? "Please try again.");

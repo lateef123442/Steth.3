@@ -7,6 +7,8 @@ import { Card, Empty, Muted, Tag, YearTag, s, ListSkeleton } from "../components
 import CourseThumb from "../components/CourseThumb";
 import StaggerIn from "../components/animated/StaggerIn";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NavigationProp } from "@react-navigation/native";
+import type { RootStackParamList } from "../navigation/RootNavigator";
 import type { MainTabParamList } from "../navigation/RootNavigator";
 
 type Props = BottomTabScreenProps<MainTabParamList, "Quiz">;
@@ -52,9 +54,8 @@ export default function QuizScreen({ navigation }: Props) {
   }, [load, navigation]);
 
   const openQuiz = (course: MyCourse) => {
-    const root = navigation.getParent();
+    const root = navigation.getParent<NavigationProp<RootStackParamList>>();
     if (root) root.navigate("CourseDaily", { courseId: course.id, code: course.code });
-    else navigation.navigate("CourseDaily" as never, { courseId: course.id, code: course.code } as never);
   };
 
   return (
