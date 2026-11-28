@@ -14,7 +14,7 @@ export function usePushRegistration() {
     let last: boolean | null = null;
     const check = () => {
       if (!isStudyLoaded()) return;
-      const on = getStudyData().prefs.notify.push;
+      const on = getStudyData().prefs.notif.push;
       if (on === last) return;
       last = on;
       if (on) registerPushToken(uid); else clearPushToken(uid);
