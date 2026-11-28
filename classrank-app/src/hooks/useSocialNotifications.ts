@@ -26,7 +26,7 @@ export default function useSocialNotifications(): SocialNotificationCounts {
     try {
       const courses = await fetchMyCourses();
       const available = await Promise.all(courses.map(async (course) => {
-        try { return (await fetchDailyQuiz(course.id)).questions.length > 0; }
+        try { return (await fetchDailyQuiz(course.id)).available_questions > 0; }
         catch { return false; }
       }));
       setDailyCourseQuizCount(available.filter(Boolean).length);

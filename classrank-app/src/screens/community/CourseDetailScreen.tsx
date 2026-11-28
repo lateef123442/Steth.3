@@ -5,7 +5,7 @@ import PressableScale from "../../components/animated/PressableScale";
 import { Back, Bar, Btn, Card, Empty, Label, Muted, Tag, YearTag, s, ListSkeleton } from "../../components/study/ui";
 import { Screen, useLayout } from "../../components/responsive";
 import CourseThumb from "../../components/CourseThumb";
-import { fetchCourseContent, fetchCourseThumbnail, fetchCourseExams, fetchCourseRanking, fetchDailyQuiz, ExamSummary, CourseRanking, DailyQuiz, KIND_LABEL } from "../../lib/courseApi";
+import { fetchCourseContent, fetchCourseThumbnail, fetchCourseExams, fetchCourseRanking, fetchDailyQuiz, ExamSummary, CourseRanking, DailyQuizStatus, KIND_LABEL } from "../../lib/courseApi";
 import { fmtWhen } from "../../lib/examTime";
 import { CourseBundle } from "../../lib/studyCourseSync";
 import { importCourseBundle, daysUntil } from "../../lib/studyStore";
@@ -18,7 +18,7 @@ export default function CourseDetailScreen({ navigation, route }: any) {
   const [error, setError] = useState<string | null>(null);
   const [timed, setTimed] = useState<ExamSummary[]>([]);
   const [rank, setRank] = useState<CourseRanking | null>(null);
-  const [daily, setDaily] = useState<DailyQuiz | null>(null);
+  const [daily, setDaily] = useState<DailyQuizStatus | null>(null);
   const [thumb, setThumb] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -87,10 +87,11 @@ export default function CourseDetailScreen({ navigation, route }: any) {
       <Card onPress={() => navigation.navigate("CourseDaily", { courseId, code: c.code })}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
           <Text style={s.h3}>Today's questions</Text>
-          {daily && daily.questions.length > 0 && <Tag label={`${daily.questions.length} ready`} color={colors.teal} />}
+          {daily && (daily.available_questions > 0 || daily.started_today) && <Tag label={daily.completed_today ? "Completed today" : daily.started_today ? "Already started" : `${daily.available_questions} ready`} color={daily.started_today ? colors.textFaint : colors.teal} />}
         </View>
         <Muted style={{ marginTop: 4 }}>
-          {!daily ? "Tap to open." : daily.questions.length > 0 ? "Quick questions from the topics you've started. Your first answer counts for the ranking."
+          {!daily ? "Tap to check today's quiz." : daily.started_today ? (daily.completed_today ? "You've completed today's quiz. A new attempt is available tomorrow." : "Today's attempt has already started. If you leave early, you cannot reopen it until tomorrow.")
+            : daily.available_questions > 0 ? "Quick questions from the topics you've started. You'll see the questions only after confirming that you want to begin."
             : daily.answered_today >= daily.daily_limit ? "You're done for today. Come back tomorrow."
             : daily.pending_total > 0 ? "Open more resources to unlock more questions." : "Your teacher hasn't added daily questions yet."}
         </Muted>
