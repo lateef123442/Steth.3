@@ -18,16 +18,32 @@ const call = async <T>(fn: string, args?: Record<string, unknown>): Promise<T> =
 
 // ── friends ──
 export const searchPeople = async (q: string) => (await call<PersonResult[]>("search_people", { p_query: q, p_limit: 20 })) ?? [];
-export const sendFriendRequest = (userId: string) => call<"friend" | "sent">("send_friend_request", { p_user: userId });
-export const respondFriendRequest = (userId: string, accept: boolean) => call<void>("respond_friend_request", { p_user: userId, p_accept: accept });
+export const sendFriendRequest = async (userId: string) => {
+  const result = await call<"friend" | "sent">("send_friend_request", { p_user: userId });
+  try { await supabase.functions.invoke("notify", { body: result === "sent" ? { kind: "friend_request", targetUserId: userId } : { kind: "friend_request_accepted", requesterId: userId } }); } catch { /* database notification remains available */ }
+  return result;
+};
+export const respondFriendRequest = async (userId: string, accept: boolean) => {
+  await call<void>("respond_friend_request", { p_user: userId, p_accept: accept });
+  if (accept) {
+    try { await supabase.functions.invoke("notify", { body: { kind: "friend_request_accepted", requesterId: userId } }); } catch { /* database notification remains available */ }
+  }
+};
 export const removeFriend = (userId: string) => call<void>("remove_friend", { p_user: userId });
 export const fetchFriends = async () => (await call<Friends>("my_friends")) ?? { friends: [], incoming: [], outgoing: [] };
 
 // ── private messages ──
 export const fetchConversations = async () => (await call<Conversation[]>("my_conversations")) ?? [];
 export const fetchConversation = async (withId: string, before?: string) => (await call<ChatMessage[]>("list_conversation", { p_with: withId, p_before: before ?? null, p_limit: 40 })) ?? [];
-export const sendDirect = (to: string, body: string) => call<ChatMessage>("send_direct_message", { p_to: to, p_body: body });
-export const markRead = (withId: string) => call<void>("mark_conversation_read", { p_with: withId });
+export const sendDirect = async (to: string, body: string) => {
+  const message = await call<ChatMessage>("send_direct_message", { p_to: to, p_body: body });
+  try { await supabase.functions.invoke("notify", { body: { kind: "direct_message", messageId: message.id } }); } catch { /* in-app notification is already stored by the database trigger */ }
+  return message;
+};
+export const markRead = async (withId: string) => {
+  await call<void>("mark_conversation_read", { p_with: withId });
+  await call<void>("mark_direct_message_notifications_read", { p_sender_id: withId }).catch(() => {});
+};
 
 // Every subscription gets its own uniquely-named channel. Supabase reuses a channel with the same name, so two screens
 // listening at once (Friends list + an open chat) would otherwise share one, throw on the second `.on()`, and the first
@@ -77,6 +93,7 @@ export const fetchGroupMessages = async (groupId: string, before?: string) =>
     .map((m): ChatMessage => ({ id: m.id, sender_id: m.author_id, sender_name: m.author_name, avatar_path: m.avatar_path, body: m.body, created_at: m.created_at }));
 export const sendGroupMsg = async (groupId: string, body: string) => {
   const r = await call<{ id: string; author_id: string; body: string; created_at: string }>("send_group_message", { p_group_id: groupId, p_body: body });
+  try { await supabase.functions.invoke("notify", { body: { kind: "group_message", messageId: r.id } }); } catch { /* in-app notification is already stored by the database trigger */ }
   return { id: r.id, sender_id: r.author_id, body: r.body, created_at: r.created_at } as ChatMessage;
 };
 export function subscribeGroup(groupId: string, onMessage: (m: ChatMessage) => void, onReconnect?: () => void) {

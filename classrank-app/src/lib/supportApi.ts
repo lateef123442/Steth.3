@@ -15,10 +15,19 @@ export const STATUS_LABEL: Record<FeedbackStatus, string> = { open: "Open", in_p
 export interface MyFeedback { id: string; category: FeedbackCategory; subject: string; body: string; status: FeedbackStatus; admin_reply: string; replied_at: string | null; created_at: string }
 export interface AdminFeedback extends MyFeedback { author_name: string; author_role: Role; department: string | null; year: number | null; email: string | null }
 
-export const submitFeedback = (category: FeedbackCategory, subject: string, body: string) => call<string>("submit_feedback", { p_category: category, p_subject: subject, p_body: body });
+export const submitFeedback = async (category: FeedbackCategory, subject: string, body: string) => {
+  const id = await call<string>("submit_feedback", { p_category: category, p_subject: subject, p_body: body });
+  try { await supabase.functions.invoke("notify", { body: { kind: "admin_request", feedbackId: id } }); } catch { /* in-app admin notification is already stored by the database trigger */ }
+  return id;
+};
 export const fetchMyFeedback = async () => (await call<MyFeedback[]>("my_feedback")) ?? [];
 export const fetchAdminFeedback = async (status: FeedbackStatus | "all" = "all") => (await call<AdminFeedback[]>("admin_list_feedback", { p_status: status, p_limit: 150 })) ?? [];
-export const respondFeedback = (id: string, status: FeedbackStatus, reply: string) => call<void>("admin_respond_feedback", { p_id: id, p_status: status, p_reply: reply });
+export const respondFeedback = async (id: string, status: FeedbackStatus, reply: string) => {
+  await call<void>("admin_respond_feedback", { p_id: id, p_status: status, p_reply: reply });
+  if (reply.trim()) {
+    try { await supabase.functions.invoke("notify", { body: { kind: "admin_reply", feedbackId: id } }); } catch { /* student inbox notification is already stored by the database trigger */ }
+  }
+};
 
 export type ReportStatus = "open" | "reviewing" | "resolved" | "dismissed";
 export interface AdminReport {

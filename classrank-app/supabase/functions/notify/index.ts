@@ -13,6 +13,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const cors = {
   "access-control-allow-origin": "*",
+  "access-control-allow-methods": "POST, OPTIONS",
   "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
 };
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "content-type": "application/json" } });
@@ -62,6 +63,73 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Not signed in" }, 401);
     const admin = createClient(URL_, SERVICE);
     const body = await req.json();
+
+    // New notification-center events. The database triggers/RPC create inbox rows first;
+    // this function only claims those rows and sends best-effort Expo push alerts.
+    const sendInboxPush = async (kind: string, key: string, value: string) => {
+      const { data: rows, error } = await admin.from("user_notifications")
+        .select("id, recipient_id, title, body, data")
+        .eq("kind", kind).eq(`data->>${key}`, value).is("push_sent_at", null);
+      if (error || !rows?.length) return 0;
+      const ids = rows.map((r: any) => r.id);
+      const { data: claimed, error: claimError } = await admin.from("user_notifications")
+        .update({ push_sent_at: new Date().toISOString() }).in("id", ids).is("push_sent_at", null)
+        .select("recipient_id, title, body, data");
+      if (claimError || !claimed?.length) return 0;
+      const tokens = await tokensFor(admin, claimed.map((r: any) => r.recipient_id));
+      const first = claimed[0];
+      return await sendExpo(admin, tokens, { title: first.title, body: String(first.body ?? "").slice(0, 160), data: { type: kind, ...(first.data ?? {}) } });
+    };
+
+    if (body.kind === "direct_message") {
+      const { data: message } = await admin.from("direct_messages").select("id, sender_id").eq("id", body.messageId).maybeSingle();
+      if (!message) return json({ error: "Not found" }, 404);
+      if (message.sender_id !== user.id) return json({ error: "Not authorized" }, 403);
+      return json({ sent: await sendInboxPush("direct_message", "message_id", message.id) });
+    }
+
+    if (body.kind === "group_message") {
+      const { data: message } = await admin.from("group_messages").select("id, author_id").eq("id", body.messageId).maybeSingle();
+      if (!message) return json({ error: "Not found" }, 404);
+      if (message.author_id !== user.id) return json({ error: "Not authorized" }, 403);
+      return json({ sent: await sendInboxPush("group_message", "message_id", message.id) });
+    }
+
+    if (body.kind === "friend_request") {
+      const { data: request } = await admin.from("friendships").select("requester, addressee, status")
+        .eq("requester", user.id).eq("addressee", body.targetUserId).eq("status", "pending").maybeSingle();
+      if (!request) return json({ error: "Request not found" }, 404);
+      return json({ sent: await sendInboxPush("friend_request", "user_id", user.id) });
+    }
+
+    if (body.kind === "friend_request_accepted") {
+      const { data: request } = await admin.from("friendships").select("requester, addressee, status")
+        .eq("requester", body.requesterId).eq("addressee", user.id).eq("status", "accepted").maybeSingle();
+      if (!request) return json({ error: "Accepted request not found" }, 404);
+      return json({ sent: await sendInboxPush("friend_request_accepted", "user_id", user.id) });
+    }
+
+    if (body.kind === "admin_request") {
+      const { data: feedback } = await admin.from("feedback").select("id, author_id").eq("id", body.feedbackId).maybeSingle();
+      if (!feedback) return json({ error: "Not found" }, 404);
+      if (feedback.author_id !== user.id) return json({ error: "Not authorized" }, 403);
+      return json({ sent: await sendInboxPush("admin_request", "feedback_id", feedback.id) });
+    }
+
+    if (body.kind === "admin_reply") {
+      const { data: isAdmin } = await asUser.rpc("is_admin");
+      if (!isAdmin) return json({ error: "Not authorized" }, 403);
+      const { data: feedback } = await admin.from("feedback").select("id").eq("id", body.feedbackId).maybeSingle();
+      if (!feedback) return json({ error: "Not found" }, 404);
+      return json({ sent: await sendInboxPush("admin_reply", "feedback_id", feedback.id) });
+    }
+
+    if (body.kind === "teacher_announcement") {
+      const { data: announcement } = await admin.from("teacher_announcements").select("id, author_id").eq("id", body.announcementId).maybeSingle();
+      if (!announcement) return json({ error: "Not found" }, 404);
+      if (announcement.author_id !== user.id) return json({ error: "Not authorized" }, 403);
+      return json({ sent: await sendInboxPush("announcement", "announcement_id", announcement.id) });
+    }
 
     if (body.kind === "announcement") {
       const { data: ev } = await admin.from("course_events").select("id, course_id, kind, title, body, event_date").eq("id", body.eventId).maybeSingle();

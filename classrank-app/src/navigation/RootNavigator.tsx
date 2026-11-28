@@ -34,6 +34,8 @@ import StudySetupScreen from "../screens/StudySetupScreen";
 import { useStudyReminderSync } from "../hooks/useStudyReminderSync";
 import { usePushRegistration, usePushTapNavigation } from "../hooks/usePushSync";
 import useSocialNotifications from "../hooks/useSocialNotifications";
+import useUnreadNotificationCount from "../hooks/useUnreadNotificationCount";
+import NotificationsScreen from "../screens/notifications/NotificationsScreen";
 import { useStudyCloudSync } from "../hooks/useStudyCloudSync";
 import TabIcon from "../components/animated/TabIcon";
 import { LoadingScreen } from "../components/animated/Loader";
@@ -80,6 +82,7 @@ export type RootStackParamList = {
   GroupCreate: undefined;
   Friends: { initialTab?: "Chats" | "Friends" | "Requests" | "Find people" | "Blocked" } | undefined;
   Feedback: undefined;
+  Notifications: undefined;
   AccountSettings: undefined;
   PublicProfile: { userId: string };
   Chat: { userId: string; name: string; department?: string | null; year?: number | null; avatar_path?: string | null };
@@ -129,8 +132,13 @@ const ExemptFeedback = (props: any) => <ProGateExempt><FeedbackScreen {...props}
 /** Profile shortcut stays in the header; the AI helper lives as a Home-screen floating action. */
 function MainHeaderActions({ navigation }: { navigation: any }) {
   const { profile } = useApp();
+  const unread = useUnreadNotificationCount();
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 4 }}>
+    <View style={{ flexDirection: "row", alignItems: "center", marginRight: 4, gap: 12 }}>
+      <Pressable onPress={() => navigation.navigate("Notifications")} accessibilityRole="button" accessibilityLabel={`Notifications${unread ? `, ${unread} unread` : ""}`} style={{ padding: 5 }}>
+        <Ionicons name="notifications-outline" size={25} color={colors.ink} />
+        {unread > 0 && <View style={{ position: "absolute", top: -1, right: -3, minWidth: 17, height: 17, paddingHorizontal: 4, borderRadius: 9, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 9, fontWeight: "900" }}>{unread > 99 ? "99+" : unread}</Text></View>}
+      </Pressable>
       <Pressable onPress={() => navigation.navigate("Profile")} accessibilityRole="button" accessibilityLabel="Open your profile and account settings" style={{ padding: 2, borderRadius: 24, borderWidth: 2, borderColor: colors.teal }}>
         {profile ? <Avatar name={profile.name} path={profile.avatar_path} size={34} /> : <Ionicons name="person-circle" size={36} color={colors.teal} />}
       </Pressable>
@@ -331,6 +339,7 @@ export default function RootNavigator() {
       ) : profile.role === "admin" ? (
         <>
           <Stack.Screen name="Admin" component={AdminTabs} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="TeacherCourse" component={TeacherCourseScreen} />
           <Stack.Screen name="Feedback" component={FeedbackScreen} />
           <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
@@ -339,6 +348,7 @@ export default function RootNavigator() {
       ) : profile.role === "teacher" ? (
         <>
           <Stack.Screen name="Teacher" component={TeacherTabs} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="TeacherCourse" component={TeacherCourseScreen} />
           <Stack.Screen name="GroupChat" component={GroupChatScreen} />
           <Stack.Screen name="GroupMembers" component={GroupMembersScreen} />
@@ -349,6 +359,7 @@ export default function RootNavigator() {
       ) : (
         <>
           <Stack.Screen name="Main" component={MainTabs} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Planner" component={PlannerScreen} />
           <Stack.Screen name="Cards" component={CardsScreen} />
           <Stack.Screen name="Progress" component={ProgressScreen} />

@@ -9,7 +9,7 @@ import PressableScale from "../../components/animated/PressableScale";
 import { StatCardSkeleton } from "../../components/animated/Skeleton";
 import AppAccessCard from "./AppAccessCard";
 
-export default function AdminDashboardScreen() {
+export default function AdminDashboardScreen({ navigation }: any) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +37,9 @@ export default function AdminDashboardScreen() {
         <View style={styles.container}>
           <Text style={styles.greeting}>Admin Dashboard</Text>
           <Text style={styles.subtitle}>Platform-wide overview</Text>
+        <PressableScale onPress={() => navigation?.navigate("Notifications")} style={{ alignSelf: "flex-start", backgroundColor: colors.tealLight, borderRadius: radius.md, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 16 }}>
+          <Text style={{ color: colors.teal, fontWeight: "800", fontSize: 13 }}>🔔  View notifications</Text>
+        </PressableScale>
           <View style={styles.statsRow}>
             <StatCardSkeleton />
             <StatCardSkeleton />

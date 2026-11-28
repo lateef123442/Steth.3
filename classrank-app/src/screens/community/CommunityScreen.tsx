@@ -67,13 +67,13 @@ export default function CommunityScreen({ navigation }: any) {
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  {groupUnreadCounts[group.id] > 0 && <View accessibilityLabel={`${groupUnreadCounts[group.id]} unread messages in ${group.name}`} style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.danger }} />}
+                  {groupUnreadCounts[group.id] > 0 && <View accessibilityLabel={`${groupUnreadCounts[group.id]} unread messages in ${group.name}`} style={{ minWidth: 24, height: 24, paddingHorizontal: 6, borderRadius: 12, backgroundColor: colors.danger, alignItems: "center", justifyContent: "center" }}><Text style={{ color: "#fff", fontSize: 11, fontWeight: "900" }}>{groupUnreadCounts[group.id] > 99 ? "99+" : groupUnreadCounts[group.id]}</Text></View>}
                   <Text style={s.h3}>{group.name}</Text>
                 </View>
                 <Muted>{group.official ? "Official class group" + (group.year ? " · Year " + group.year : "") : "Study group"} · {group.member_count} members</Muted>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                {groupUnreadCounts[group.id] > 0 && <Tag label={`${groupUnreadCounts[group.id] > 99 ? "99+" : groupUnreadCounts[group.id]} new`} color={colors.danger} />}
+                
                 {group.official && <Tag label="Official" color={colors.violet} />}
               </View>
             </View>

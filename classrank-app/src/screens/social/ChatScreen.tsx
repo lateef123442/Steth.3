@@ -13,11 +13,14 @@ export default function ChatScreen({ navigation, route }: any) {
   const [report, setReport] = useState<ReportTarget | null>(null);
   const load = useCallback((before?: string) => fetchConversation(userId, before), [userId]);
   const send = useCallback((body: string) => sendDirect(userId, body), [userId]);
+  const read = useCallback(() => { markRead(userId).catch(() => {}); }, [userId]);
   const subscribe = useCallback((on: (m: any) => void, onReconnect?: () => void) => subscribeDirect(profile!.id, (m) => {
     // only this conversation: from them to me, or from me (another device) to them
-    if (m.sender_id === userId || (m.sender_id === profile!.id && m.recipient_id === userId)) on(m);
-  }, onReconnect), [profile, userId]);
-  const read = useCallback(() => { markRead(userId).catch(() => {}); }, [userId]);
+    if (m.sender_id === userId || (m.sender_id === profile!.id && m.recipient_id === userId)) {
+      on(m);
+      if (m.sender_id === userId) read();
+    }
+  }, onReconnect), [profile, userId, read]);
 
   const confirmBlock = () => Alert.alert(`Block ${name}?`, "You won't be able to message each other, and they'll be removed from your friends. You can unblock them later from Friends → Blocked.", [
     { text: "Cancel", style: "cancel" },

@@ -6,11 +6,6 @@ import { useApp } from "../context/AppContext";
 import { loadStudy, getStudyData, isStudyLoaded, subscribeStudy } from "../lib/studyStore";
 import { registerPushToken, clearPushToken } from "../lib/notifications";
 
-/**
- * Keeps this device's push registration in line with the student's "Class announcements & replies" setting:
- * registers when it's on, removes the token when it's off. Registration lives here (not at login) so a student
- * who opted out is never registered, even briefly. Uses a plain subscription so it doesn't re-render navigation.
- */
 export function usePushRegistration() {
   const { profile } = useApp();
   const uid = profile?.id;
@@ -30,8 +25,7 @@ export function usePushRegistration() {
   }, [uid]);
 }
 
-const handled = new Set<string>(); // a launch notification can be reported again after a remount; open it once
-/** Tapping a push opens the course or group it is about, including when it launched the app from closed. */
+const handled = new Set<string>();
 export function usePushTapNavigation() {
   const navigation = useNavigation<any>();
   useEffect(() => {
@@ -40,6 +34,7 @@ export function usePushTapNavigation() {
       const d: any = r.notification.request.content.data;
       if (d?.type === "announcement" && d.courseId) navigation.navigate("Course", { courseId: d.courseId });
       else if (d?.type === "reply" && d.groupId) navigation.navigate("Group", { groupId: d.groupId });
+      else if (["announcement", "direct_message", "group_message", "friend_request", "friend_request_accepted", "admin_request", "admin_reply"].includes(d?.type)) navigation.navigate("Notifications");
       else return;
       handled.add(r.notification.request.identifier);
     };
