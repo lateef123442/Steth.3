@@ -10,9 +10,20 @@ export async function studyAiErrorMessage(error: unknown): Promise<string> {
   if (context && typeof context.clone === "function") {
     try { payload = await context.clone().json(); } catch { /* keep the fallback below */ }
   }
-  if (payload?.error === "DAILY_LIMIT") return "You've used your 5 AI requests for today. Come back after midnight (Lagos time).";
-  if (payload?.error === "PROVIDER_LIMIT") return "The free AI service is busy right now. Please try again in a little while.";
-  if (payload?.error === "AI_TEMPORARILY_UNAVAILABLE" || payload?.error === "AI_NOT_CONFIGURED") return "AI Companion is temporarily unavailable. Please try again later.";
+  const code = String(payload?.error ?? "");
+  if (code === "DAILY_LIMIT") return "You've used your 5 AI requests for today. Come back after midnight (Lagos time).";
+  if (code === "PROVIDER_LIMIT" || code === "AI_UPSTREAM_429") return "The AI service is busy right now. Please try again in a little while. Your PDF was not changed.";
+  if (code === "AI_NOT_CONFIGURED" || code === "AI_TEMPORARILY_UNAVAILABLE" || code === "AI_QUOTA_CHECK_FAILED") return "AI Companion is temporarily unavailable. Please try again later.";
+  if (code === "PDF_NOT_FOUND") return "Steth couldn't access the uploaded PDF. Please select it again and retry.";
+  if (code === "PDF_SIZE_LIMIT") return "This PDF is too large for processing. Choose a PDF smaller than 10 MB.";
+  if (code === "INVALID_PDF_REQUEST") return "The PDF upload could not be verified. Please choose the PDF again.";
+  if (code === "AI_UPSTREAM_400") return "The AI service rejected this PDF request. Try a text-based PDF or select fewer questions.";
+  if (code === "AI_UPSTREAM_413") return "This PDF is too large for the AI service to process. Try a shorter or smaller PDF.";
+  if (code === "AI_UPSTREAM_404") return "The AI model endpoint is unavailable right now. Please try again later.";
+  if (code === "AI_EMPTY_RESPONSE") return "The AI could not read enough usable content from this PDF. Try a text-based PDF rather than scanned images.";
+  if (code === "AI_INVALID_JSON") return "The AI response was incomplete. Please retry with fewer questions.";
+  if (code === "AI_INSUFFICIENT_PDF_CONTENT") return "This PDF did not contain enough readable material for five questions. Try a longer or clearer PDF.";
+  if (code.startsWith("AI_UPSTREAM_")) return "The AI service could not process this PDF right now. Try a smaller PDF or fewer questions.";
   return "I couldn't complete that AI request. Check your connection and try again.";
 }
 

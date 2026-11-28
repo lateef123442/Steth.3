@@ -40,7 +40,6 @@ export default function GroupQuizScreen({ navigation, route }: any) {
   const [fire, setFire] = useState(false);
   const started = useRef(Date.now());
   const allowLeave = useRef(false);
-  const confirmationShown = useRef(false);
 
   const showResults = useCallback(async (sc?: { correct: number; total: number }) => {
     const [st, rv] = await Promise.all([fetchQuizStandings(quizId), fetchQuizReview(quizId)]);
@@ -64,7 +63,7 @@ export default function GroupQuizScreen({ navigation, route }: any) {
         const latest = await fetchGroupQuiz(quizId);
         setQuiz(latest);
         if (latest.taken) { setAlreadyTaken(true); setPicks(latest.my_answers ?? []); await showResults(latest.result ?? undefined); }
-        else { confirmationShown.current = false; Alert.alert("Couldn't start the quiz", e?.message ?? "Please try again."); }
+        else { Alert.alert("Couldn't start the quiz", e?.message ?? "Please try again."); }
       } catch (refreshError: any) { Alert.alert("Couldn't start the quiz", refreshError?.message ?? e?.message ?? "Please try again."); }
     } finally { setBusy(false); }
   }, [quiz, busy, quizId, showResults]);
@@ -82,20 +81,6 @@ export default function GroupQuizScreen({ navigation, route }: any) {
     })();
     return () => { active = false; };
   }, [quizId, showResults]);
-
-  useEffect(() => {
-    if (phase !== "confirm" || !quiz || confirmationShown.current) return;
-    confirmationShown.current = true;
-    Alert.alert(
-      `Ready to take ${quiz.title}?`,
-      "You can take this quiz only once. Your choices are saved as you answer. If you leave after starting, saved answers will be scored and unanswered questions will count as wrong.",
-      [
-        { text: "Not now", style: "cancel", onPress: () => navigation.goBack() },
-        { text: "Yes, start quiz", onPress: () => { void begin(); } },
-      ],
-      { cancelable: false },
-    );
-  }, [phase, quiz, begin, navigation]);
 
   const leave = useCallback(() => {
     if (phase !== "play") { navigation.goBack(); return; }
@@ -150,7 +135,28 @@ export default function GroupQuizScreen({ navigation, route }: any) {
   };
 
   if (error) return <SafeAreaView style={s.safe}><View style={{ padding: spacing.xl }}><Back onPress={() => navigation.goBack()} /><Text style={s.h1}>Quiz unavailable</Text><Muted style={{ marginTop: 8 }}>{error}</Muted></View></SafeAreaView>;
-  if (phase === "loading" || phase === "confirm" || !quiz) return <SafeAreaView style={s.safe}><View style={{ padding: spacing.xl }}><Back onPress={() => navigation.goBack()} /><ListSkeleton rows={4} /></View></SafeAreaView>;
+  if (phase === "loading" || !quiz) return <SafeAreaView style={s.safe}><View style={{ padding: spacing.xl }}><Back onPress={() => navigation.goBack()} /><ListSkeleton rows={4} /></View></SafeAreaView>;
+  if (phase === "confirm") return (
+    <SafeAreaView style={s.safe}>
+      <View style={{ ...WRAP, flex: 1, width: "100%", padding: spacing.xl, justifyContent: "center" }}>
+        <Back onPress={() => navigation.goBack()} label="← Back to group" />
+        <Card style={{ marginTop: spacing.lg, padding: spacing.xl, borderColor: colors.teal }}>
+          <Label>BEFORE YOU BEGIN</Label>
+          <Text style={[s.h1, { marginTop: spacing.sm }]}>{quiz.title}</Text>
+          <Muted style={{ marginTop: spacing.sm }}>Are you ready to take this group quiz?</Muted>
+          <View style={{ marginTop: spacing.md, gap: spacing.xs }}>
+            <Muted>• You can take this quiz only once.</Muted>
+            <Muted>• Your answers are saved as you choose them.</Muted>
+            <Muted>• If you leave after starting, saved answers will be scored and unanswered questions will count as wrong.</Muted>
+          </View>
+          <View style={{ marginTop: spacing.lg }}>
+            <Btn label={busy ? "Starting quiz…" : "Yes, start quiz"} disabled={busy} onPress={() => { void begin(); }} />
+            <View style={{ marginTop: spacing.sm }}><Btn label="Not now" ghost disabled={busy} onPress={() => navigation.goBack()} /></View>
+          </View>
+        </Card>
+      </View>
+    </SafeAreaView>
+  );
 
   if (phase === "done" && score) {
     const pct = Math.round((score.correct / score.total) * 100);

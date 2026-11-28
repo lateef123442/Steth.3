@@ -141,6 +141,16 @@ async function callGemini(system: string, contents: any[], maxOutputTokens: numb
   return text;
 }
 
+async function reserveStudyAiQuota(sb: any): Promise<void> {
+  const { data, error } = await sb.rpc("consume_study_ai_quota", { p_daily_limit: 5 });
+  if (error) {
+    console.error("AI quota check failed:", error.message);
+    throw new Error("AI_QUOTA_CHECK_FAILED");
+  }
+  const quota = Array.isArray(data) ? data[0] : data;
+  if (!quota?.allowed) throw new Error("DAILY_LIMIT");
+}
+
 Deno.serve(async (req) => {
   const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info" };
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -156,15 +166,6 @@ Deno.serve(async (req) => {
     if (authError || !authData.user) {
       return new Response(JSON.stringify({ error: "UNAUTHORIZED" }), { status: 401, headers: { ...cors, "content-type": "application/json" } });
     }
-    const { data: quotaData, error: quotaError } = await sb.rpc("consume_study_ai_quota", { p_daily_limit: 5 });
-    if (quotaError) {
-      console.error("AI quota check failed:", quotaError.message);
-      return new Response(JSON.stringify({ error: "AI_TEMPORARILY_UNAVAILABLE" }), { status: 503, headers: { ...cors, "content-type": "application/json" } });
-    }
-    const quota = Array.isArray(quotaData) ? quotaData[0] : quotaData;
-    if (!quota?.allowed) {
-      return new Response(JSON.stringify({ error: "DAILY_LIMIT", used: quota?.used ?? 5, daily_limit: quota?.daily_limit ?? 5 }), { status: 429, headers: { ...cors, "content-type": "application/json" } });
-    }
     const body = await req.json();
     const { messages, context } = body;
     if (body.task === "pdf_questions") {
@@ -178,9 +179,11 @@ Deno.serve(async (req) => {
       if (pdfError || !pdf) return new Response(JSON.stringify({ error: "PDF_NOT_FOUND" }), { status: 404, headers: { ...cors, "content-type": "application/json" } });
       if (pdf.size <= 0 || pdf.size > 10 * 1024 * 1024) return new Response(JSON.stringify({ error: "PDF_SIZE_LIMIT" }), { status: 413, headers: { ...cors, "content-type": "application/json" } });
       const bytes = new Uint8Array(await pdf.arrayBuffer());
+      await reserveStudyAiQuota(sb);
       const prompt = `Create exactly ${count} different university-level multiple-choice questions based ONLY on the attached PDF. Cover different sections and key concepts. Mix recall, understanding and application. Avoid duplicates. If the PDF is too short to support ${count} distinct questions, return as many high-quality questions as the material supports. Do not invent facts not supported by the PDF.`;
       const generated = await callGemini(QUESTION_SYSTEM, [{ role: "user", parts: [{ text: `Student PDF: ${match[2]}` }, { inlineData: { mimeType: "application/pdf", data: encodeBase64(bytes) } }, { text: prompt }] }], Math.min(24000, 900 + count * 190), true);
-      const questions = JSON.parse(generated);
+      let questions: any;
+      try { questions = JSON.parse(generated); } catch { throw new Error("AI_INVALID_JSON"); }
       if (!Array.isArray(questions)) throw new Error("AI_INVALID_JSON");
       const valid = questions.filter((q: any) => typeof q?.q === "string" && Array.isArray(q.options) && q.options.length === 4 && q.options.every((o: any) => typeof o === "string") && Number.isInteger(q.correct) && q.correct >= 0 && q.correct <= 3).slice(0, count);
       if (valid.length < 5) throw new Error("AI_INSUFFICIENT_PDF_CONTENT");
@@ -194,6 +197,7 @@ Deno.serve(async (req) => {
       const prompt = `Subject: ${String(body.subject ?? "").slice(0, 100)}\nTopic: ${String(body.topic ?? "general").slice(0, 100)}\nWrite ${n} ${isCards ? "flashcards" : "questions"}.\nStudent notes (may be empty):\n${String(body.notes ?? "").slice(0, 3000)}`;
       const files = await fileBlocks(req, body.files);
       const parts = [...files.parts, { text: prompt }];
+      await reserveStudyAiQuota(sb);
       const text = await callGemini(isCards ? FLASHCARD_SYSTEM : QUESTION_SYSTEM, [{ role: "user", parts }], 2500, true);
       return new Response(JSON.stringify({ [isCards ? "cards" : "questions"]: JSON.parse(text), files_used: files.used, files_skipped: files.skipped }), { headers: { ...cors, "content-type": "application/json" } });
     }
@@ -201,13 +205,22 @@ Deno.serve(async (req) => {
       .map((m: any) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: String(m.content).slice(0, 4000) }] }));
     while (clean.length && clean[0].role === "model") clean.shift();
     if (!clean.length) return new Response(JSON.stringify({ error: "EMPTY_MESSAGES" }), { status: 400, headers: { ...cors, "content-type": "application/json" } });
+    await reserveStudyAiQuota(sb);
     const reply = await callGemini(`${SYSTEM}\nStudent context: ${JSON.stringify(context ?? {}).slice(0, 1500)}`, clean, 600);
     return new Response(JSON.stringify({ reply }), { headers: { ...cors, "content-type": "application/json" } });
   } catch (e) {
     const code = e instanceof Error ? e.message : "AI_ERROR";
-    const status = code === "AI_RATE_LIMITED" ? 429 : code === "AI_NOT_CONFIGURED" ? 503 : 502;
-    const message = code === "AI_RATE_LIMITED" ? "PROVIDER_LIMIT" : code === "AI_NOT_CONFIGURED" ? "AI_NOT_CONFIGURED" : "AI_TEMPORARILY_UNAVAILABLE";
+    const known = new Set([
+      "DAILY_LIMIT", "AI_RATE_LIMITED", "AI_NOT_CONFIGURED", "AI_QUOTA_CHECK_FAILED",
+      "AI_EMPTY_RESPONSE", "AI_INVALID_JSON", "AI_INSUFFICIENT_PDF_CONTENT",
+    ]);
+    const upstream = code.match(/^AI_UPSTREAM_(\d{3})$/);
+    const publicError = known.has(code) ? (code === "AI_RATE_LIMITED" ? "PROVIDER_LIMIT" : code)
+      : upstream ? `AI_UPSTREAM_${upstream[1]}` : "AI_TEMPORARILY_UNAVAILABLE";
+    const status = code === "DAILY_LIMIT" || code === "AI_RATE_LIMITED" ? 429
+      : code === "AI_NOT_CONFIGURED" || code === "AI_QUOTA_CHECK_FAILED" ? 503
+      : upstream ? (Number(upstream[1]) >= 500 ? 503 : 422) : 502;
     console.error("Study companion request failed:", code);
-    return new Response(JSON.stringify({ error: message }), { status, headers: { ...cors, "content-type": "application/json" } });
+    return new Response(JSON.stringify({ error: publicError }), { status, headers: { ...cors, "content-type": "application/json" } });
   }
 });

@@ -7,6 +7,8 @@ import { Back, Btn, Card, Chip, Label, Muted, s } from "../components/study/ui";
 import {
   useStudy, addSession, setSessionStatus, rescheduleSession, removeSession,
   setPrefs, subjectName, dateStr, addDaysStr, fmtTime12, PlannedSession,
+  generateSchedule, applySchedule, recommend, knowledgeGaps, subjectStats,
+  accuracyOverall, studyStreak, focusMinutes,
 } from "../lib/studyStore";
 import { WRAP } from "../components/responsive";
 import Dropdown from "../components/Dropdown";
@@ -46,6 +48,7 @@ export default function PlannerScreen({ navigation }: any) {
   const [editPicker, setEditPicker] = useState<"date" | "time" | null>(null);
   const [remindersBusy, setRemindersBusy] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [planNotice, setPlanNotice] = useState<string | null>(null);
 
   const syncCourses = useCallback(async () => {
     try {
@@ -73,6 +76,40 @@ export default function PlannerScreen({ navigation }: any) {
   const completedThisWeek = data.sessions.filter((item) => days.includes(item.date) && item.status === "done").length;
   const plannedThisWeek = data.sessions.filter((item) => days.includes(item.date) && item.status === "planned").length;
   const chosenCourse = courseId ?? data.subjects[0]?.id;
+  const nextAction = useMemo(() => recommend(data), [data]);
+  const learningGaps = useMemo(() => knowledgeGaps(data).slice(0, 4), [data]);
+  const coursePerformance = useMemo(() => subjectStats(data), [data]);
+  const suggestedSessions = useMemo(() => generateSchedule(data, 7), [data]);
+  const weekFocusMinutes = focusMinutes(data, 6, 0);
+  const overallAccuracy = accuracyOverall(data);
+  const currentStreak = studyStreak(data);
+  const reviewsDue = data.cards.filter((card) => card.due <= dateStr()).length +
+    data.topics.filter((topic) => !!topic.nextReview && topic.nextReview <= dateStr()).length;
+
+  const openNextAction = () => {
+    const params = nextAction.params ?? {};
+    switch (nextAction.target) {
+      case "Study": navigation.navigate("Main", { screen: "Study", params }); break;
+      case "PracticeSession": navigation.navigate("PracticeSession", params); break;
+      case "Subject": navigation.navigate("Subject", params); break;
+      case "Cards": navigation.navigate("Cards"); break;
+      case "Progress": navigation.navigate("Progress"); break;
+      case "StudySetup": navigation.navigate("StudySetup"); break;
+      case "Practice": navigation.navigate("Main", { screen: "Practice" }); break;
+      default: navigation.navigate("Main", { screen: "Learn" }); break;
+    }
+  };
+
+  const buildSevenDayPlan = () => {
+    if (!suggestedSessions.length) {
+      setPlanNotice("No new sessions fit your current timetable and daily study-time limit. Remove or move a session, or increase your daily study time in Study setup.");
+      return;
+    }
+    applySchedule(suggestedSessions);
+    setSelectedDay(dateStr());
+    setSessionDate(new Date());
+    setPlanNotice(`Added ${suggestedSessions.length} focused study sessions across the next seven days. You can edit any session below.`);
+  };
 
   const startFocus = (item: PlannedSession) => {
     navigation.navigate("Main", { screen: "Study", params: { subject: subjectName(data, item.subjectId) } });
@@ -171,8 +208,60 @@ export default function PlannerScreen({ navigation }: any) {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={{ ...WRAP, padding: spacing.xl, paddingBottom: spacing.xxxl * 2 }} keyboardShouldPersistTaps="handled">
         <Back onPress={() => navigation.goBack()} />
-        <Text style={s.h1}>Study timetable</Text>
-        <Muted style={{ marginTop: spacing.xs }}>Plan focused study time around your lectures, assignments and exams. Small, regular sessions are easier to keep than last-minute cramming.</Muted>
+        <Text style={s.h1}>Study plan</Text>
+        <Muted style={{ marginTop: spacing.xs }}>A practical plan to help you understand your courses, remember what you learn and improve your test performance — not just fill your calendar.</Muted>
+
+        <Card style={{ marginTop: spacing.lg, borderColor: colors.teal }}>
+          <Label>YOUR LEARNING SNAPSHOT</Label>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.sm }}>
+            <View style={{ width: "48%", padding: spacing.sm, borderRadius: 12, backgroundColor: colors.card }}>
+              <Text style={s.h2}>{overallAccuracy === null ? "—" : `${overallAccuracy}%`}</Text>
+              <Muted>Quiz accuracy</Muted>
+            </View>
+            <View style={{ width: "48%", padding: spacing.sm, borderRadius: 12, backgroundColor: colors.card }}>
+              <Text style={s.h2}>{currentStreak}</Text>
+              <Muted>Study-day streak</Muted>
+            </View>
+            <View style={{ width: "48%", padding: spacing.sm, borderRadius: 12, backgroundColor: colors.card }}>
+              <Text style={s.h2}>{weekFocusMinutes >= 60 ? `${Math.floor(weekFocusMinutes / 60)}h ${weekFocusMinutes % 60}m` : `${weekFocusMinutes}m`}</Text>
+              <Muted>Focused this week</Muted>
+            </View>
+            <View style={{ width: "48%", padding: spacing.sm, borderRadius: 12, backgroundColor: colors.card }}>
+              <Text style={s.h2}>{reviewsDue}</Text>
+              <Muted>Reviews due</Muted>
+            </View>
+          </View>
+          <Muted style={{ marginTop: spacing.sm }}>{coursePerformance.filter((course) => course.accuracy !== null).length} course(s) have enough quiz/review data to estimate performance. Keep practising to make these insights more accurate.</Muted>
+          <Btn ghost label="Personalise my study goals" onPress={() => navigation.navigate("StudySetup")} />
+        </Card>
+
+        <Card style={{ marginTop: spacing.sm }}>
+          <Label>YOUR NEXT BEST ACTION</Label>
+          <Text style={[s.h3, { marginTop: spacing.xs }]}>{nextAction.text}</Text>
+          {!!nextAction.steps?.length && <View style={{ marginTop: spacing.sm, gap: spacing.xs }}>
+            {nextAction.steps.map((step, index) => <Muted key={`${index}-${step}`}>{index + 1}. {step}</Muted>)}
+          </View>}
+          <View style={{ marginTop: spacing.sm }}><Btn label={nextAction.cta} onPress={openNextAction} /></View>
+        </Card>
+
+        <Card style={{ marginTop: spacing.sm }}>
+          <Label>BUILD A BALANCED 7-DAY PLAN</Label>
+          <Text style={[s.h3, { marginTop: spacing.xs }]}>Spend more time on the courses that need it</Text>
+          <Muted style={{ marginTop: spacing.xs }}>Steth uses your quiz performance, upcoming exam dates, overdue topics, missed sessions and daily study-time preference to suggest realistic sessions.</Muted>
+          <Muted style={{ marginTop: spacing.sm }}>{suggestedSessions.length ? `${suggestedSessions.length} suggested session(s) are ready to add to your timetable.` : "No additional sessions are available from your current timetable and daily time budget."}</Muted>
+          <View style={{ marginTop: spacing.sm }}><Btn label={suggestedSessions.length ? "Add my suggested study sessions" : "No new sessions to add"} disabled={!suggestedSessions.length} onPress={buildSevenDayPlan} /></View>
+          {!!planNotice && <Muted style={{ marginTop: spacing.sm, color: colors.teal }}>{planNotice}</Muted>}
+        </Card>
+
+        {!!learningGaps.length && <Card style={{ marginTop: spacing.sm }}>
+          <Label>TOPICS THAT NEED ATTENTION</Label>
+          <Muted style={{ marginTop: spacing.xs }}>Use these as your revision priorities. They come from your quiz answers, flashcard reviews and topic review dates.</Muted>
+          {learningGaps.map((gap) => <View key={`${gap.kind}-${gap.subjectId}-${gap.topicId ?? "none"}`} style={{ marginTop: spacing.md, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border }}>
+            <Text style={s.h3}>{gap.title}</Text>
+            <Muted>{gap.detail}</Muted>
+            <View style={{ marginTop: spacing.xs, alignSelf: "flex-start" }}><Chip label="Open course" on={false} onPress={() => navigation.navigate("Subject", { subjectId: gap.subjectId })} /></View>
+          </View>)}
+        </Card>}
 
         <Card style={{ marginTop: spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
