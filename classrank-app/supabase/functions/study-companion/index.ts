@@ -152,7 +152,12 @@ async function reserveStudyAiQuota(sb: any): Promise<void> {
 }
 
 Deno.serve(async (req) => {
-  const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info" };
+  const cors = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
+    "Access-Control-Expose-Headers": "sb-error-code, x-sb-error-code",
+  };
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
     const authorization = req.headers.get("Authorization");
