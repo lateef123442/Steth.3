@@ -34,7 +34,10 @@ export const subscribeGroupMessageChanges = (callback: () => void) => {
     .subscribe();
   return () => { void supabase.removeChannel(channel); };
 };
-export const markGroupMessagesRead = (groupId: string) => call<void>("mark_group_messages_read", { p_group_id: groupId });
+export const markGroupMessagesRead = async (groupId: string) => {
+  await call<void>("mark_group_messages_read", { p_group_id: groupId });
+  await call<void>("mark_group_notifications_read", { p_group_id: groupId }).catch(() => {});
+};
 export const createGroup = (name: string, description: string, courseId?: string | null) =>
   call<{ id: string; join_code: string }>("create_study_group", { p_name: name, p_description: description, p_course_id: courseId ?? null });
 export const joinGroup = (code: string) => call<{ group_id: string; name: string }>("join_study_group", { p_code: code });
