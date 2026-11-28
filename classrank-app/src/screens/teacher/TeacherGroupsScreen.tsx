@@ -32,9 +32,10 @@ export default function TeacherGroupsScreen({ navigation }: any) {
     if (busy || year == null || !deptId) return;
     setBusy(true);
     try {
-      const g = await createYearGroup(deptId, name, desc, year);
+      const groupName = name.trim();
+      const g = await createYearGroup(deptId, groupName, desc, year);
       setName(""); setDesc(""); await load();
-      Alert.alert("Class group created", `${g.students_added} ${myDepts.find((d) => d.id === deptId)?.name ?? profile?.department ?? ""} Year ${year} student${g.students_added === 1 ? " was" : "s were"} added. New students in this year join automatically when they sign up.`, [{ text: "Open", onPress: () => navigation.navigate("Group", { groupId: g.id }) }, { text: "OK" }]);
+      Alert.alert("Class group created", `${g.students_added} ${myDepts.find((d) => d.id === deptId)?.name ?? profile?.department ?? ""} Year ${year} student${g.students_added === 1 ? " was" : "s were"} added. New students in this year join automatically when they sign up.`, [{ text: "Open", onPress: () => navigation.navigate("GroupChat", { groupId: g.id, name: groupName }) }, { text: "OK" }]);
     } catch (e: any) { Alert.alert("Couldn't create group", e?.message ?? "Try again."); } finally { setBusy(false); }
   };
 
@@ -47,7 +48,7 @@ export default function TeacherGroupsScreen({ navigation }: any) {
       {groups?.length === 0 && !error && <Empty icon="👥" title="No class groups yet" body="Create one for a year you teach. Every student in that year joins immediately." />}
       <Grid>
         {groups?.map((g) => (
-          <Card key={g.id} style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("Group", { groupId: g.id })}>
+          <Card key={g.id} style={{ marginTop: spacing.sm }} onPress={() => navigation.navigate("GroupChat", { groupId: g.id, name: g.name })}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: spacing.sm }}>
               <Text style={[s.h3, { flex: 1 }]} numberOfLines={1}>{g.name}</Text>
               {g.year ? <YearTag year={g.year} /> : null}
