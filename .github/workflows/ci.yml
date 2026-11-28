@@ -29,9 +29,10 @@ jobs:
         run: npm run typecheck
       - name: Run tests
         run: npm test -- --ci --runInBand
-      - name: Dependency vulnerability audit
-        run: npm audit --audit-level=high
       - name: Scan for committed secrets
+        if: always()
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Dependency vulnerability audit
+        run: npm audit --audit-level=high
