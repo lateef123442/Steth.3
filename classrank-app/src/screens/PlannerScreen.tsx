@@ -189,14 +189,16 @@ export default function PlannerScreen({ navigation }: any) {
           </Text>
         </View>
         {!done && !skipped ? (
-          <View style={[s.row, { marginTop: spacing.md }]}>
-            <Chip label="Start study" on onPress={() => startFocus(item)} />
-            <Chip label="Done" on onPress={() => setSessionStatus(item.id, "done")} />
-            <Chip label="Remove" on={false} onPress={() => Alert.alert("Remove session?", "This will remove it from your timetable.", [{ text: "Keep", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeSession(item.id) }])} />
-          </View>
-          <View style={{ marginTop: spacing.sm }}>
-            <Btn ghost label="Edit date & time" onPress={() => { setEditing(item); setEditDate(parseDate(item.date)); setEditTime(parseTime(time)); }} />
-          </View>
+          <>
+            <View style={[s.row, { marginTop: spacing.md }]}>
+              <Chip label="Start study" on onPress={() => startFocus(item)} />
+              <Chip label="Done" on onPress={() => setSessionStatus(item.id, "done")} />
+              <Chip label="Remove" on={false} onPress={() => Alert.alert("Remove session?", "This will remove it from your timetable.", [{ text: "Keep", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => removeSession(item.id) }])} />
+            </View>
+            <View style={{ marginTop: spacing.sm }}>
+              <Btn ghost label="Edit date & time" onPress={() => { setEditing(item); setEditDate(parseDate(item.date)); setEditTime(parseTime(time)); }} />
+            </View>
+          </>
         ) : (
           <View style={[s.row, { marginTop: spacing.md }]}>
             <Chip label="Undo" on={false} onPress={() => setSessionStatus(item.id, "planned")} />
